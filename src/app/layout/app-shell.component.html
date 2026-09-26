@@ -1,0 +1,252 @@
+<div class="flex min-h-screen bg-slate-100">
+  <aside
+    class="hidden shrink-0 flex-col border-r border-slate-800 bg-slate-900 transition-all duration-300 lg:flex"
+    [class.w-16]="collapsed()"
+    [class.w-64]="!collapsed()"
+  >
+    <ng-container [ngTemplateOutlet]="sidebar" [ngTemplateOutletContext]="{ mobile: false }" />
+  </aside>
+
+  @if (mobileOpen()) {
+    <div class="fixed inset-0 z-50 flex lg:hidden">
+      <button
+        type="button"
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        (click)="mobileOpen.set(false)"
+        aria-label="Fechar menu"
+      ></button>
+      <aside
+        class="relative flex w-64 animate-slide-in flex-col border-r border-slate-800 bg-slate-900"
+      >
+        <ng-container [ngTemplateOutlet]="sidebar" [ngTemplateOutletContext]="{ mobile: true }" />
+      </aside>
+    </div>
+  }
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <header
+      class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6"
+    >
+      <div class="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          (click)="mobileOpen.set(true)"
+          class="h-5 w-5 text-slate-500 lg:hidden"
+        >
+          <span appIcon="Menu"></span>
+        </button>
+        <div class="min-w-0">
+          <h1 class="truncate text-base font-semibold text-slate-800 lg:text-lg">
+            {{ activeLabel() }}
+          </h1>
+          <p class="hidden truncate text-xs text-slate-400 sm:block">{{ subtitle() }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div
+          class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 sm:flex"
+        >
+          <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span
+          ><span class="text-xs font-medium text-slate-600">Sistema ativo</span>
+        </div>
+        <div class="relative">
+          <button
+            type="button"
+            (click)="userMenuOpen.update((v) => !v)"
+            class="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-slate-100"
+          >
+            <span
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-600"
+              >{{ initial() }}</span
+            >
+            <span class="hidden text-left sm:block"
+              ><span class="block max-w-[120px] truncate text-xs font-medium text-slate-700">{{
+                auth.profile()?.name || 'Usuário'
+              }}</span>
+              <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold" [class]="roleColor()">{{
+                auth.profile()?.role
+              }}</span></span
+            >
+            <span appIcon="ChevronDown" class="h-3.5 w-3.5 text-slate-400"></span>
+          </button>
+          @if (userMenuOpen()) {
+            <button
+              type="button"
+              class="fixed inset-0 z-10"
+              (click)="userMenuOpen.set(false)"
+              aria-label="Fechar menu do usuário"
+            ></button>
+            <div
+              class="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+            >
+              <div class="border-b border-slate-100 px-3 py-2.5">
+                <p class="truncate text-sm font-medium text-slate-700">
+                  {{ auth.profile()?.name }}
+                </p>
+                <p class="text-xs text-slate-400">{{ auth.profile()?.role }}</p>
+              </div>
+              <button
+                type="button"
+                (click)="logout()"
+                class="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-600 transition hover:bg-rose-50"
+              >
+                <span appIcon="LogOut" class="h-4 w-4"></span>Sair do sistema
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+    <main class="flex-1 overflow-y-auto bg-slate-100 p-4 lg:p-8">
+      <div class="mx-auto max-w-7xl"><router-outlet /></div>
+    </main>
+  </div>
+</div>
+
+<ng-template #sidebar let-mobile="mobile">
+  <div
+    class="flex h-16 items-center border-b border-slate-800 px-4"
+    [class.justify-center]="collapsed() && !mobile"
+  >
+    <div class="flex items-center gap-2.5">
+      <span
+        class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-bold text-white shadow-lg shadow-blue-500/20"
+        >Q</span
+      >
+      @if (!collapsed() || mobile) {
+        <span class="leading-tight"
+          ><span class="block text-sm font-semibold text-white">SGQ</span
+          ><span class="block text-[10px] uppercase tracking-wider text-slate-500"
+            >Gestão da Qualidade</span
+          ></span
+        >
+      }
+    </div>
+    @if (mobile) {
+      <button
+        type="button"
+        class="ml-auto h-5 w-5 text-slate-400 hover:text-white"
+        (click)="mobileOpen.set(false)"
+      >
+        <span appIcon="X"></span>
+      </button>
+    }
+  </div>
+  <nav class="scrollbar-thin flex-1 overflow-y-auto px-3 py-3">
+    <a
+      routerLink="/dashboard"
+      routerLinkActive="bg-slate-800 text-white shadow-sm"
+      (click)="mobileOpen.set(false)"
+      class="mb-2 flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
+      [class.justify-center]="collapsed() && !mobile"
+      [class.gap-3]="!collapsed() || mobile"
+    >
+      <span appIcon="LayoutDashboard" class="h-5 w-5 shrink-0"></span>
+      @if (!collapsed() || mobile) {
+        <span>Dashboard</span>
+      }
+    </a>
+    <div class="space-y-1">
+      @for (group of groups(); track group.id) {
+        <div>
+          @if (!collapsed() || mobile) {
+            <button
+              type="button"
+              (click)="toggleGroup(group.id)"
+              class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition hover:text-slate-300"
+            >
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="group.color"></span
+              ><span class="flex-1 text-left">{{ group.label }}</span
+              ><span
+                appIcon="ChevronDown"
+                class="h-3.5 w-3.5 transition-transform"
+                [class.rotate-180]="expandedGroups().has(group.id)"
+              ></span>
+            </button>
+          } @else {
+            <div class="flex justify-center py-1.5">
+              <span class="h-1.5 w-1.5 rounded-full" [class]="group.color"></span>
+            </div>
+          }
+          @if (expandedGroups().has(group.id) || (collapsed() && !mobile)) {
+            <div class="mt-0.5 space-y-0.5">
+              @for (sub of group.items; track sub.id) {
+                @if (sub.leaves.length === 1) {
+                  <a
+                    [routerLink]="'/' + sub.leaves[0].route"
+                    routerLinkActive="bg-slate-800 text-white shadow-sm"
+                    (click)="mobileOpen.set(false)"
+                    class="flex items-center rounded-lg py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
+                    [class.justify-center]="collapsed() && !mobile"
+                    [class.gap-3]="!collapsed() || mobile"
+                    [class.pl-9]="!collapsed() || mobile"
+                    [class.pr-3]="!collapsed() || mobile"
+                  >
+                    <span [appIcon]="sub.leaves[0].icon" class="h-4 w-4 shrink-0"></span>
+                    @if (!collapsed() || mobile) {
+                      <span class="truncate">{{ sub.leaves[0].label }}</span>
+                    }
+                  </a>
+                } @else {
+                  @if (!collapsed() || mobile) {
+                    <button
+                      type="button"
+                      (click)="toggleSub(sub.id)"
+                      class="flex w-full items-center gap-3 rounded-lg py-2 pl-6 pr-3 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
+                    >
+                      <span [appIcon]="sub.icon" class="h-4 w-4 shrink-0"></span
+                      ><span class="flex-1 truncate text-left">{{ sub.label }}</span
+                      ><span
+                        appIcon="ChevronDown"
+                        class="h-3.5 w-3.5"
+                        [class.rotate-180]="expandedSubs().has(sub.id)"
+                      ></span>
+                    </button>
+                  }
+                  @if (expandedSubs().has(sub.id) || (collapsed() && !mobile)) {
+                    @for (leaf of sub.leaves; track leaf.id) {
+                      <a
+                        [routerLink]="'/' + leaf.route"
+                        routerLinkActive="bg-slate-800 text-white shadow-sm"
+                        (click)="mobileOpen.set(false)"
+                        class="flex items-center rounded-lg py-2 text-sm text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
+                        [class.justify-center]="collapsed() && !mobile"
+                        [class.gap-3]="!collapsed() || mobile"
+                        [class.pl-12]="!collapsed() || mobile"
+                        [class.pr-3]="!collapsed() || mobile"
+                      >
+                        <span [appIcon]="leaf.icon" class="h-3.5 w-3.5 shrink-0"></span>
+                        @if (!collapsed() || mobile) {
+                          <span class="truncate">{{ leaf.label }}</span>
+                        }
+                      </a>
+                    }
+                  }
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </nav>
+  @if (!mobile) {
+    <div class="border-t border-slate-800 p-3">
+      <button
+        type="button"
+        (click)="collapsed.update((v) => !v)"
+        class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800/50 hover:text-slate-100"
+        [class.justify-center]="collapsed()"
+      >
+        <span
+          appIcon="ChevronLeft"
+          class="h-4 w-4 transition-transform"
+          [class.rotate-180]="collapsed()"
+        ></span>
+        @if (!collapsed()) {
+          <span>Recolher</span>
+        }
+      </button>
+    </div>
+  }
+</ng-template>

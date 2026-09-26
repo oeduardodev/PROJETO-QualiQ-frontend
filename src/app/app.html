@@ -1,0 +1,10 @@
+@if (auth.loading()) {
+  <div class="flex min-h-screen items-center justify-center bg-slate-100">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (!auth.session() || !auth.profile()) {
+  <app-login />
+} @else {
+  <app-shell />
+}
+<app-toast-outlet />
