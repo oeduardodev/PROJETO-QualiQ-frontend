@@ -1,0 +1,336 @@
+@if (loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ error() }}</p>
+    <button class="mt-3 text-sm underline" (click)="loadIndicators()">Tentar novamente</button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title flex items-center gap-2">
+          @if (mode === 'analysis') {
+            <span appIcon="Sparkles" class="h-5 w-5 text-violet-500"></span>
+          }
+          {{ title }}
+        </h2>
+        <p class="ui-page-subtitle">{{ subtitle }}</p>
+      </div>
+      <div class="flex gap-2">
+        @if (mode === 'panel' || mode === 'analysis') {
+          <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
+            <span appIcon="Info" class="h-4 w-4"></span>Metodologia
+          </button>
+        }
+        @if (mode === 'registration') {
+          <button class="ui-button-primary" (click)="openCreateIndicator()">
+            <span appIcon="Plus" class="h-4 w-4"></span>Novo Indicador
+          </button>
+        }
+      </div>
+    </div>
+    @if (mode === 'panel') {
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        @for (item of summary(); track item.label) {
+          <article class="ui-card">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{
+              item.label
+            }}</span
+            ><strong class="mt-1 block text-2xl text-slate-800">{{ item.value }}</strong>
+          </article>
+        }
+      </div>
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        @for (indicator of indicators(); track indicator.id) {
+          <article class="ui-card">
+            <div class="flex items-start justify-between">
+              <div>
+                <h3 class="font-semibold text-slate-800">{{ indicator.title }}</h3>
+                <p class="mt-1 text-xs text-slate-400">
+                  {{ processName(indicator.process_id) }} ·
+                  {{ frequencyLabel(indicator.frequency) }}
+                </p>
+              </div>
+              <span
+                class="rounded-full px-2 py-1 text-xs font-medium"
+                [class]="statusClass(indicator.status)"
+                >{{ statusLabel(indicator.status) }}</span
+              >
+            </div>
+            <div class="mt-5 flex items-end justify-between">
+              <div>
+                <span class="text-xs text-slate-400">Atual</span>
+                <p class="text-2xl font-bold text-slate-800">
+                  {{ formatValue(indicator.current_value, indicator.unit) }}
+                </p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-400">Meta</span>
+                <p class="text-lg font-semibold text-slate-600">
+                  {{ formatValue(indicator.goal_value, indicator.unit) }}
+                </p>
+              </div>
+            </div>
+            <div class="mt-5 flex h-24 items-end gap-1 border-b border-slate-100">
+              @for (bar of bars(indicator.id); track $index) {
+                <span class="min-w-2 flex-1 rounded-t bg-blue-400/70" [style.height.%]="bar"></span>
+              } @empty {
+                <p class="m-auto text-xs text-slate-300">Sem histórico</p>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    }
+    @if (mode === 'feed') {
+      <div class="space-y-4">
+        @for (indicator of indicators(); track indicator.id) {
+          <article class="ui-card">
+            <div class="grid grid-cols-1 items-end gap-4 lg:grid-cols-[1fr_180px_160px_auto]">
+              <div>
+                <h3 class="font-semibold text-slate-800">{{ indicator.title }}</h3>
+                <p class="mt-1 text-xs text-slate-400">
+                  {{ processName(indicator.process_id) }} · Atual:
+                  {{ formatValue(indicator.current_value, indicator.unit) }} · Meta:
+                  {{ formatValue(indicator.goal_value, indicator.unit) }}
+                </p>
+              </div>
+              <label class="ui-form-label"
+                >Período<input type="date" [formControl]="periodControl(indicator.id)" /></label
+              ><label class="ui-form-label"
+                >Valor ({{ indicator.unit }})<input
+                  type="number"
+                  [formControl]="valueControl(indicator.id)" /></label
+              ><button
+                class="ui-button-primary"
+                [disabled]="savingId() === indicator.id"
+                (click)="saveValue(indicator)"
+              >
+                <span appIcon="Save" class="h-4 w-4"></span>Salvar
+              </button>
+            </div>
+            @if (history(indicator.id).length) {
+              <div class="mt-4 flex flex-wrap gap-2">
+                @for (entry of history(indicator.id).slice(-6).reverse(); track entry.id) {
+                  <span class="rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500"
+                    >{{ entry.period }}:
+                    <strong>{{ entry.value }}{{ indicator.unit }}</strong></span
+                  >
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
+    @if (mode === 'registration') {
+      <div class="ui-table-panel">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="ui-table-header">
+                <th class="ui-table-heading">Indicador</th>
+                <th class="ui-table-heading">Processo</th>
+                <th class="ui-table-heading">Meta</th>
+                <th class="ui-table-heading">Frequência</th>
+                <th class="ui-table-heading">Status</th>
+                <th class="ui-table-heading text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (indicator of indicators(); track indicator.id) {
+                <tr class="border-b border-slate-50">
+                  <td class="ui-table-cell font-medium text-slate-700">{{ indicator.title }}</td>
+                  <td class="ui-table-cell">{{ processName(indicator.process_id) }}</td>
+                  <td class="ui-table-cell">
+                    {{ formatValue(indicator.goal_value, indicator.unit) }}
+                  </td>
+                  <td class="ui-table-cell">{{ frequencyLabel(indicator.frequency) }}</td>
+                  <td class="ui-table-cell">
+                    <span
+                      class="rounded-full px-2 py-1 text-xs"
+                      [class]="statusClass(indicator.status)"
+                      >{{ statusLabel(indicator.status) }}</span
+                    >
+                  </td>
+                  <td class="ui-table-cell text-right">
+                    <button class="text-xs text-slate-500" (click)="openEditIndicator(indicator)">
+                      Editar</button
+                    ><button
+                      class="ml-2 text-xs text-rose-500"
+                      (click)="deleteIndicator(indicator)"
+                    >
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="ui-table-empty">Nenhum indicador.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+    @if (mode === 'analysis') {
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-5">
+        <section class="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
+          <header class="border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <span appIcon="TriangleAlert" class="h-4 w-4 text-amber-500"></span>Indicadores em
+              Risco
+            </h3>
+          </header>
+          <div class="divide-y divide-slate-50">
+            @for (indicator of problemIndicators(); track indicator.id) {
+              <button
+                class="w-full p-4 text-left transition hover:bg-slate-50"
+                [class.bg-violet-50]="selectedIndicator()?.id === indicator.id"
+                (click)="selectIndicator(indicator)"
+              >
+                <div class="flex items-start justify-between">
+                  <strong class="text-sm text-slate-700">{{ indicator.title }}</strong
+                  ><span
+                    class="rounded-full px-2 py-1 text-[10px]"
+                    [class]="statusClass(indicator.status)"
+                    >{{ statusLabel(indicator.status) }}</span
+                  >
+                </div>
+                <p class="mt-1 text-xs text-slate-400">
+                  {{ processName(indicator.process_id) }} ·
+                  {{ formatValue(indicator.current_value, indicator.unit) }} /
+                  {{ formatValue(indicator.goal_value, indicator.unit) }}
+                </p>
+              </button>
+            } @empty {
+              <div class="p-8 text-center">
+                <span appIcon="CircleCheck" class="mx-auto h-8 w-8 text-emerald-400"></span>
+                <p class="mt-2 text-sm text-slate-400">Todos os indicadores estão no alvo.</p>
+              </div>
+            }
+          </div>
+        </section>
+        <section class="rounded-xl border border-slate-200 bg-white p-5 lg:col-span-3">
+          @if (!selectedIndicator()) {
+            <div class="flex h-72 flex-col items-center justify-center text-center">
+              <span appIcon="Cpu" class="h-10 w-10 text-slate-300"></span>
+              <p class="mt-3 text-sm text-slate-400">
+                Selecione um indicador para iniciar a análise crítica.
+              </p>
+            </div>
+          } @else {
+            <div class="flex items-start justify-between">
+              <div>
+                <h3 class="font-semibold text-slate-800">{{ selectedIndicator()?.title }}</h3>
+                <p class="mt-1 text-xs text-slate-400">
+                  {{ linkedTickets().length }} notificações relacionadas
+                </p>
+              </div>
+              <button
+                class="ui-button-primary"
+                [disabled]="aiLoading()"
+                (click)="generateAnalysis()"
+              >
+                <span appIcon="Sparkles" class="h-4 w-4"></span
+                >{{ aiLoading() ? 'Analisando...' : 'Gerar análise com IA' }}
+              </button>
+            </div>
+            @if (aiAnalysis()) {
+              <div class="mt-6 space-y-5">
+                <div class="rounded-xl border border-violet-100 bg-violet-50 p-4">
+                  <h4 class="mb-2 text-sm font-semibold text-violet-700">Diagnóstico</h4>
+                  <p class="text-sm leading-6 text-violet-700">{{ aiAnalysis()?.diagnostic }}</p>
+                </div>
+                <div>
+                  <h4 class="mb-3 text-sm font-semibold text-slate-700">
+                    Sugestões de planos de ação
+                  </h4>
+                  <div class="space-y-3">
+                    @for (suggestion of aiAnalysis()?.suggestions; track suggestion.title) {
+                      <article class="rounded-lg border border-slate-200 p-4">
+                        <strong class="text-sm text-slate-700">{{ suggestion.title }}</strong>
+                        <p class="mt-1 text-xs text-slate-500">{{ suggestion.what }}</p>
+                      </article>
+                    }
+                  </div>
+                </div>
+                @if (linkedTickets().length && auth.can('create', 'action_plans')) {
+                  <button
+                    class="ui-button-primary"
+                    [disabled]="approving()"
+                    (click)="approveSuggestions()"
+                  >
+                    <span appIcon="ClipboardList" class="h-4 w-4"></span>Aprovar e criar planos
+                  </button>
+                }
+              </div>
+            }
+          }
+        </section>
+      </div>
+    }
+  </div>
+}
+<app-modal
+  [open]="formOpen()"
+  [title]="editing() ? 'Editar Indicador' : 'Novo Indicador'"
+  width="max-w-2xl"
+  (closed)="formOpen.set(false)"
+  ><form
+    [formGroup]="form"
+    (ngSubmit)="saveIndicator()"
+    class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+  >
+    <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
+    ><label class="ui-form-label"
+      >Processo *<select formControlName="process_id" (change)="clearSelectedStep()">
+        <option value="">Selecionar...</option>
+        @for (process of processes(); track process.id) {
+          <option [value]="process.id">{{ process.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label"
+      >Etapa SIPOC<select formControlName="step_id">
+        <option value="">—</option>
+        @for (node of stepsForForm(); track node.id) {
+          <option [value]="node.id">{{ node.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label">Meta<input type="number" formControlName="goal_value" /></label
+    ><label class="ui-form-label"
+      >Unidade<input formControlName="unit" placeholder="%, un, R$..." /></label
+    ><label class="ui-form-label"
+      >Valor atual<input type="number" formControlName="current_value" /></label
+    ><label class="ui-form-label"
+      >Frequência<select formControlName="frequency">
+        <option value="diario">Diário</option>
+        <option value="semanal">Semanal</option>
+        <option value="mensal">Mensal</option>
+      </select></label
+    ><label class="ui-form-label"
+      >Status<select formControlName="status">
+        <option value="no_alvo">No alvo</option>
+        <option value="atencao">Atenção</option>
+        <option value="critico">Crítico</option>
+      </select></label
+    ><label class="mt-6 flex items-center gap-2 text-sm text-slate-600"
+      ><input type="checkbox" formControlName="requires_critical_analysis" />Exige análise
+      crítica</label
+    >
+    <div class="ui-form-actions">
+      <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
+        Cancelar</button
+      ><button type="submit" class="ui-button-primary">Salvar</button>
+    </div>
+  </form></app-modal
+>
+<app-methodology
+  [open]="methodologyOpen()"
+  [info]="methodology"
+  (closed)="methodologyOpen.set(false)"
+/>
