@@ -1,0 +1,120 @@
+@if (loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">Planos de Ação</h2>
+        <p class="ui-page-subtitle">{{ plans().length }} planos estruturados pelo método 5W2H</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
+          <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
+        ><button class="ui-button-primary" (click)="openCreateActionPlan()">
+          <span appIcon="Plus" class="h-4 w-4"></span>Novo Plano
+        </button>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
+      @for (column of columns; track column.value) {
+        <section>
+          <header class="ui-kanban-column-header" [class]="column.bg + ' ' + column.border">
+            <strong class="text-sm" [class]="column.color">{{ column.label }}</strong
+            ><span class="ml-auto text-xs text-slate-400">{{ byStatus(column.value).length }}</span>
+          </header>
+          <div
+            class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
+            [class]="column.border"
+          >
+            @for (plan of byStatus(column.value); track plan.id) {
+              <article class="ui-kanban-card">
+                <button class="block w-full text-left" (click)="openEditActionPlan(plan)">
+                  <strong class="text-sm text-slate-700">{{ plan.title }}</strong>
+                  <p class="mt-1 line-clamp-2 text-xs text-slate-400">
+                    {{ plan.what || 'Sem ação descrita' }}
+                  </p>
+                  <div class="mt-2 space-y-1 text-[10px] text-slate-400">
+                    @if (plan.who) {
+                      <span class="flex items-center gap-1"
+                        ><span appIcon="User" class="h-3 w-3"></span>{{ plan.who }}</span
+                      >
+                    }
+                    @if (plan.when) {
+                      <span class="flex items-center gap-1"
+                        ><span appIcon="Calendar" class="h-3 w-3"></span>{{ plan.when }}</span
+                      >
+                    }
+                  </div>
+                </button>
+                <div class="ui-kanban-card-footer">
+                  @if (plan.status !== 'concluido') {
+                    <button
+                      class="text-[11px] font-medium text-blue-600"
+                      (click)="advanceActionPlan(plan)"
+                    >
+                      Avançar
+                    </button>
+                  }
+                  <button class="text-[11px] text-rose-500" (click)="deleteActionPlan(plan)">
+                    Excluir
+                  </button>
+                </div>
+              </article>
+            } @empty {
+              <p class="ui-empty-state">Vazio</p>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </div>
+}
+<app-modal
+  [open]="formOpen()"
+  [title]="editing() ? 'Editar Plano de Ação' : 'Novo Plano de Ação'"
+  width="max-w-3xl"
+  (closed)="formOpen.set(false)"
+  ><form
+    [formGroup]="form"
+    (ngSubmit)="saveActionPlan()"
+    class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+  >
+    <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
+    ><label class="ui-form-label sm:col-span-2"
+      >Notificação vinculada *<select formControlName="ticket_id">
+        <option value="">Selecionar...</option>
+        @for (ticket of tickets(); track ticket.id) {
+          <option [value]="ticket.id">{{ ticket.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label sm:col-span-2"
+      >O quê? (What)<textarea rows="2" formControlName="what"></textarea></label
+    ><label class="ui-form-label"
+      >Por quê? (Why)<textarea rows="2" formControlName="why"></textarea></label
+    ><label class="ui-form-label">Onde? (Where)<input formControlName="where" /></label
+    ><label class="ui-form-label">Quando? (When)<input type="date" formControlName="when" /></label
+    ><label class="ui-form-label">Quem? (Who)<input formControlName="who" /></label
+    ><label class="ui-form-label"
+      >Como? (How)<textarea rows="2" formControlName="how"></textarea></label
+    ><label class="ui-form-label">Quanto? (How much)<input formControlName="how_much" /></label
+    ><label class="ui-form-label"
+      >Status<select formControlName="status">
+        @for (column of columns; track column.value) {
+          <option [value]="column.value">{{ column.label }}</option>
+        }
+      </select></label
+    >
+    <div class="ui-form-actions">
+      <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
+        Cancelar</button
+      ><button type="submit" class="ui-button-primary">Salvar</button>
+    </div>
+  </form></app-modal
+>
+<app-methodology
+  [open]="methodologyOpen()"
+  [info]="methodology"
+  (closed)="methodologyOpen.set(false)"
+/>
