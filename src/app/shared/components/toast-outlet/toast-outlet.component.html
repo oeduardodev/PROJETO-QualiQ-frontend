@@ -1,0 +1,28 @@
+<div
+  class="fixed right-4 top-4 z-[100] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
+  aria-live="polite"
+>
+  @for (toast of service.messages(); track toast.id) {
+    <div
+      class="flex items-center gap-3 rounded-lg border bg-white p-3 shadow-lg"
+      [class.border-emerald-200]="toast.kind === 'success'"
+      [class.border-rose-200]="toast.kind === 'error'"
+    >
+      <span
+        class="h-5 w-5 shrink-0"
+        [appIcon]="toast.kind === 'success' ? 'CircleCheck' : 'CircleAlert'"
+        [class.text-emerald-500]="toast.kind === 'success'"
+        [class.text-rose-500]="toast.kind === 'error'"
+      ></span>
+      <p class="flex-1 text-sm text-slate-700">{{ toast.message }}</p>
+      <button
+        type="button"
+        class="h-4 w-4 text-slate-400 hover:text-slate-700"
+        (click)="service.dismiss(toast.id)"
+        aria-label="Fechar"
+      >
+        <span appIcon="X"></span>
+      </button>
+    </div>
+  }
+</div>

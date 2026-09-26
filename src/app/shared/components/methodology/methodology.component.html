@@ -1,0 +1,29 @@
+<app-modal [open]="open()" [title]="info().title" width="max-w-2xl" (closed)="closed.emit()">
+  <div class="space-y-5">
+    <div class="rounded-xl border border-blue-100 bg-blue-50 p-4">
+      <div class="mb-1 flex items-center gap-2 text-sm font-semibold text-blue-700">
+        <span appIcon="BookOpen" class="h-4 w-4"></span>{{ info().methodology }}
+      </div>
+      <p class="text-xs text-blue-600">{{ info().reference }}</p>
+    </div>
+    <p class="text-sm leading-6 text-slate-600">{{ info().summary }}</p>
+    <div>
+      <h3 class="mb-3 text-sm font-semibold text-slate-800">Etapas principais</h3>
+      <ol class="space-y-2">
+        @for (step of info().steps; track $index) {
+          <li class="flex gap-3 text-sm text-slate-600">
+            <span
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600"
+              >{{ $index + 1 }}</span
+            ><span class="pt-0.5">{{ step }}</span>
+          </li>
+        }
+      </ol>
+    </div>
+    @if (info().source) {
+      <p class="border-t border-slate-100 pt-4 text-xs text-slate-400">
+        Fonte: {{ info().source }}
+      </p>
+    }
+  </div>
+</app-modal>
