@@ -1,0 +1,6 @@
+.ui-button-primary {
+  @apply hover:bg-slate-700 disabled:opacity-50;
+}
+.ui-button-secondary {
+  @apply hover:bg-slate-50;
+}
