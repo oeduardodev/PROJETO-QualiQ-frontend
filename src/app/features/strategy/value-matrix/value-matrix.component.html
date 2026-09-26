@@ -1,0 +1,86 @@
+@if (loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ error() }}</p>
+    <button class="mt-3 text-sm text-slate-500 underline" (click)="loadValueMatrix()">
+      Tentar novamente
+    </button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">Cadeia de Valor</h2>
+        <p class="ui-page-subtitle">{{ total() }} processos mapeados</p>
+      </div>
+      <div class="flex gap-2">
+        <button
+          class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
+          (click)="methodologyOpen.set(true)"
+        >
+          <span appIcon="Info" class="h-4 w-4"></span>Metodologia
+        </button>
+        @if (auth.can('create', 'processes')) {
+          <a
+            href="/processos/gerenciamento"
+            class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            ><span appIcon="Plus" class="h-4 w-4"></span>Novo Processo</a
+          >
+        }
+      </div>
+    </div>
+    <div class="space-y-4">
+      @for (category of categories(); track category.id) {
+        <section class="rounded-2xl border p-5" [class]="laneClass(category.color_key)">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="h-3 w-3 rounded-full" [class]="dotClass(category.color_key)"></span>
+              <h3 class="text-sm font-semibold" [class]="labelClass(category.color_key)">
+                {{ category.name }}
+              </h3>
+              @if (category.description) {
+                <span class="hidden text-xs text-slate-400 sm:inline"
+                  >· {{ category.description }}</span
+                >
+              }
+            </div>
+            <span class="text-xs font-medium text-slate-600"
+              >{{ category.processes.length }}
+              {{ category.processes.length === 1 ? 'processo' : 'processos' }}</span
+            >
+          </div>
+          @if (category.processes.length) {
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              @for (process of category.processes; track process.id) {
+                <article
+                  class="group flex items-center gap-2.5 rounded-xl border bg-white px-4 py-3 transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <span class="h-2 w-2 rounded-full" [class]="dotClass(category.color_key)"></span
+                  ><span class="flex-1 truncate text-sm font-medium text-slate-800">{{
+                    process.title
+                  }}</span
+                  ><span
+                    appIcon="ChevronRight"
+                    class="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5"
+                  ></span>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="py-8 text-center text-sm text-slate-400">
+              Nenhum processo nesta categoria ainda.
+            </p>
+          }
+        </section>
+      }
+    </div>
+  </div>
+}
+<app-methodology
+  [open]="methodologyOpen()"
+  [info]="methodology"
+  (closed)="methodologyOpen.set(false)"
+/>
