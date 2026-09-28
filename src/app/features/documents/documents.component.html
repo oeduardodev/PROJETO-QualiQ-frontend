@@ -1,0 +1,319 @@
+@if (store.loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (store.error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ store.error() }}</p>
+    <button class="mt-3 text-sm underline" (click)="store.load(true)">Tentar novamente</button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">{{ title }}</h2>
+        <p class="ui-page-subtitle">{{ subtitle }}</p>
+      </div>
+      <div class="flex gap-2">
+        @if (mode === 'management') {
+          <button class="ui-button-primary" (click)="openDocument()">
+            <span appIcon="Plus" class="h-4 w-4"></span>Novo Documento
+          </button>
+        }
+        @if (mode === 'hierarchy') {
+          <button class="ui-button-primary" (click)="openType()">
+            <span appIcon="Plus" class="h-4 w-4"></span>Novo Tipo
+          </button>
+        }
+      </div>
+    </div>
+    @if (mode === 'panel') {
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <article class="stat">
+          <span>Documentos publicados</span><strong>{{ store.published().length }}</strong>
+        </article>
+        <article class="stat">
+          <span>Tipos documentais</span><strong>{{ store.types().length }}</strong>
+        </article>
+        <article class="stat">
+          <span>Processos cobertos</span><strong>{{ publishedProcessCount() }}</strong>
+        </article>
+        <article class="stat">
+          <span>Cópias pendentes</span><strong>{{ store.pendingCopies() }}</strong>
+        </article>
+      </div>
+      <div class="relative max-w-md">
+        <span appIcon="Search" class="ui-search-icon"></span
+        ><input
+          [formControl]="search"
+          placeholder="Buscar documento publicado..."
+          class="ui-search-input"
+        />
+      </div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @for (document of panelDocuments(); track document.id) {
+          <article
+            class="rounded-xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
+          >
+            <div class="mb-4 flex items-start justify-between">
+              <span
+                class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"
+                ><span appIcon="FileText" class="h-5 w-5"></span></span
+              ><span
+                class="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-600"
+                >Publicado</span
+              >
+            </div>
+            <h3 class="font-semibold text-slate-800">{{ document.title }}</h3>
+            <p class="mt-1 text-xs text-slate-400">
+              {{ store.typeName(document.type_id) }} · {{ store.processName(document.process_id) }}
+            </p>
+            <div class="mt-5 flex gap-2">
+              @if (document.drive_link) {
+                <button class="ui-button-secondary flex-1" (click)="preview(document)">
+                  <span appIcon="ExternalLink" class="h-3.5 w-3.5"></span>Abrir
+                </button>
+              }
+              @if (document.print_allowed) {
+                <button class="ui-button-secondary" (click)="requestCopy(document)">
+                  <span appIcon="Printer" class="h-3.5 w-3.5"></span>Cópia
+                </button>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p
+            class="col-span-full rounded-xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-400"
+          >
+            Nenhum documento publicado.
+          </p>
+        }
+      </div>
+    }
+    @if (mode === 'hierarchy') {
+      <div class="space-y-4">
+        @for (level of levels; track level) {
+          <section class="ui-card">
+            <div class="mb-4 flex items-center gap-3">
+              <span
+                class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500"
+                ><span [appIcon]="levelIcon(level)" class="h-5 w-5"></span
+              ></span>
+              <div>
+                <h3 class="text-sm font-semibold text-slate-700">{{ levelLabel(level) }}</h3>
+                <p class="text-xs text-slate-400">{{ typesAt(level).length }} tipos documentais</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              @for (type of typesAt(level); track type.id) {
+                <article class="rounded-lg border border-slate-200 p-4">
+                  <div class="flex items-start justify-between">
+                    <strong class="text-sm text-slate-700">{{ type.name }}</strong>
+                    <div>
+                      <button class="text-xs text-slate-500" (click)="openType(type)">Editar</button
+                      ><button class="ml-2 text-xs text-rose-500" (click)="removeType(type)">
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] text-slate-400">
+                    <span
+                      >Revisão<strong class="block text-sm text-slate-700"
+                        >{{ type.sla_review_days }}d</strong
+                      ></span
+                    ><span
+                      >Aprovação<strong class="block text-sm text-slate-700"
+                        >{{ type.sla_approval_days }}d</strong
+                      ></span
+                    ><span
+                      >Impressão<strong class="block text-sm text-slate-700">{{
+                        type.print_allowed ? 'Sim' : 'Não'
+                      }}</strong></span
+                    >
+                  </div>
+                </article>
+              } @empty {
+                <p
+                  class="col-span-full rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400"
+                >
+                  Nenhum tipo neste nível.
+                </p>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    }
+    @if (mode === 'management') {
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-5">
+        @for (column of workflow; track column.value) {
+          <section>
+            <header class="ui-kanban-column-header" [class]="column.bg + ' ' + column.border">
+              <span class="text-sm font-semibold" [class]="column.color">{{ column.label }}</span
+              ><span class="ml-auto text-xs text-slate-400">{{
+                docsByStatus(column.value).length
+              }}</span>
+            </header>
+            <div
+              class="min-h-64 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
+              [class]="column.border"
+            >
+              @for (document of docsByStatus(column.value); track document.id) {
+                <article class="ui-kanban-card">
+                  <button class="w-full text-left" (click)="openDocument(document)">
+                    <strong class="block text-sm text-slate-700">{{ document.title }}</strong
+                    ><span class="mt-1 block text-xs text-slate-400">{{
+                      store.typeName(document.type_id)
+                    }}</span>
+                  </button>
+                  <div class="ui-kanban-card-footer">
+                    @if (column.value !== 'obsoleto') {
+                      <button
+                        class="text-[11px] font-medium text-blue-600"
+                        (click)="advance(document)"
+                      >
+                        Avançar
+                      </button>
+                    }
+                    <button class="text-[11px] text-rose-500" (click)="removeDocument(document)">
+                      Excluir
+                    </button>
+                  </div>
+                </article>
+              } @empty {
+                <p class="ui-empty-state">Vazio</p>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    }
+    @if (mode === 'copies') {
+      <div class="ui-table-panel">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="ui-table-header">
+                <th class="ui-table-heading">Documento</th>
+                <th class="ui-table-heading">Solicitante</th>
+                <th class="ui-table-heading">Solicitação</th>
+                <th class="ui-table-heading">Status</th>
+                <th class="ui-table-heading text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (copy of store.copies(); track copy.id) {
+                <tr class="border-b border-slate-50">
+                  <td class="ui-table-cell font-medium text-slate-700">
+                    {{ documentName(copy.document_id) }}
+                  </td>
+                  <td class="ui-table-cell">{{ store.profileName(copy.user_id) }}</td>
+                  <td class="ui-table-cell">{{ formatDate(copy.request_date) }}</td>
+                  <td class="ui-table-cell">
+                    <select
+                      [value]="copy.status"
+                      (change)="changeCopyStatus(copy, $event)"
+                      class="rounded-full border-0 bg-slate-100 px-2 py-1 text-xs"
+                    >
+                      <option value="solicitada">Solicitada</option>
+                      <option value="entregue">Entregue</option>
+                      <option value="recolhida">Recolhida</option>
+                    </select>
+                  </td>
+                  <td class="ui-table-cell text-right">
+                    <button class="text-xs text-rose-500" (click)="removeCopy(copy)">
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="ui-table-empty">Nenhuma cópia controlada.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  </div>
+}
+<app-modal
+  [open]="documentOpen()"
+  [title]="editingDocument() ? 'Editar Documento' : 'Novo Documento'"
+  width="max-w-2xl"
+  (closed)="documentOpen.set(false)"
+  ><form
+    [formGroup]="documentForm"
+    (ngSubmit)="saveDocument()"
+    class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+  >
+    @if (formError()) {
+      <p class="sm:col-span-2 error">{{ formError() }}</p>
+    }
+    <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
+    ><label class="ui-form-label"
+      >Tipo<select formControlName="type_id">
+        <option value="">—</option>
+        @for (type of store.types(); track type.id) {
+          <option [value]="type.id">{{ type.name }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label"
+      >Processo<select formControlName="process_id">
+        <option value="">—</option>
+        @for (process of store.processes(); track process.id) {
+          <option [value]="process.id">{{ process.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label sm:col-span-2"
+      >Link do documento<input
+        formControlName="drive_link"
+        placeholder="https://docs.google.com/..." /></label
+    ><label class="ui-form-label"
+      >Status<select formControlName="status">
+        @for (item of workflow; track item.value) {
+          <option [value]="item.value">{{ item.label }}</option>
+        }
+      </select></label
+    ><label class="mt-6 flex items-center gap-2 text-sm text-slate-600"
+      ><input type="checkbox" formControlName="print_allowed" />Permitir impressão</label
+    >
+    <div class="ui-form-actions">
+      <button type="button" class="ui-button-secondary" (click)="documentOpen.set(false)">
+        Cancelar</button
+      ><button type="submit" class="ui-button-primary">Salvar</button>
+    </div>
+  </form></app-modal
+>
+<app-modal
+  [open]="typeOpen()"
+  [title]="editingType() ? 'Editar Tipo Documental' : 'Novo Tipo Documental'"
+  width="max-w-md"
+  (closed)="typeOpen.set(false)"
+  ><form [formGroup]="typeForm" (ngSubmit)="saveType()" class="space-y-4">
+    <label class="ui-form-label">Nome *<input formControlName="name" /></label
+    ><label class="ui-form-label"
+      >Nível hierárquico<select formControlName="hierarchy_level">
+        @for (level of levels; track level) {
+          <option [value]="level">{{ levelLabel(level) }}</option>
+        }
+      </select></label
+    >
+    <div class="grid grid-cols-2 gap-3">
+      <label class="ui-form-label"
+        >SLA revisão (dias)<input type="number" min="0" formControlName="sla_review_days" /></label
+      ><label class="ui-form-label"
+        >SLA aprovação (dias)<input type="number" min="0" formControlName="sla_approval_days"
+      /></label>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-slate-600"
+      ><input type="checkbox" formControlName="print_allowed" />Permitir impressão</label
+    >
+    <div class="flex justify-end gap-2">
+      <button type="button" class="ui-button-secondary" (click)="typeOpen.set(false)">
+        Cancelar</button
+      ><button type="submit" class="ui-button-primary">Salvar</button>
+    </div>
+  </form></app-modal
+>
