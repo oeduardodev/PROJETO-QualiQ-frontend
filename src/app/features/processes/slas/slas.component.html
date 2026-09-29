@@ -1,0 +1,207 @@
+@if (loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ error() }}</p>
+    <button class="mt-3 text-sm underline" (click)="loadSlas()">Tentar novamente</button>
+  </div>
+} @else if (management && !canManage()) {
+  <p class="py-24 text-center text-sm text-slate-500">
+    Você não tem permissão para acessar esta página.
+  </p>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">
+          {{ management ? 'Gerenciamento de SLAs' : 'Painel de SLAs' }}
+        </h2>
+        <p class="ui-page-subtitle">{{ slas().length }} acordos de nível de serviço cadastrados</p>
+      </div>
+      @if (management) {
+        <button
+          class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
+          (click)="openCreateSla()"
+        >
+          <span appIcon="Plus" class="h-4 w-4"></span>Novo SLA
+        </button>
+      }
+    </div>
+    @if (!management) {
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        @for (item of summary(); track item.label) {
+          <article class="ui-card">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  {{ item.label }}
+                </p>
+                <p class="mt-1 text-2xl font-bold text-slate-800">{{ item.value }}</p>
+              </div>
+              <span [appIcon]="item.icon" class="h-6 w-6" [class]="item.color"></span>
+            </div>
+          </article>
+        }
+      </div>
+    }
+    <div class="flex flex-col gap-3 sm:flex-row">
+      <div class="relative flex-1 sm:max-w-sm">
+        <span appIcon="Search" class="ui-search-icon"></span
+        ><input
+          [formControl]="search"
+          class="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
+          placeholder="Buscar SLA..."
+        />
+      </div>
+      <select
+        [formControl]="statusFilter"
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+      >
+        <option value="all">Todos os status</option>
+        @for (item of statuses; track item) {
+          <option [value]="item">{{ item }}</option>
+        }
+      </select>
+    </div>
+    <div class="ui-table-panel">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="ui-table-header">
+              <th class="ui-table-heading-wider">SLA</th>
+              <th class="ui-table-heading-wider">Fornecedor</th>
+              <th class="ui-table-heading-wider">Cliente</th>
+              <th
+                class="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 md:table-cell"
+              >
+                Lead time
+              </th>
+              <th class="ui-table-heading-wider">Status</th>
+              @if (management) {
+                <th
+                  class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
+                >
+                  Ações
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (sla of filtered(); track sla.id) {
+              <tr class="border-b border-slate-50 hover:bg-slate-50/40">
+                <td class="px-4 py-3">
+                  <strong class="block text-sm text-slate-700">{{ sla.title }}</strong>
+                  @if (sla.quality_criteria) {
+                    <span class="line-clamp-1 text-xs text-slate-400">{{
+                      sla.quality_criteria
+                    }}</span>
+                  }
+                </td>
+                <td class="px-4 py-3 text-sm text-slate-500">
+                  {{ processName(sla.supplier_process_id) }}
+                </td>
+                <td class="px-4 py-3 text-sm text-slate-500">
+                  {{ processName(sla.client_process_id) }}
+                </td>
+                <td class="hidden px-4 py-3 text-sm font-medium text-slate-700 md:table-cell">
+                  {{ sla.lead_time_hours }}h
+                </td>
+                <td class="px-4 py-3">
+                  <span
+                    class="rounded-full px-2 py-1 text-xs font-medium"
+                    [class]="statusClass(sla.status)"
+                    >{{ sla.status }}</span
+                  >
+                </td>
+                @if (management) {
+                  <td class="px-4 py-3 text-right">
+                    <button class="px-2 py-1 text-xs text-slate-500" (click)="openEditSla(sla)">
+                      Editar</button
+                    ><button class="px-2 py-1 text-xs text-rose-500" (click)="deleteSla(sla)">
+                      Excluir
+                    </button>
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr>
+                <td [attr.colspan]="management ? 6 : 5" class="ui-table-empty">
+                  Nenhum SLA encontrado.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+}
+<app-modal
+  [open]="formOpen()"
+  [title]="editing() ? 'Editar SLA' : 'Novo SLA'"
+  width="max-w-2xl"
+  (closed)="formOpen.set(false)"
+  ><form [formGroup]="form" (ngSubmit)="saveSla()" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    @if (formError()) {
+      <p class="rounded-lg bg-rose-50 p-3 text-xs text-rose-600 sm:col-span-2">{{ formError() }}</p>
+    }
+    <label class="block text-xs font-medium text-slate-500 sm:col-span-2"
+      >Título *<input formControlName="title" class="ui-form-control" /></label
+    ><label class="ui-form-label"
+      >Processo fornecedor<select
+        formControlName="supplier_process_id"
+        class="ui-form-control bg-white"
+      >
+        <option value="">—</option>
+        @for (process of processes(); track process.id) {
+          <option [value]="process.id">{{ process.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label"
+      >Processo cliente<select formControlName="client_process_id" class="ui-form-control bg-white">
+        <option value="">—</option>
+        @for (process of processes(); track process.id) {
+          <option [value]="process.id">{{ process.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label"
+      >Entrada SIPOC<select formControlName="sipoc_input_id" class="ui-form-control bg-white">
+        <option value="">—</option>
+        @for (node of inputs(); track node.id) {
+          <option [value]="node.id">{{ node.title }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label"
+      >Lead time (horas)<input
+        type="number"
+        min="0"
+        formControlName="lead_time_hours"
+        class="ui-form-control" /></label
+    ><label class="block text-xs font-medium text-slate-500 sm:col-span-2"
+      >Critérios de qualidade<textarea
+        formControlName="quality_criteria"
+        rows="3"
+        class="ui-form-control"
+      ></textarea></label
+    ><label class="ui-form-label"
+      >Status<select formControlName="status" class="ui-form-control bg-white">
+        @for (item of statuses; track item) {
+          <option [value]="item">{{ item }}</option>
+        }
+      </select></label
+    >
+    <div class="flex items-end justify-end gap-2 sm:col-span-2">
+      <button type="button" class="px-4 py-2 text-sm text-slate-500" (click)="formOpen.set(false)">
+        Cancelar</button
+      ><button
+        type="submit"
+        [disabled]="saving()"
+        class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        Salvar
+      </button>
+    </div>
+  </form></app-modal
+>
