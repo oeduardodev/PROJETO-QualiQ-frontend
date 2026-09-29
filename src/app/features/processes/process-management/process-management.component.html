@@ -1,0 +1,222 @@
+@if (loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ error() }}</p>
+    <button class="mt-3 text-sm text-slate-500 underline" (click)="loadProcesses()">
+      Tentar novamente
+    </button>
+  </div>
+} @else if (!canManage()) {
+  <p class="py-24 text-center text-sm text-slate-500">
+    Você não tem permissão para acessar esta página.
+  </p>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">Gerenciamento de Processos</h2>
+        <p class="ui-page-subtitle">{{ processes().length }} processos cadastrados</p>
+      </div>
+      <button
+        class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+        (click)="openCreateProcess()"
+      >
+        <span appIcon="Plus" class="h-4 w-4"></span>Novo Processo
+      </button>
+    </div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div class="relative flex-1 sm:max-w-xs">
+        <span appIcon="Search" class="ui-search-icon"></span
+        ><input
+          [formControl]="search"
+          class="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
+          placeholder="Buscar processo..."
+        />
+      </div>
+      <select
+        [formControl]="categoryFilter"
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400"
+      >
+        <option value="all">Todas as categorias</option>
+        @for (category of categories(); track category.id) {
+          <option [value]="category.id">{{ category.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="ui-table-panel">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="ui-table-header">
+              <th class="ui-table-heading-wider">Código</th>
+              <th class="ui-table-heading-wider">Processo</th>
+              <th
+                class="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 md:table-cell"
+              >
+                Categoria
+              </th>
+              <th
+                class="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 lg:table-cell"
+              >
+                Responsável
+              </th>
+              <th
+                class="hidden px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:table-cell"
+              >
+                Impacto
+              </th>
+              <th
+                class="hidden px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:table-cell"
+              >
+                Maturidade
+              </th>
+              <th
+                class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >
+                Ações
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (process of filtered(); track process.id) {
+              <tr class="border-b border-slate-50 transition hover:bg-slate-50/40">
+                <td class="px-4 py-3 font-mono text-xs text-slate-500">
+                  {{ process.code || '—' }}
+                </td>
+                <td class="px-4 py-3 text-sm font-medium text-slate-700">{{ process.title }}</td>
+                <td class="hidden px-4 py-3 md:table-cell">
+                  <span class="inline-flex items-center gap-1.5 text-sm text-slate-600"
+                    ><span
+                      class="h-2 w-2 rounded-full"
+                      [class]="categoryColor(process.category_id)"
+                    ></span
+                    >{{ categoryName(process.category_id) }}</span
+                  >
+                </td>
+                <td class="hidden px-4 py-3 text-sm text-slate-500 lg:table-cell">
+                  {{ process.owner || '—' }}
+                </td>
+                <td
+                  class="hidden px-4 py-3 text-center text-sm font-semibold text-slate-700 sm:table-cell"
+                >
+                  {{ process.impact_score }}
+                </td>
+                <td
+                  class="hidden px-4 py-3 text-center text-sm font-semibold text-slate-700 sm:table-cell"
+                >
+                  {{ process.maturity_level }}
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button
+                    class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
+                    (click)="openEditProcess(process)"
+                  >
+                    Editar</button
+                  ><button
+                    class="ml-1 rounded-md px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50"
+                    (click)="deleteProcess(process)"
+                  >
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="ui-table-empty">Nenhum processo encontrado.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+}
+<app-modal
+  [open]="formOpen()"
+  [title]="editing() ? 'Editar Processo' : 'Novo Processo'"
+  width="max-w-md"
+  (closed)="formOpen.set(false)"
+>
+  <form [formGroup]="form" (ngSubmit)="saveProcess()" class="space-y-4">
+    @if (formError()) {
+      <p class="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+        {{ formError() }}
+      </p>
+    }
+    <label class="ui-form-label"
+      >Título *<input
+        formControlName="title"
+        class="ui-form-control outline-none focus:border-blue-400"
+    /></label>
+    <label class="ui-form-label"
+      >Código<input
+        formControlName="code"
+        placeholder="Ex: FIN-004"
+        class="ui-form-control outline-none focus:border-blue-400"
+    /></label>
+    <label class="ui-form-label"
+      >Categoria (Matriz de Valor) *<select
+        formControlName="category_id"
+        class="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+      >
+        <option value="">Selecionar categoria...</option>
+        @for (category of categories(); track category.id) {
+          <option [value]="category.id">{{ category.name }}</option>
+        }
+      </select></label
+    >
+    <label class="ui-form-label"
+      >Responsável<input
+        formControlName="owner"
+        placeholder="Ex: Operações"
+        class="ui-form-control outline-none focus:border-blue-400"
+    /></label>
+    <div class="grid grid-cols-3 gap-3">
+      <label class="ui-form-label-inline"
+        >Impacto (1-10)<input
+          type="number"
+          min="1"
+          max="10"
+          formControlName="impact_score"
+          class="ui-form-control" /></label
+      ><label class="ui-form-label-inline"
+        >Complexidade<input
+          type="number"
+          min="1"
+          max="10"
+          formControlName="complexity_score"
+          class="ui-form-control" /></label
+      ><label class="ui-form-label-inline"
+        >Maturidade<input
+          type="number"
+          min="1"
+          max="5"
+          formControlName="maturity_level"
+          class="ui-form-control"
+      /></label>
+    </div>
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <button
+        type="button"
+        class="px-4 py-2 text-sm font-medium text-slate-500"
+        (click)="formOpen.set(false)"
+      >
+        Cancelar</button
+      ><button
+        type="submit"
+        [disabled]="saving()"
+        class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        <span
+          [appIcon]="saving() ? 'LoaderCircle' : 'Save'"
+          class="h-4 w-4"
+          [class.animate-spin]="saving()"
+        ></span
+        >{{ editing() ? 'Salvar' : 'Criar' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
