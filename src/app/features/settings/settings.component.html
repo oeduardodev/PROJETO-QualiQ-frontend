@@ -1,0 +1,55 @@
+@if (placeholder) {
+  <div class="flex flex-col items-center justify-center py-20">
+    <span
+      class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white"
+      ><span appIcon="Cpu" class="h-8 w-8 text-slate-400"></span
+    ></span>
+    <h2 class="ui-page-title">Motor Dinâmico (JSON)</h2>
+    <p class="mt-1 max-w-md text-center text-sm text-slate-400">
+      Configuração do motor de parametrização dinâmica — gerencie campos customizados (JSONB) de
+      todos os módulos em um único lugar.
+    </p>
+    <span
+      class="mt-4 flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700"
+      ><span appIcon="Construction" class="h-3.5 w-3.5"></span>Próxima sprint</span
+    >
+  </div>
+} @else {
+  <div class="space-y-6">
+    <article class="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5">
+      <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100"
+        ><span appIcon="Settings" class="h-6 w-6 text-slate-500"></span
+      ></span>
+      <div>
+        <h2 class="font-semibold text-slate-800">Configurações do Sistema</h2>
+        <p class="ui-page-subtitle">
+          Parametrização completa do SGQ — todos os módulos suportam customização.
+        </p>
+      </div>
+    </article>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      @for (section of sections; track section.title) {
+        <article
+          class="rounded-xl border border-slate-200 bg-white transition hover:border-slate-300"
+        >
+          <header class="flex items-center gap-3 border-b border-slate-100 p-5">
+            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100"
+              ><span [appIcon]="section.icon" class="h-5 w-5 text-slate-500"></span
+            ></span>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-700">{{ section.title }}</h3>
+              <p class="mt-0.5 text-xs text-slate-400">{{ section.description }}</p>
+            </div>
+          </header>
+          <ul class="space-y-2 p-5">
+            @for (item of section.items; track item) {
+              <li class="flex items-center gap-2 text-sm text-slate-500">
+                <span class="h-1.5 w-1.5 rounded-full bg-slate-300"></span>{{ item }}
+              </li>
+            }
+          </ul>
+        </article>
+      }
+    </div>
+  </div>
+}
