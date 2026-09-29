@@ -20,30 +20,30 @@ export const routes: Routes = [
         (m) => m.DimensionsComponent,
       ),
   },
-  {
-    path: 'processos/gerenciamento',
-    loadComponent: () =>
-      import('@features/processes/process-management/process-management.component').then(
-        (m) => m.ProcessManagementComponent,
-      ),
-  },
-  {
-    path: 'processos/sipoc',
-    loadComponent: () =>
-      import('@features/processes/sipoc/sipoc.component').then((m) => m.SipocComponent),
-  },
-  {
-    path: 'processos/slas/painel',
-    data: { mode: 'panel' },
-    loadComponent: () =>
-      import('@features/processes/slas/slas.component').then((m) => m.SlasComponent),
-  },
-  {
-    path: 'processos/slas/gerenciamento',
-    data: { mode: 'management' },
-    loadComponent: () =>
-      import('@features/processes/slas/slas.component').then((m) => m.SlasComponent),
-  },
+  // {
+  //   path: 'processos/gerenciamento',
+  //   loadComponent: () =>
+  //     import('@features/processes/process-management/process-management.component').then(
+  //       (m) => m.ProcessManagementComponent,
+  //     ),
+  // },
+  // {
+  //   path: 'processos/sipoc',
+  //   loadComponent: () =>
+  //     import('@features/processes/sipoc/sipoc.component').then((m) => m.SipocComponent),
+  // },
+  // {
+  //   path: 'processos/slas/painel',
+  //   data: { mode: 'panel' },
+  //   loadComponent: () =>
+  //     import('@features/processes/slas/slas.component').then((m) => m.SlasComponent),
+  // },
+  // {
+  //   path: 'processos/slas/gerenciamento',
+  //   data: { mode: 'management' },
+  //   loadComponent: () =>
+  //     import('@features/processes/slas/slas.component').then((m) => m.SlasComponent),
+  // },
   {
     path: 'riscos/painel',
     data: { mode: 'panel' },
@@ -107,18 +107,18 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@features/helpdesk/helpdesk.component').then((m) => m.HelpdeskComponent),
   },
-  {
-    path: 'indicadores/painel',
-    data: { mode: 'panel' },
-    loadComponent: () =>
-      import('@features/indicators/indicators.component').then((m) => m.IndicatorsComponent),
-  },
-  {
-    path: 'indicadores/alimentacao',
-    data: { mode: 'feed' },
-    loadComponent: () =>
-      import('@features/indicators/indicators.component').then((m) => m.IndicatorsComponent),
-  },
+  // {
+  //   path: 'indicadores/painel',
+  //   data: { mode: 'panel' },
+  //   loadComponent: () =>
+  //     import('@features/indicators/indicators.component').then((m) => m.IndicatorsComponent),
+  // },
+  // {
+  //   path: 'indicadores/alimentacao',
+  //   data: { mode: 'feed' },
+  //   loadComponent: () =>
+  //     import('@features/indicators/indicators.component').then((m) => m.IndicatorsComponent),
+  // },
   {
     path: 'indicadores/analises',
     data: { mode: 'analysis' },
