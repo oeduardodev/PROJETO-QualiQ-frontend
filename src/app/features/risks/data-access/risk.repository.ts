@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type {
   Risk,
   RiskFactor,
@@ -11,23 +12,27 @@ import type {
 export class RiskRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchRisks(): Promise<Risk[]> {
-    const { data, error } = await this.client
-      .from('risks')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchRisks(): Promise<Risk[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('risks')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchRisksByProcess(processId: string): Promise<Risk[]> {
-    const { data, error } = await this.client
-      .from('risks')
-      .select('*')
-      .eq('process_id', processId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchRisksByProcess(processId: string): Promise<Risk[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('risks')
+        .select('*')
+        .eq('process_id', processId)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createRisk(
@@ -57,14 +62,16 @@ export class RiskRepository {
     if (error) throw error;
   }
 
-  async fetchRiskFactors(riskId: string): Promise<RiskFactor[]> {
-    const { data, error } = await this.client
-      .from('risk_factors')
-      .select('*')
-      .eq('risk_id', riskId)
-      .order('created_at');
-    if (error) throw error;
-    return data ?? [];
+  fetchRiskFactors(riskId: string): Promise<RiskFactor[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('risk_factors')
+        .select('*')
+        .eq('risk_id', riskId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createRiskFactor(input: Omit<RiskFactor, 'id' | 'created_at'>): Promise<RiskFactor> {
@@ -82,14 +89,16 @@ export class RiskRepository {
     if (error) throw error;
   }
 
-  async fetchPreventiveActions(riskId: string): Promise<RiskPreventiveAction[]> {
-    const { data, error } = await this.client
-      .from('risk_preventive_actions')
-      .select('*')
-      .eq('risk_id', riskId)
-      .order('created_at');
-    if (error) throw error;
-    return data ?? [];
+  fetchPreventiveActions(riskId: string): Promise<RiskPreventiveAction[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('risk_preventive_actions')
+        .select('*')
+        .eq('risk_id', riskId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createPreventiveAction(
@@ -125,14 +134,16 @@ export class RiskRepository {
     if (error) throw error;
   }
 
-  async fetchContingencyPlans(riskId: string): Promise<RiskContingencyPlan[]> {
-    const { data, error } = await this.client
-      .from('risk_contingency_plans')
-      .select('*')
-      .eq('risk_id', riskId)
-      .order('created_at');
-    if (error) throw error;
-    return data ?? [];
+  fetchContingencyPlans(riskId: string): Promise<RiskContingencyPlan[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('risk_contingency_plans')
+        .select('*')
+        .eq('risk_id', riskId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createContingencyPlan(

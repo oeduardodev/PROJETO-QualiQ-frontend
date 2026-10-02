@@ -74,7 +74,7 @@ export class ProcessManagementComponent {
         this.processService.fetchCategories(),
       ]);
       this.processes.set(processes);
-      this.filtered.set(processes);
+      this.filterProcesses();
       this.categories.set(categories);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar processos'));
@@ -130,7 +130,7 @@ export class ProcessManagementComponent {
       this.processes.update((items) =>
         current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
       );
-      this.filtered.set(this.processes());
+      this.filterProcesses();
       this.toast.success(current ? 'Processo atualizado' : 'Processo criado');
       this.formOpen.set(false);
     } catch (e) {
@@ -150,7 +150,7 @@ export class ProcessManagementComponent {
     try {
       await this.processService.deleteProcess(process.id);
       this.processes.update((items) => items.filter((item) => item.id !== process.id));
-      this.filtered.set(this.processes());
+      this.filterProcesses();
       this.toast.success('Processo excluído');
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao excluir'));

@@ -1,5 +1,10 @@
 import type { DocumentStatus } from '@core/models/database';
 
+export const DOCUMENTS_LOCKED = true;
+
+export const DOCUMENTS_LOCKED_MESSAGE =
+  'A gestão de documentos está temporariamente bloqueada. O recurso será liberado em breve.';
+
 export const WORKFLOW: {
   value: DocumentStatus;
   label: string;

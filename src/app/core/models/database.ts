@@ -47,6 +47,19 @@ export interface Database {
         };
         Returns: GEDDocument;
       };
+      save_document: {
+        Args: {
+          p_document_id: string | null;
+          p_expected_status: DocumentStatus | null;
+          p_status: DocumentStatus;
+          p_title: string;
+          p_type_id: string | null;
+          p_process_id: string | null;
+          p_drive_link: string | null;
+          p_print_allowed: boolean;
+        };
+        Returns: GEDDocument;
+      };
       record_indicator_value: {
         Args: {
           p_indicator_id: string;
@@ -54,6 +67,24 @@ export interface Database {
           p_value: number;
         };
         Returns: Indicator;
+      };
+      create_sipoc_node_with_steps: {
+        Args: {
+          p_title: string;
+          p_description: string;
+          p_node_type: NodeType;
+          p_process_id: string;
+          p_step_ids: string[];
+        };
+        Returns: SipocNode;
+      };
+      create_action_plans_from_suggestions: {
+        Args: { p_ticket_id: string; p_suggestions: unknown };
+        Returns: ActionPlan[];
+      };
+      consume_ai_quota: {
+        Args: Record<string, never>;
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;
@@ -142,6 +173,7 @@ export type HelpdeskPriority = 'baixa' | 'media' | 'alta' | 'urgente';
 
 export interface HelpdeskTicket {
   id: string;
+  created_by: string | null;
   title: string;
   description: string | null;
   category: HelpdeskCategory;

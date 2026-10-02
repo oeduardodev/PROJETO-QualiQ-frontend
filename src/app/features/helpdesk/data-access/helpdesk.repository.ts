@@ -1,18 +1,21 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { HelpdeskTicket } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class HelpdeskRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchHelpdeskTickets(): Promise<HelpdeskTicket[]> {
-    const { data, error } = await this.client
-      .from('helpdesk_tickets')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchHelpdeskTickets(): Promise<HelpdeskTicket[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('helpdesk_tickets')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createHelpdeskTicket(

@@ -4,6 +4,7 @@ import type { CopyStatus, DocumentStatus } from '@core/models/database';
 import { nextWorkflowStatus } from '@shared/utils/workflow.utils';
 import { todayUtc } from '@shared/utils/date.utils';
 import { DOCUMENT_STATUS_SEQUENCE } from './document-workflow.constants';
+import type { DocumentSavePayload } from './document.mapper';
 import type {
   DocumentType,
   GEDDocument,
@@ -14,6 +15,10 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
   private readonly repository = inject(DocumentRepository);
+
+  saveDocument(current: GEDDocument | null, payload: DocumentSavePayload): Promise<GEDDocument> {
+    return this.repository.saveDocument(current, payload);
+  }
 
   async advanceDocument(
     document: GEDDocument,
@@ -27,15 +32,8 @@ export class DocumentService {
     return { savedDocument, nextStatus: status };
   }
 
-  requestCopy(documentId: string, userId: string | null): Promise<ControlledCopy> {
-    return this.repository.createControlledCopy({
-      document_id: documentId,
-      user_id: userId,
-      request_date: todayUtc(),
-      delivery_date: null,
-      return_date: null,
-      status: 'solicitada',
-    });
+  requestCopy(documentId: string): Promise<ControlledCopy> {
+    return this.repository.createControlledCopy({ document_id: documentId });
   }
 
   changeCopyStatus(copy: ControlledCopy, status: CopyStatus): Promise<ControlledCopy> {
@@ -72,31 +70,12 @@ export class DocumentService {
     return this.repository.fetchDocuments();
   }
 
-  createDocument(
-    input: Partial<Omit<GEDDocument, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<GEDDocument> {
-    return this.repository.createDocument(input);
-  }
-
-  updateDocument(
-    id: string,
-    patch: Partial<Omit<GEDDocument, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<GEDDocument> {
-    return this.repository.updateDocument(id, patch);
-  }
-
   deleteDocument(id: string): Promise<void> {
     return this.repository.deleteDocument(id);
   }
 
   fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
     return this.repository.fetchDocumentWorkflows(documentId);
-  }
-
-  createDocumentWorkflow(
-    input: Partial<Omit<DocumentWorkflow, 'id' | 'changed_at'>>,
-  ): Promise<DocumentWorkflow> {
-    return this.repository.createDocumentWorkflow(input);
   }
 
   fetchControlledCopies(): Promise<ControlledCopy[]> {

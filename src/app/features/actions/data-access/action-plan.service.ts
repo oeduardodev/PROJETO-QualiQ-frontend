@@ -18,22 +18,7 @@ export class ActionPlanService {
     ticketId: string,
     suggestions: ActionPlanSuggestion[],
   ): Promise<ActionPlan[]> {
-    return Promise.all(
-      suggestions.map((suggestion) =>
-        this.repository.createActionPlan({
-          title: suggestion.title,
-          ticket_id: ticketId,
-          what: suggestion.what,
-          why: suggestion.why,
-          where: null,
-          when: null,
-          who: suggestion.who,
-          how: suggestion.how,
-          how_much: suggestion.how_much,
-          status: 'pendente',
-        }),
-      ),
-    );
+    return this.repository.createFromSuggestions(ticketId, suggestions);
   }
 
   fetchActionPlans(): Promise<ActionPlan[]> {

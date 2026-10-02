@@ -4,6 +4,7 @@ import { COLUMNS } from './helpdesk.constants';
 import { toHelpdeskTicketPayload } from './data-access/helpdesk-ticket.mapper';
 import { HelpdeskService } from '@features/helpdesk/data-access/helpdesk.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import { AuthService } from '@core/services/auth.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type {
@@ -31,6 +32,7 @@ export class HelpdeskComponent {
   private readonly helpdeskService = inject(HelpdeskService);
   private readonly processService = inject(ProcessService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['helpdesk'];
   readonly columns = COLUMNS;
   readonly tickets = signal<HelpdeskTicket[]>([]);
@@ -39,6 +41,7 @@ export class HelpdeskComponent {
   readonly error = signal<string | null>(null);
   readonly formOpen = signal(false);
   readonly editing = signal<HelpdeskTicket | null>(null);
+  readonly readOnly = signal(false);
   readonly saving = signal(false);
   readonly methodologyOpen = signal(false);
   readonly searchValue = signal('');
@@ -96,6 +99,8 @@ export class HelpdeskComponent {
 
   openCreateTicket(): void {
     this.editing.set(null);
+    this.readOnly.set(false);
+    this.form.enable();
     this.form.reset({
       title: '',
       description: '',
@@ -111,6 +116,7 @@ export class HelpdeskComponent {
 
   openEditTicket(ticket: HelpdeskTicket): void {
     this.editing.set(ticket);
+    this.readOnly.set(!this.canManage(ticket));
     this.form.reset({
       title: ticket.title,
       description: ticket.description ?? '',
@@ -121,11 +127,13 @@ export class HelpdeskComponent {
       assigned_to: ticket.assigned_to ?? '',
       process_id: ticket.process_id ?? '',
     });
+    if (this.readOnly()) this.form.disable();
+    else this.form.enable();
     this.formOpen.set(true);
   }
 
   async saveTicket(): Promise<void> {
-    if (this.form.invalid) return;
+    if (this.readOnly() || this.form.invalid) return;
     this.saving.set(true);
     try {
       const value = this.form.getRawValue();
@@ -147,16 +155,32 @@ export class HelpdeskComponent {
   }
 
   async advanceTicket(ticket: HelpdeskTicket): Promise<void> {
-    const saved = await this.helpdeskService.advance(ticket);
-    this.tickets.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-    this.toast.success('Status atualizado');
+    if (!this.canManage(ticket)) return;
+    try {
+      const saved = await this.helpdeskService.advance(ticket);
+      this.tickets.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      this.toast.success('Status atualizado');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao atualizar status'));
+    }
   }
 
   async deleteTicket(ticket: HelpdeskTicket): Promise<void> {
+    if (!this.canManage(ticket)) return;
     if (!confirm('Excluir este chamado?')) return;
-    await this.helpdeskService.deleteHelpdeskTicket(ticket.id);
-    this.tickets.update((items) => items.filter((item) => item.id !== ticket.id));
-    this.toast.success('Chamado excluído');
+    try {
+      await this.helpdeskService.deleteHelpdeskTicket(ticket.id);
+      this.tickets.update((items) => items.filter((item) => item.id !== ticket.id));
+      this.toast.success('Chamado excluído');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao excluir chamado'));
+    }
+  }
+
+  canManage(ticket: HelpdeskTicket): boolean {
+    return (
+      this.auth.isAdmin() || this.auth.isGestor() || ticket.created_by === this.auth.user()?.id
+    );
   }
 
   categoryLabel(value: HelpdeskCategory): string {

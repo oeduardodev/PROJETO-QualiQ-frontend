@@ -23,16 +23,14 @@ export class IndicatorService {
   }
 
   async fetchHistories(indicators: Indicator[]): Promise<Record<string, IndicatorHistoryEntry[]>> {
-    const entries = await Promise.all(
-      indicators.map((indicator) => this.fetchHistoryEntry(indicator)),
-    );
-    return Object.fromEntries(entries);
-  }
-
-  private async fetchHistoryEntry(
-    indicator: Indicator,
-  ): Promise<readonly [string, IndicatorHistoryEntry[]]> {
-    return [indicator.id, await this.repository.fetchIndicatorHistory(indicator.id)];
+    const grouped = Object.fromEntries(indicators.map((indicator) => [indicator.id, []])) as Record<
+      string,
+      IndicatorHistoryEntry[]
+    >;
+    for (const entry of await this.repository.fetchHistories(indicators.map((item) => item.id))) {
+      grouped[entry.indicator_id]?.push(entry);
+    }
+    return grouped;
   }
 
   fetchIndicators(): Promise<Indicator[]> {

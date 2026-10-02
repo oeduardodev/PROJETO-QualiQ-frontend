@@ -65,7 +65,7 @@
                   </div>
                 </button>
                 <div class="ui-kanban-card-footer">
-                  @if (ticket.status !== 'fechado') {
+                  @if (canManage(ticket) && ticket.status !== 'fechado') {
                     <button
                       class="text-[11px] font-medium text-blue-600"
                       (click)="advanceTicket(ticket)"
@@ -73,9 +73,11 @@
                       Avançar
                     </button>
                   }
-                  <button class="text-[11px] text-rose-500" (click)="deleteTicket(ticket)">
-                    Excluir
-                  </button>
+                  @if (canManage(ticket)) {
+                    <button class="text-[11px] text-rose-500" (click)="deleteTicket(ticket)">
+                      Excluir
+                    </button>
+                  }
                 </div>
               </article>
             } @empty {
@@ -89,7 +91,7 @@
 }
 <app-modal
   [open]="formOpen()"
-  [title]="editing() ? 'Editar Chamado' : 'Novo Chamado'"
+  [title]="readOnly() ? 'Detalhes do Chamado' : editing() ? 'Editar Chamado' : 'Novo Chamado'"
   width="max-w-2xl"
   (closed)="formOpen.set(false)"
   ><form [formGroup]="form" (ngSubmit)="saveTicket()" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -126,8 +128,11 @@
     ><label class="ui-form-label">Atribuído a<input formControlName="assigned_to" /></label>
     <div class="ui-form-actions">
       <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
-        Cancelar</button
-      ><button type="submit" [disabled]="saving()" class="ui-button-primary">Salvar</button>
+        Cancelar
+      </button>
+      @if (!readOnly()) {
+        <button type="submit" [disabled]="saving()" class="ui-button-primary">Salvar</button>
+      }
     </div>
   </form></app-modal
 >

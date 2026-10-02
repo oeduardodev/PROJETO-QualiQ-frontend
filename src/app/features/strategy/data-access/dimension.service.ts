@@ -31,6 +31,10 @@ export class DimensionService {
     return this.repository.fetchDimensionLinks(dimensionId);
   }
 
+  fetchAllDimensionLinks(): Promise<DimensionLink[]> {
+    return this.repository.fetchAllDimensionLinks();
+  }
+
   createDimensionLink(input: {
     dimension_id: string;
     item_type: DimensionItemType;

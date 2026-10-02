@@ -136,18 +136,6 @@ export const routes: Routes = [
     loadComponent: () =>
       import('@features/actions/action-plans.component').then((m) => m.ActionPlansComponent),
   },
-  {
-    path: 'motor-dinamico',
-    data: { mode: 'engine' },
-    loadComponent: () =>
-      import('@features/settings/settings.component').then((m) => m.SettingsComponent),
-  },
-  {
-    path: 'configuracoes',
-    data: { mode: 'settings' },
-    loadComponent: () =>
-      import('@features/settings/settings.component').then((m) => m.SettingsComponent),
-  },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' },
 ];

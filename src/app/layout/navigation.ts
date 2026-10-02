@@ -223,39 +223,6 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
-  {
-    id: 'configuracoes',
-    label: 'Configurações',
-    color: 'bg-slate-400',
-    items: [
-      {
-        id: 'motor-dinamico',
-        label: 'Motor Dinâmico (JSON)',
-        icon: 'Cpu',
-        leaves: [
-          {
-            id: 'motor-dinamico',
-            label: 'Motor Dinâmico (JSON)',
-            icon: 'Cpu',
-            route: 'motor-dinamico',
-          },
-        ],
-      },
-      {
-        id: 'configuracoes',
-        label: 'Configurações Gerais',
-        icon: 'Settings',
-        leaves: [
-          {
-            id: 'configuracoes',
-            label: 'Configurações Gerais',
-            icon: 'Settings',
-            route: 'configuracoes',
-          },
-        ],
-      },
-    ],
-  },
 ];
 
 export const ROUTE_SUBTITLES: Record<string, string> = {
@@ -286,8 +253,6 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'indicadores/analises': 'Análises críticas assistidas por IA',
   'indicadores/cadastro': 'Cadastro e configuração de indicadores',
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
-  'motor-dinamico': 'Configuração do motor de parametrização dinâmica',
-  configuracoes: 'Parametrização do sistema',
 };
 
 export function visibleNavigation(isOperator: boolean): NavGroup[] {

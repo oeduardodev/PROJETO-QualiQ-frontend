@@ -158,16 +158,31 @@ export class SipocComponent {
     try {
       const value = this.nodeForm.getRawValue();
       const current = this.editingNode();
-      const saved = await this.processService.saveNode(
-        value,
-        current,
-        this.nodeType(),
-        this.processControl.value,
-      );
-      if (!current && this.nodeType() !== 'P') {
-        const steps = this.nodesFor('P');
-        const associations = await this.processService.associateNodeWithSteps(saved.id, steps);
-        this.stepAssociations.update((items) => [...items, ...associations]);
+      const steps = !current && this.nodeType() !== 'P' ? this.nodesFor('P') : [];
+      const saved =
+        current || this.nodeType() === 'P'
+          ? await this.processService.saveNode(
+              value,
+              current,
+              this.nodeType(),
+              this.processControl.value,
+            )
+          : await this.processService.createNodeWithSteps(
+              value,
+              this.nodeType(),
+              this.processControl.value,
+              steps,
+            );
+      if (steps.length) {
+        this.stepAssociations.update((items) => [
+          ...items,
+          ...steps.map((step) => ({
+            id: `local-${step.id}-${saved.id}`,
+            step_node_id: step.id,
+            associated_node_id: saved.id,
+            created_at: new Date().toISOString(),
+          })),
+        ]);
       }
       this.allNodes.update((items) =>
         current ? items.map((item) => (item.id === saved.id ? saved : item)) : [...items, saved],

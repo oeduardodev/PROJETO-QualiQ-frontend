@@ -1,5 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
+import type { DocumentSavePayload } from './document.mapper';
 import type {
   DocumentType,
   GEDDocument,
@@ -11,13 +13,35 @@ import type {
 export class DocumentRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchDocumentTypes(): Promise<DocumentType[]> {
+  async saveDocument(
+    current: GEDDocument | null,
+    payload: DocumentSavePayload,
+  ): Promise<GEDDocument> {
     const { data, error } = await this.client
-      .from('document_types')
-      .select('*')
-      .order('hierarchy_level');
+      .rpc('save_document', {
+        p_document_id: current?.id ?? null,
+        p_expected_status: current?.status ?? null,
+        p_status: payload.status,
+        p_title: payload.title,
+        p_type_id: payload.type_id,
+        p_process_id: payload.process_id,
+        p_drive_link: payload.drive_link,
+        p_print_allowed: payload.print_allowed,
+      })
+      .single();
     if (error) throw error;
-    return data ?? [];
+    return data;
+  }
+
+  fetchDocumentTypes(): Promise<DocumentType[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('document_types')
+        .select('*')
+        .order('hierarchy_level')
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createDocumentType(
@@ -51,35 +75,15 @@ export class DocumentRepository {
     if (error) throw error;
   }
 
-  async fetchDocuments(): Promise<GEDDocument[]> {
-    const { data, error } = await this.client
-      .from('documents')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
-  }
-
-  async createDocument(
-    input: Partial<Omit<GEDDocument, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<GEDDocument> {
-    const { data, error } = await this.client.from('documents').insert(input).select('*').single();
-    if (error) throw error;
-    return data;
-  }
-
-  async updateDocument(
-    id: string,
-    patch: Partial<Omit<GEDDocument, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<GEDDocument> {
-    const { data, error } = await this.client
-      .from('documents')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
+  fetchDocuments(): Promise<GEDDocument[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('documents')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async advanceDocument(
@@ -103,35 +107,27 @@ export class DocumentRepository {
     if (error) throw error;
   }
 
-  async fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
-    const { data, error } = await this.client
-      .from('document_workflows')
-      .select('*')
-      .eq('document_id', documentId)
-      .order('changed_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('document_workflows')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('changed_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async createDocumentWorkflow(
-    input: Partial<Omit<DocumentWorkflow, 'id' | 'changed_at'>>,
-  ): Promise<DocumentWorkflow> {
-    const { data, error } = await this.client
-      .from('document_workflows')
-      .insert(input)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async fetchControlledCopies(): Promise<ControlledCopy[]> {
-    const { data, error } = await this.client
-      .from('controlled_copies')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchControlledCopies(): Promise<ControlledCopy[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('controlled_copies')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createControlledCopy(
@@ -165,13 +161,15 @@ export class DocumentRepository {
     if (error) throw error;
   }
 
-  async fetchDocumentsByProcess(processId: string): Promise<GEDDocument[]> {
-    const { data, error } = await this.client
-      .from('documents')
-      .select('*')
-      .eq('process_id', processId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchDocumentsByProcess(processId: string): Promise<GEDDocument[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('documents')
+        .select('*')
+        .eq('process_id', processId)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 }

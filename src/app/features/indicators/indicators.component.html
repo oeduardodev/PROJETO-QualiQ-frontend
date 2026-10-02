@@ -260,9 +260,20 @@
                   </div>
                 </div>
                 @if (linkedTickets().length && auth.can('create', 'action_plans')) {
+                  @if (linkedTickets().length > 1) {
+                    <label class="ui-form-label">
+                      Notificação para os planos
+                      <select [formControl]="ticketForPlans">
+                        <option value="">Selecione uma notificação...</option>
+                        @for (ticket of linkedTickets(); track ticket.id) {
+                          <option [value]="ticket.id">{{ ticket.title }}</option>
+                        }
+                      </select>
+                    </label>
+                  }
                   <button
                     class="ui-button-primary"
-                    [disabled]="approving()"
+                    [disabled]="approving() || !ticketForPlans.value"
                     (click)="approveSuggestions()"
                   >
                     <span appIcon="ClipboardList" class="h-4 w-4"></span>Aprovar e criar planos

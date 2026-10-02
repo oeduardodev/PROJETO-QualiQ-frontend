@@ -16,12 +16,22 @@
       </div>
       <div class="flex gap-2">
         @if (mode === 'management') {
-          <button class="ui-button-primary" (click)="openDocument()">
+          <button
+            class="ui-button-primary"
+            [class.ui-locked]="locked"
+            [attr.aria-disabled]="locked"
+            (click)="openDocument()"
+          >
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Documento
           </button>
         }
         @if (mode === 'hierarchy') {
-          <button class="ui-button-primary" (click)="openType()">
+          <button
+            class="ui-button-primary"
+            [class.ui-locked]="locked"
+            [attr.aria-disabled]="locked"
+            (click)="openType()"
+          >
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Tipo
           </button>
         }
@@ -70,12 +80,22 @@
             </p>
             <div class="mt-5 flex gap-2">
               @if (document.drive_link) {
-                <button class="ui-button-secondary flex-1" (click)="preview(document)">
+                <button
+                  class="ui-button-secondary flex-1"
+                  [class.ui-locked]="locked"
+                  [attr.aria-disabled]="locked"
+                  (click)="preview(document)"
+                >
                   <span appIcon="ExternalLink" class="h-3.5 w-3.5"></span>Abrir
                 </button>
               }
               @if (document.print_allowed) {
-                <button class="ui-button-secondary" (click)="requestCopy(document)">
+                <button
+                  class="ui-button-secondary"
+                  [class.ui-locked]="locked"
+                  [attr.aria-disabled]="locked"
+                  (click)="requestCopy(document)"
+                >
                   <span appIcon="Printer" class="h-3.5 w-3.5"></span>Cópia
                 </button>
               }
@@ -110,8 +130,19 @@
                   <div class="flex items-start justify-between">
                     <strong class="text-sm text-slate-700">{{ type.name }}</strong>
                     <div>
-                      <button class="text-xs text-slate-500" (click)="openType(type)">Editar</button
-                      ><button class="ml-2 text-xs text-rose-500" (click)="removeType(type)">
+                      <button
+                        class="text-xs text-slate-500"
+                        [class.ui-locked]="locked"
+                        [attr.aria-disabled]="locked"
+                        (click)="openType(type)"
+                      >
+                        Editar</button
+                      ><button
+                        class="ml-2 text-xs text-rose-500"
+                        [class.ui-locked]="locked"
+                        [attr.aria-disabled]="locked"
+                        (click)="removeType(type)"
+                      >
                         Excluir
                       </button>
                     </div>
@@ -160,7 +191,12 @@
             >
               @for (document of docsByStatus(column.value); track document.id) {
                 <article class="ui-kanban-card">
-                  <button class="w-full text-left" (click)="openDocument(document)">
+                  <button
+                    class="w-full text-left"
+                    [class.ui-locked]="locked"
+                    [attr.aria-disabled]="locked"
+                    (click)="openDocument(document)"
+                  >
                     <strong class="block text-sm text-slate-700">{{ document.title }}</strong
                     ><span class="mt-1 block text-xs text-slate-400">{{
                       store.typeName(document.type_id)
@@ -170,12 +206,19 @@
                     @if (column.value !== 'obsoleto') {
                       <button
                         class="text-[11px] font-medium text-blue-600"
+                        [class.ui-locked]="locked"
+                        [attr.aria-disabled]="locked"
                         (click)="advance(document)"
                       >
                         Avançar
                       </button>
                     }
-                    <button class="text-[11px] text-rose-500" (click)="removeDocument(document)">
+                    <button
+                      class="text-[11px] text-rose-500"
+                      [class.ui-locked]="locked"
+                      [attr.aria-disabled]="locked"
+                      (click)="removeDocument(document)"
+                    >
                       Excluir
                     </button>
                   </div>
@@ -212,8 +255,10 @@
                   <td class="ui-table-cell">
                     <select
                       [value]="copy.status"
-                      (change)="changeCopyStatus(copy, $event)"
+                      [attr.aria-disabled]="locked"
+                      (change)="locked ? $event.preventDefault() : changeCopyStatus(copy, $event)"
                       class="rounded-full border-0 bg-slate-100 px-2 py-1 text-xs"
+                      [class.ui-locked]="locked"
                     >
                       <option value="solicitada">Solicitada</option>
                       <option value="entregue">Entregue</option>
@@ -221,7 +266,12 @@
                     </select>
                   </td>
                   <td class="ui-table-cell text-right">
-                    <button class="text-xs text-rose-500" (click)="removeCopy(copy)">
+                    <button
+                      class="text-xs text-rose-500"
+                      [class.ui-locked]="locked"
+                      [attr.aria-disabled]="locked"
+                      (click)="removeCopy(copy)"
+                    >
                       Excluir
                     </button>
                   </td>
@@ -282,7 +332,14 @@
     <div class="ui-form-actions">
       <button type="button" class="ui-button-secondary" (click)="documentOpen.set(false)">
         Cancelar</button
-      ><button type="submit" class="ui-button-primary">Salvar</button>
+      ><button
+        type="submit"
+        class="ui-button-primary"
+        [class.ui-locked]="locked"
+        [attr.aria-disabled]="locked"
+      >
+        Salvar
+      </button>
     </div>
   </form></app-modal
 >
@@ -313,7 +370,14 @@
     <div class="flex justify-end gap-2">
       <button type="button" class="ui-button-secondary" (click)="typeOpen.set(false)">
         Cancelar</button
-      ><button type="submit" class="ui-button-primary">Salvar</button>
+      ><button
+        type="submit"
+        class="ui-button-primary"
+        [class.ui-locked]="locked"
+        [attr.aria-disabled]="locked"
+      >
+        Salvar
+      </button>
     </div>
   </form></app-modal
 >

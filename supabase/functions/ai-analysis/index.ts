@@ -1,7 +1,7 @@
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 } as const;
 
 interface IndicatorContext {
@@ -62,21 +62,24 @@ function buildUserPrompt(req: AnalysisRequest): string {
   const tickets = req.tickets;
 
   const gap = ind.current_value - ind.goal_value;
-  const gapPct = Math.abs((gap / ind.goal_value) * 100).toFixed(1);
-  const lowerIsBetter = ind.unit !== "%";
-  const direction = lowerIsBetter ? "acima" : "abaixo";
+  const lowerIsBetter = ind.unit !== '%';
+  const direction = lowerIsBetter ? 'acima' : 'abaixo';
+  const gapDescription =
+    ind.goal_value === 0
+      ? 'não calculável em percentual (meta zero)'
+      : `${Math.abs((gap / ind.goal_value) * 100).toFixed(1)}% ${direction} da meta`;
 
   let prompt = `## CENÁRIO\n\n`;
   prompt += `**Indicador:** ${ind.title}\n`;
   prompt += `**Valor Atual:** ${ind.current_value} ${ind.unit}\n`;
   prompt += `**Meta:** ${ind.goal_value} ${ind.unit}\n`;
-  prompt += `**Desvio:** ${gapPct}% ${direction} da meta\n`;
+  prompt += `**Desvio:** ${gapDescription}\n`;
   prompt += `**Status:** ${ind.status}\n`;
   prompt += `**Frequência de medição:** ${ind.frequency}\n\n`;
 
   if (proc) {
-    prompt += `**Processo Vinculado:** ${proc.code ?? ""} ${proc.title}\n`;
-    prompt += `**Responsável:** ${proc.owner ?? "Não definido"}\n\n`;
+    prompt += `**Processo Vinculado:** ${proc.code ?? ''} ${proc.title}\n`;
+    prompt += `**Responsável:** ${proc.owner ?? 'Não definido'}\n\n`;
   }
 
   prompt += `## EVIDÊNCIAS — Não-Conformidades Vinculadas\n\n`;
@@ -96,12 +99,12 @@ function buildUserPrompt(req: AnalysisRequest): string {
         prompt += `- **Análise Ishikawa (6Ms):**\n`;
         filled6M.forEach(([k, v]) => {
           const labels: Record<string, string> = {
-            maquina: "Máquina",
-            metodo: "Método",
-            mao_de_obra: "Mão de Obra",
-            material: "Material",
-            meio_ambiente: "Meio Ambiente",
-            medida: "Medida",
+            maquina: 'Máquina',
+            metodo: 'Método',
+            mao_de_obra: 'Mão de Obra',
+            material: 'Material',
+            meio_ambiente: 'Meio Ambiente',
+            medida: 'Medida',
           };
           prompt += `  - **${labels[k] ?? k}:** ${v}\n`;
         });
@@ -142,61 +145,158 @@ function buildUserPrompt(req: AnalysisRequest): string {
 function extractJSON(text: string): unknown {
   // Strip markdown code fences if present
   let cleaned = text.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
   }
   // Find the first { and last } to extract the JSON object
-  const first = cleaned.indexOf("{");
-  const last = cleaned.lastIndexOf("}");
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
   if (first === -1 || last === -1) {
-    throw new Error("Resposta da IA não contém JSON válido");
+    throw new Error('Resposta da IA não contém JSON válido');
   }
   cleaned = cleaned.substring(first, last + 1);
   return JSON.parse(cleaned);
 }
 
 function validateAnalysis(data: unknown): AIAnalysis {
-  if (typeof data !== "object" || data === null) {
-    throw new Error("Resposta da IA não é um objeto válido");
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Resposta da IA não é um objeto válido');
   }
   const obj = data as Record<string, unknown>;
-  if (typeof obj.diagnostic !== "string" || !obj.diagnostic.trim()) {
-    throw new Error("Diagnóstico ausente ou inválido");
+  if (typeof obj.diagnostic !== 'string' || !obj.diagnostic.trim()) {
+    throw new Error('Diagnóstico ausente ou inválido');
   }
   if (!Array.isArray(obj.suggestions) || obj.suggestions.length === 0) {
-    throw new Error("Sugestões de ação ausentes ou inválidas");
+    throw new Error('Sugestões de ação ausentes ou inválidas');
   }
   const suggestions = (obj.suggestions as Record<string, unknown>[]).map((s) => ({
-    title: String(s.title ?? ""),
-    what: String(s.what ?? ""),
-    why: String(s.why ?? ""),
-    who: String(s.who ?? ""),
-    how: String(s.how ?? ""),
-    how_much: String(s.how_much ?? ""),
+    title: String(s.title ?? ''),
+    what: String(s.what ?? ''),
+    why: String(s.why ?? ''),
+    who: String(s.who ?? ''),
+    how: String(s.how ?? ''),
+    how_much: String(s.how_much ?? ''),
   }));
   return { diagnostic: obj.diagnostic, suggestions };
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Método não permitido.' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
-    const apiKey = Deno.env.get("AI_API_KEY");
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const publicKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const authorization = req.headers.get('authorization');
+    const jwt = authorization?.match(/^Bearer\s+([^\s]+)$/i)?.[1];
+    if (!jwt || jwt.split('.').length !== 3) {
+      return new Response(JSON.stringify({ error: 'Sessão de usuário obrigatória.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!supabaseUrl || !publicKey) {
+      return new Response(JSON.stringify({ error: 'Autenticação indisponível.' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userHeaders = { apikey: publicKey, Authorization: `Bearer ${jwt}` };
+    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: userHeaders,
+    });
+    if (!userResponse.ok) {
+      return new Response(JSON.stringify({ error: 'Sessão inválida.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const user = (await userResponse.json()) as { id?: string };
+    if (!user.id) {
+      return new Response(JSON.stringify({ error: 'Sessão inválida.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const profileResponse = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(user.id)}&limit=1`,
+      { headers: userHeaders },
+    );
+    if (!profileResponse.ok) throw new Error('Não foi possível verificar o perfil.');
+    const profiles = (await profileResponse.json()) as { role: string }[];
+    if (!['Admin', 'Gestor'].includes(profiles[0]?.role)) {
+      return new Response(JSON.stringify({ error: 'Acesso negado.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const contentLength = Number(req.headers.get('content-length') ?? 0);
+    if (contentLength > 65_536) {
+      return new Response(JSON.stringify({ error: 'Requisição muito grande.' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const rawBody = await req.text();
+    if (rawBody.length > 65_536) {
+      return new Response(JSON.stringify({ error: 'Requisição muito grande.' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    let body: AnalysisRequest;
+    try {
+      body = JSON.parse(rawBody) as AnalysisRequest;
+    } catch {
+      return new Response(JSON.stringify({ error: 'JSON inválido.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (
+      !body?.indicator ||
+      typeof body.indicator.title !== 'string' ||
+      !Number.isFinite(body.indicator.current_value) ||
+      !Number.isFinite(body.indicator.goal_value) ||
+      !Array.isArray(body.tickets) ||
+      body.tickets.length > 100
+    ) {
+      return new Response(JSON.stringify({ error: 'Dados de análise inválidos.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const apiKey = Deno.env.get('AI_API_KEY');
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "Chave da API de IA não configurada no servidor." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: 'Chave da API de IA não configurada no servidor.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const body = await req.json() as AnalysisRequest;
-    if (!body.indicator) {
-      return new Response(
-        JSON.stringify({ error: "Dados do indicador não fornecidos." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    const quotaResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_quota`, {
+      method: 'POST',
+      headers: { ...userHeaders, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!quotaResponse.ok) throw new Error('Não foi possível verificar o limite de uso.');
+    if ((await quotaResponse.json()) !== true) {
+      return new Response(JSON.stringify({ error: 'Limite de análises atingido nesta hora.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const systemPrompt = buildSystemPrompt();
@@ -205,32 +305,32 @@ Deno.serve(async (req: Request) => {
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const geminiResponse = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: {
           parts: [{ text: systemPrompt }],
         },
         contents: [
           {
-            role: "user",
+            role: 'user',
             parts: [{ text: userPrompt }],
           },
         ],
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json",
+          responseMimeType: 'application/json',
         },
       }),
     });
 
     if (!geminiResponse.ok) {
       const errText = await geminiResponse.text();
-      console.error("Gemini API error:", geminiResponse.status, errText);
+      console.error('Gemini API error:', geminiResponse.status, errText);
       return new Response(
         JSON.stringify({ error: `Erro da API de IA (${geminiResponse.status}). Tente novamente.` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -238,37 +338,37 @@ Deno.serve(async (req: Request) => {
 
     // Gemini 2.5 may return multiple parts — some are "thought" tokens, the last is the actual text
     const parts = geminiData?.candidates?.[0]?.content?.parts ?? [];
-    let text = "";
+    let text = '';
     for (const part of parts) {
-      if (part.text && typeof part.text === "string" && part.text.trim().startsWith("{")) {
+      if (part.text && typeof part.text === 'string' && part.text.trim().startsWith('{')) {
         text = part.text;
         break;
       }
     }
     // Fallback: use last part's text
     if (!text && parts.length > 0) {
-      text = parts[parts.length - 1]?.text ?? "";
+      text = parts[parts.length - 1]?.text ?? '';
     }
     if (!text) {
-      return new Response(
-        JSON.stringify({ error: "Resposta vazia da API de IA." }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: 'Resposta vazia da API de IA.' }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const parsed = extractJSON(text);
     const analysis = validateAnalysis(parsed);
 
-    return new Response(
-      JSON.stringify(analysis),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify(analysis), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (err) {
-    console.error("Edge function error:", err);
-    const message = err instanceof Error ? err.message : "Erro interno no servidor.";
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    console.error('Edge function error:', err);
+    const message = err instanceof Error ? err.message : 'Erro interno no servidor.';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

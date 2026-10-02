@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type {
   ValueChainCategory,
   NodeType,
@@ -13,10 +14,10 @@ import type {
 export class ProcessRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchProcesses(): Promise<Process[]> {
-    const { data, error } = await this.client.from('processes').select('*').order('created_at');
-    if (error) throw error;
-    return data ?? [];
+  fetchProcesses(): Promise<Process[]> {
+    return fetchAllPages((from, to) =>
+      this.client.from('processes').select('*').order('created_at').order('id').range(from, to),
+    );
   }
 
   async createProcess(
@@ -46,19 +47,21 @@ export class ProcessRepository {
     if (error) throw error;
   }
 
-  async fetchCategories(): Promise<ValueChainCategory[]> {
-    const { data, error } = await this.client
-      .from('value_chain_categories')
-      .select('*')
-      .order('order_index');
-    if (error) throw error;
-    return data ?? [];
+  fetchCategories(): Promise<ValueChainCategory[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('value_chain_categories')
+        .select('*')
+        .order('order_index')
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchSipocNodes(): Promise<SipocNode[]> {
-    const { data, error } = await this.client.from('sipoc_nodes').select('*').order('created_at');
-    if (error) throw error;
-    return data ?? [];
+  fetchSipocNodes(): Promise<SipocNode[]> {
+    return fetchAllPages((from, to) =>
+      this.client.from('sipoc_nodes').select('*').order('created_at').order('id').range(from, to),
+    );
   }
 
   async createSipocNode(
@@ -69,6 +72,23 @@ export class ProcessRepository {
       .insert(input)
       .select('*')
       .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async createSipocNodeWithSteps(
+    form: { title: string; description: string },
+    type: NodeType,
+    processId: string,
+    stepIds: string[],
+  ): Promise<SipocNode> {
+    const { data, error } = await this.client.rpc('create_sipoc_node_with_steps', {
+      p_title: form.title,
+      p_description: form.description,
+      p_node_type: type,
+      p_process_id: processId,
+      p_step_ids: stepIds,
+    });
     if (error) throw error;
     return data;
   }
@@ -92,22 +112,26 @@ export class ProcessRepository {
     if (error) throw error;
   }
 
-  async fetchAssociationsByProcess(processId: string): Promise<SipocNodeAssociation[]> {
-    const { data, error } = await this.client
-      .from('sipoc_node_associations')
-      .select('*')
-      .eq('process_id', processId);
-    if (error) throw error;
-    return data ?? [];
+  fetchAssociationsByProcess(processId: string): Promise<SipocNodeAssociation[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sipoc_node_associations')
+        .select('*')
+        .eq('process_id', processId)
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchAssociationsByNode(nodeId: string): Promise<SipocNodeAssociation[]> {
-    const { data, error } = await this.client
-      .from('sipoc_node_associations')
-      .select('*')
-      .eq('node_id', nodeId);
-    if (error) throw error;
-    return data ?? [];
+  fetchAssociationsByNode(nodeId: string): Promise<SipocNodeAssociation[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sipoc_node_associations')
+        .select('*')
+        .eq('node_id', nodeId)
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createAssociation(nodeId: string, processId: string): Promise<void> {
@@ -126,34 +150,40 @@ export class ProcessRepository {
     if (error) throw error;
   }
 
-  async fetchSharedSipocNodes(nodeType: NodeType): Promise<SipocNode[]> {
-    const { data, error } = await this.client
-      .from('sipoc_nodes')
-      .select('*')
-      .is('process_id', null)
-      .eq('node_type', nodeType)
-      .order('title');
-    if (error) throw error;
-    return data ?? [];
+  fetchSharedSipocNodes(nodeType: NodeType): Promise<SipocNode[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sipoc_nodes')
+        .select('*')
+        .is('process_id', null)
+        .eq('node_type', nodeType)
+        .order('title')
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchAllSipocNodesByType(nodeType: NodeType): Promise<SipocNode[]> {
-    const { data, error } = await this.client
-      .from('sipoc_nodes')
-      .select('*')
-      .eq('node_type', nodeType)
-      .order('title');
-    if (error) throw error;
-    return data ?? [];
+  fetchAllSipocNodesByType(nodeType: NodeType): Promise<SipocNode[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sipoc_nodes')
+        .select('*')
+        .eq('node_type', nodeType)
+        .order('title')
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchStepAssociations(stepNodeId: string): Promise<SipocStepAssociation[]> {
-    const { data, error } = await this.client
-      .from('sipoc_step_associations')
-      .select('*')
-      .eq('step_node_id', stepNodeId);
-    if (error) throw error;
-    return data ?? [];
+  fetchStepAssociations(stepNodeId: string): Promise<SipocStepAssociation[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sipoc_step_associations')
+        .select('*')
+        .eq('step_node_id', stepNodeId)
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createStepAssociation(stepNodeId: string, associatedNodeId: string): Promise<void> {

@@ -1,18 +1,21 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { NotificationClassification, NotificationType } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchNotificationClassifications(): Promise<NotificationClassification[]> {
-    const { data, error } = await this.client
-      .from('notification_classifications')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchNotificationClassifications(): Promise<NotificationClassification[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('notification_classifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createNotificationClassification(
@@ -46,13 +49,15 @@ export class NotificationRepository {
     if (error) throw error;
   }
 
-  async fetchNotificationTypes(): Promise<NotificationType[]> {
-    const { data, error } = await this.client
-      .from('notification_types')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchNotificationTypes(): Promise<NotificationType[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('notification_types')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createNotificationType(

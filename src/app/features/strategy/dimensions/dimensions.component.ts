@@ -81,22 +81,20 @@ export class DimensionsComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [dimensions, indicators, plans, processes, tickets] = await Promise.all([
+      const [dimensions, indicators, plans, processes, tickets, links] = await Promise.all([
         this.dimensionService.fetchDimensions(),
         this.indicatorService.fetchIndicators(),
         this.actionPlanService.fetchActionPlans(),
         this.processService.fetchProcesses(),
         this.ticketService.fetchTickets(),
+        this.dimensionService.fetchAllDimensionLinks(),
       ]);
       this.dimensions.set(dimensions);
       this.indicators.set(indicators);
       this.plans.set(plans);
       this.processes.set(processes);
       this.tickets.set(tickets);
-      const links = await Promise.all(
-        dimensions.map((item) => this.dimensionService.fetchDimensionLinks(item.id)),
-      );
-      this.links.set(links.flat());
+      this.links.set(links);
     } catch (error) {
       this.error.set(errorMessage(error, 'Erro ao carregar dimensões'));
     } finally {

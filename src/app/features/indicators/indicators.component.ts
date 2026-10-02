@@ -61,6 +61,7 @@ export class IndicatorsComponent {
   readonly aiLoading = signal(false);
   readonly aiAnalysis = signal<IndicatorAnalysis | null>(null);
   readonly approving = signal(false);
+  readonly ticketForPlans = new FormControl('', { nonNullable: true });
   private readonly periodControls = new Map<string, FormControl<string>>();
   private readonly valueControls = new Map<string, FormControl<number | null>>();
   readonly form = new FormGroup({
@@ -247,10 +248,10 @@ export class IndicatorsComponent {
 
   selectIndicator(indicator: Indicator): void {
     this.selectedIndicator.set(indicator);
-    this.linkedTickets.set(
-      this.tickets().filter((ticket) => ticket.process_id === indicator.process_id),
-    );
+    const linked = this.tickets().filter((ticket) => ticket.process_id === indicator.process_id);
+    this.linkedTickets.set(linked);
     this.aiAnalysis.set(null);
+    this.ticketForPlans.setValue(linked.length === 1 ? linked[0].id : '');
   }
 
   async generateAnalysis(): Promise<void> {
@@ -271,12 +272,14 @@ export class IndicatorsComponent {
 
   async approveSuggestions(): Promise<void> {
     const analysis = this.aiAnalysis();
-    const ticketId = this.linkedTickets()[0]?.id;
-    if (!analysis || !ticketId) return;
+    const ticketId = this.ticketForPlans.value;
+    if (!analysis || this.approving() || !this.linkedTickets().some((item) => item.id === ticketId))
+      return;
     this.approving.set(true);
     try {
       await this.actionPlanService.createFromSuggestions(ticketId, analysis.suggestions);
       this.toast.success(`${analysis.suggestions.length} plano(s) de ação criado(s)`);
+      this.aiAnalysis.set(null);
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao criar planos'));
     } finally {

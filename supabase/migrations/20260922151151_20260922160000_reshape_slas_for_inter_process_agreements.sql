@@ -53,6 +53,15 @@ ALTER TABLE slas ADD COLUMN IF NOT EXISTS quality_criteria text;
 UPDATE slas SET title = name WHERE title IS NULL AND name IS NOT NULL;
 UPDATE slas SET sipoc_input_id = input_id WHERE sipoc_input_id IS NULL AND input_id IS NOT NULL;
 UPDATE slas SET supplier_process_id = process_id WHERE supplier_process_id IS NULL AND process_id IS NOT NULL;
+UPDATE slas
+SET lead_time_hours = target_days * 24,
+    custom_fields = coalesce(custom_fields, '{}'::jsonb) || jsonb_build_object(
+      'legacy_sla', jsonb_build_object(
+        'target_days', target_days, 'actual_days', actual_days, 'unit', unit,
+        'previous_status', status
+      )
+    )
+WHERE target_days IS NOT NULL;
 
 -- Step 3: Set title NOT NULL (after backfill)
 UPDATE slas SET title = 'Acordo sem nome' WHERE title IS NULL;
@@ -76,11 +85,10 @@ BEGIN
     ALTER TABLE slas DROP CONSTRAINT slas_status_check;
   END IF;
 END $$;
-ALTER TABLE slas ADD CONSTRAINT slas_status_check
-  CHECK (status IN ('Ativo', 'Em Revisão', 'Inativo'));
-
 -- Update existing status values to new enum
 UPDATE slas SET status = 'Ativo' WHERE status NOT IN ('Ativo', 'Em Revisão', 'Inativo');
+ALTER TABLE slas ADD CONSTRAINT slas_status_check
+  CHECK (status IN ('Ativo', 'Em Revisão', 'Inativo'));
 
 -- Step 6: Drop old indexes, create new ones
 DROP INDEX IF EXISTS idx_slas_input;

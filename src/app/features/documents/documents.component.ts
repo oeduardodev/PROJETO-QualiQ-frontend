@@ -1,13 +1,12 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { formatDate } from '@shared/utils/date.utils';
 import { errorMessage } from '@shared/utils/error.utils';
-import { WORKFLOW } from './documents.constants';
+import { DOCUMENTS_LOCKED, DOCUMENTS_LOCKED_MESSAGE, WORKFLOW } from './documents.constants';
 import { toDocumentPayload } from './data-access/document.mapper';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { AuthService } from '@core/services/auth.service';
 import type {
   ControlledCopy,
   CopyStatus,
@@ -33,11 +32,11 @@ export class DocumentsComponent {
   private readonly documentService = inject(DocumentService);
   readonly store = inject(DocumentsStore);
   private readonly route = inject(ActivatedRoute);
-  private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly mode = this.route.snapshot.data['mode'] as
     'panel' | 'hierarchy' | 'management' | 'copies';
   readonly workflow = WORKFLOW;
+  readonly locked = DOCUMENTS_LOCKED;
   readonly levels = [1, 2, 3, 4];
   readonly searchValue = signal('');
   readonly search = new FormControl('', { nonNullable: true });
@@ -105,6 +104,12 @@ export class DocumentsComponent {
     void this.store.load();
   }
 
+  private blocked(): boolean {
+    if (!DOCUMENTS_LOCKED) return false;
+    this.toast.error(DOCUMENTS_LOCKED_MESSAGE);
+    return true;
+  }
+
   docsByStatus(status: DocumentStatus): GEDDocument[] {
     return this.store.documents().filter((document) => document.status === status);
   }
@@ -124,6 +129,7 @@ export class DocumentsComponent {
   }
 
   openDocument(document?: GEDDocument): void {
+    if (this.blocked()) return;
     this.editingDocument.set(document ?? null);
     this.documentForm.reset(
       document
@@ -148,17 +154,15 @@ export class DocumentsComponent {
   }
 
   async saveDocument(): Promise<void> {
+    if (this.blocked()) return;
     if (this.documentForm.invalid) {
       this.formError.set('Título é obrigatório.');
       return;
     }
     try {
       const value = this.documentForm.getRawValue();
-      const payload = toDocumentPayload(value, this.auth.user()?.id ?? null);
       const current = this.editingDocument();
-      const saved = current
-        ? await this.documentService.updateDocument(current.id, payload)
-        : await this.documentService.createDocument(payload);
+      const saved = await this.documentService.saveDocument(current, toDocumentPayload(value));
       this.store.documents.update((items) =>
         current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
       );
@@ -170,6 +174,7 @@ export class DocumentsComponent {
   }
 
   async advance(document: GEDDocument): Promise<void> {
+    if (this.blocked()) return;
     try {
       const { savedDocument, nextStatus } = await this.documentService.advanceDocument(document);
       this.store.documents.update((items) =>
@@ -184,6 +189,7 @@ export class DocumentsComponent {
   }
 
   async removeDocument(document: GEDDocument): Promise<void> {
+    if (this.blocked()) return;
     if (!confirm('Excluir este documento?')) return;
     await this.documentService.deleteDocument(document.id);
     this.store.documents.update((items) => items.filter((item) => item.id !== document.id));
@@ -191,6 +197,7 @@ export class DocumentsComponent {
   }
 
   openType(type?: DocumentType): void {
+    if (this.blocked()) return;
     this.editingType.set(type ?? null);
     this.typeForm.reset(
       type
@@ -213,6 +220,7 @@ export class DocumentsComponent {
   }
 
   async saveType(): Promise<void> {
+    if (this.blocked()) return;
     if (this.typeForm.invalid) return;
     const current = this.editingType();
     const saved = current
@@ -226,6 +234,7 @@ export class DocumentsComponent {
   }
 
   async removeType(type: DocumentType): Promise<void> {
+    if (this.blocked()) return;
     if (!confirm('Excluir este tipo documental?')) return;
     await this.documentService.deleteDocumentType(type.id);
     this.store.types.update((items) => items.filter((item) => item.id !== type.id));
@@ -233,19 +242,39 @@ export class DocumentsComponent {
   }
 
   preview(document: GEDDocument): void {
+    if (this.blocked()) return;
     if (!document.drive_link) return;
-    const match = document.drive_link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    let url: URL;
+    try {
+      url = new URL(document.drive_link);
+    } catch {
+      this.toast.error('Link do documento inválido');
+      return;
+    }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      this.toast.error('Use um link HTTP ou HTTPS para o documento');
+      return;
+    }
+    const match =
+      url.hostname === 'docs.google.com'
+        ? url.pathname.match(/^\/document\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/)
+        : null;
     window.open(
-      match ? `https://docs.google.com/document/d/${match[1]}/preview` : document.drive_link,
+      match ? `https://docs.google.com/document/d/${match[1]}/preview` : url.href,
       '_blank',
       'noopener,noreferrer',
     );
   }
 
   async requestCopy(document: GEDDocument): Promise<void> {
-    const saved = await this.documentService.requestCopy(document.id, this.auth.user()?.id ?? null);
-    this.store.copies.update((items) => [saved, ...items]);
-    this.toast.success('Cópia controlada solicitada');
+    if (this.blocked()) return;
+    try {
+      const saved = await this.documentService.requestCopy(document.id);
+      this.store.copies.update((items) => [saved, ...items]);
+      this.toast.success('Cópia controlada solicitada');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao solicitar cópia'));
+    }
   }
 
   documentName(id: string): string {
@@ -257,6 +286,7 @@ export class DocumentsComponent {
   }
 
   async changeCopyStatus(copy: ControlledCopy, event: Event): Promise<void> {
+    if (this.blocked()) return;
     const status = (event.target as HTMLSelectElement).value as CopyStatus;
     const saved = await this.documentService.changeCopyStatus(copy, status);
     this.store.copies.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
@@ -264,6 +294,7 @@ export class DocumentsComponent {
   }
 
   async removeCopy(copy: ControlledCopy): Promise<void> {
+    if (this.blocked()) return;
     if (!confirm('Excluir este registro de cópia?')) return;
     await this.documentService.deleteControlledCopy(copy.id);
     this.store.copies.update((items) => items.filter((item) => item.id !== copy.id));

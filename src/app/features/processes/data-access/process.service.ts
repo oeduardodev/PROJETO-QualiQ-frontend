@@ -31,19 +31,6 @@ export class ProcessService {
     return associations.flat();
   }
 
-  async associateNodeWithSteps(
-    nodeId: string,
-    steps: SipocNode[],
-  ): Promise<SipocStepAssociation[]> {
-    await Promise.all(steps.map((step) => this.repository.createStepAssociation(step.id, nodeId)));
-    return steps.map((step) => ({
-      id: `local-${step.id}-${nodeId}`,
-      step_node_id: step.id,
-      associated_node_id: nodeId,
-      created_at: new Date().toISOString(),
-    }));
-  }
-
   saveNode(
     form: { title: string; description: string },
     current: SipocNode | null,
@@ -59,6 +46,20 @@ export class ProcessService {
       order_index: 0,
       process_id: type === 'P' ? processId : null,
     });
+  }
+
+  createNodeWithSteps(
+    form: { title: string; description: string },
+    type: NodeType,
+    processId: string,
+    steps: SipocNode[],
+  ): Promise<SipocNode> {
+    return this.repository.createSipocNodeWithSteps(
+      form,
+      type,
+      processId,
+      steps.map((step) => step.id),
+    );
   }
 
   fetchProcesses(): Promise<Process[]> {

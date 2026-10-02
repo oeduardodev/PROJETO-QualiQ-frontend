@@ -1,18 +1,21 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { Ticket } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class TicketRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchTickets(): Promise<Ticket[]> {
-    const { data, error } = await this.client
-      .from('tickets')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchTickets(): Promise<Ticket[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('tickets')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createTicket(
@@ -42,23 +45,27 @@ export class TicketRepository {
     if (error) throw error;
   }
 
-  async fetchTicketsByProcess(processId: string): Promise<Ticket[]> {
-    const { data, error } = await this.client
-      .from('tickets')
-      .select('*')
-      .eq('process_id', processId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchTicketsByProcess(processId: string): Promise<Ticket[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('tickets')
+        .select('*')
+        .eq('process_id', processId)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchTicketsByStep(stepId: string): Promise<Ticket[]> {
-    const { data, error } = await this.client
-      .from('tickets')
-      .select('*')
-      .eq('step_id', stepId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchTicketsByStep(stepId: string): Promise<Ticket[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('tickets')
+        .select('*')
+        .eq('step_id', stepId)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 }

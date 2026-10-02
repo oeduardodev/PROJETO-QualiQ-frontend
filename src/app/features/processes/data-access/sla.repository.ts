@@ -1,28 +1,33 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { SLA } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchSlas(): Promise<SLA[]> {
-    const { data, error } = await this.client
-      .from('slas')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchSlas(): Promise<SLA[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('slas')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
-  async fetchSlasByProcess(processId: string): Promise<SLA[]> {
-    const { data, error } = await this.client
-      .from('slas')
-      .select('*')
-      .or(`supplier_process_id.eq.${processId},client_process_id.eq.${processId}`)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+  fetchSlasByProcess(processId: string): Promise<SLA[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('slas')
+        .select('*')
+        .or(`supplier_process_id.eq.${processId},client_process_id.eq.${processId}`)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createSla(input: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>): Promise<SLA> {

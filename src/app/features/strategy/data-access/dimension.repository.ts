@@ -1,15 +1,16 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
+import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { Dimension, DimensionItemType, DimensionLink } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class DimensionRepository {
   private readonly client = inject(SupabaseService).client;
 
-  async fetchDimensions(): Promise<Dimension[]> {
-    const { data, error } = await this.client.from('dimensions').select('*').order('order_index');
-    if (error) throw error;
-    return data ?? [];
+  fetchDimensions(): Promise<Dimension[]> {
+    return fetchAllPages((from, to) =>
+      this.client.from('dimensions').select('*').order('order_index').order('id').range(from, to),
+    );
   }
 
   async createDimension(
@@ -39,14 +40,27 @@ export class DimensionRepository {
     if (error) throw error;
   }
 
-  async fetchDimensionLinks(dimensionId: string): Promise<DimensionLink[]> {
-    const { data, error } = await this.client
-      .from('dimension_links')
-      .select('*')
-      .eq('dimension_id', dimensionId)
-      .order('created_at');
-    if (error) throw error;
-    return data ?? [];
+  fetchDimensionLinks(dimensionId: string): Promise<DimensionLink[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('dimension_links')
+        .select('*')
+        .eq('dimension_id', dimensionId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    );
+  }
+
+  fetchAllDimensionLinks(): Promise<DimensionLink[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('dimension_links')
+        .select('*')
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    );
   }
 
   async createDimensionLink(input: {
