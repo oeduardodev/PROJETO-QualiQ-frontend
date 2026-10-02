@@ -6,8 +6,8 @@ O **Orbis** é uma aplicação de **Sistema de Gestão da Qualidade (SGQ)** dese
 
 Para executar o projeto, é necessário ter instalado:
 
-* Node.js `^22.22.3`, `^24.15.0` ou `^26.0.0`
-* npm `11` ou superior
+- Node.js `^22.22.3`, `^24.15.0` ou `^26.0.0`
+- npm `11` ou superior
 
 ## Configuração do ambiente
 
@@ -116,9 +116,9 @@ src/app/
 
 Os componentes são **standalone** e utilizam:
 
-* formulários reativos tipados;
-* `signal` para gerenciamento de estado local;
-* `computed` para valores derivados do estado.
+- formulários reativos tipados;
+- `signal` para gerenciamento de estado local;
+- `computed` para valores derivados do estado.
 
 Os componentes devem concentrar-se principalmente na apresentação e interação com o usuário.
 
@@ -162,10 +162,10 @@ slas/
 
 mantêm separadamente:
 
-* TypeScript;
-* HTML;
-* SCSS;
-* constantes específicas do componente.
+- TypeScript;
+- HTML;
+- SCSS;
+- constantes específicas do componente.
 
 O diretório:
 
@@ -211,7 +211,7 @@ src/styles.css
 dentro de:
 
 ```css
-@layer components
+@layer components;
 ```
 
 Foram definidos grupos de classes responsáveis por representar padrões visuais utilizados em diferentes telas:
@@ -262,8 +262,8 @@ Estados específicos de botões, comportamentos exclusivos ou variações visuai
 
 A regra geral é:
 
-* **Crie uma classe global** quando um papel visual se repetir em diferentes partes da aplicação.
-* **Use utilitários Tailwind diretamente** para ajustes simples e pontuais.
-* **Use o SCSS do componente** quando o comportamento ou estilo for exclusivo daquela tela.
+- **Crie uma classe global** quando um papel visual se repetir em diferentes partes da aplicação.
+- **Use utilitários Tailwind diretamente** para ajustes simples e pontuais.
+- **Use o SCSS do componente** quando o comportamento ou estilo for exclusivo daquela tela.
 
 Essa divisão mantém a interface consistente sem transformar o arquivo global de estilos em um conjunto de regras específicas de componentes.
