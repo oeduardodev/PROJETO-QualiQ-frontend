@@ -25,6 +25,8 @@ export interface Database {
       profiles: TableDefinition<Profile>;
       dimensions: TableDefinition<Dimension>;
       dimension_links: TableDefinition<DimensionLink>;
+      swot_analyses: TableDefinition<SwotAnalysis>;
+      swot_items: TableDefinition<SwotItem>;
       risks: TableDefinition<Risk, 'risk_score' | 'risk_level'>;
       risk_factors: TableDefinition<RiskFactor>;
       risk_preventive_actions: TableDefinition<RiskPreventiveAction>;
@@ -273,6 +275,32 @@ export interface DimensionLink {
   item_id: string;
   process_id: string;
   created_at: string;
+}
+
+export type SwotStatus = 'em_construcao' | 'em_revisao' | 'concluida';
+export type SwotQuadrant = 'forcas' | 'fraquezas' | 'oportunidades' | 'ameacas';
+export type SwotStrategy = 'FO' | 'FA' | 'OA' | 'AF';
+
+export interface SwotAnalysis {
+  id: string;
+  title: string;
+  period: string | null;
+  description: string | null;
+  status: SwotStatus;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SwotItem {
+  id: string;
+  analysis_id: string;
+  quadrant: SwotQuadrant;
+  title: string;
+  description: string | null;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // =====================================================

@@ -21,6 +21,11 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'swot',
+    loadComponent: () =>
+      import('@features/strategy/swot/swot.component').then((m) => m.SwotComponent),
+  },
+  {
     path: 'processos/gerenciamento',
     loadComponent: () =>
       import('@features/processes/process-management/process-management.component').then(

@@ -1,0 +1,347 @@
+@if (loading()) {
+  <div class="ui-page-loading">
+    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  </div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ error() }}</p>
+    <button class="mt-3 text-sm underline" (click)="load()">Tentar novamente</button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <div class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">Análise SWOT</h2>
+        <p class="ui-page-subtitle">
+          {{ analyses().length }} análises · {{ totalItems() }} fatores no painel atual
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2 print:hidden">
+        <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
+          <span appIcon="Info" class="h-4 w-4"></span>Metodologia
+        </button>
+        @if (selected()) {
+          <button class="ui-button-secondary" (click)="exportCsv()">
+            <span appIcon="ArrowDownToLine" class="h-4 w-4"></span>Exportar
+          </button>
+          <button class="ui-button-secondary" (click)="print()">
+            <span appIcon="Printer" class="h-4 w-4"></span>Imprimir
+          </button>
+        }
+        @if (canEdit()) {
+          <button class="ui-button-primary" (click)="openAnalysisCreate()">
+            <span appIcon="Plus" class="h-4 w-4"></span>Nova Análise
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (!canEdit()) {
+      <p class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+        Seu perfil possui acesso somente leitura à SWOT. A edição é restrita a gestores e
+        administradores.
+      </p>
+    }
+
+    @if (!analyses().length) {
+      <div class="rounded-xl border border-dashed border-slate-300 py-16 text-center">
+        <span appIcon="Grid3X3" class="mx-auto h-8 w-8 text-slate-300"></span>
+        <p class="mt-3 text-sm font-medium text-slate-600">Nenhuma SWOT cadastrada</p>
+        <p class="mt-1 text-xs text-slate-400">
+          Crie a primeira análise para começar a construção do painel.
+        </p>
+        @if (canEdit()) {
+          <button class="ui-button-primary mt-4" (click)="openAnalysisCreate()">
+            <span appIcon="Plus" class="h-4 w-4"></span>Nova Análise
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="scrollbar-thin flex gap-3 overflow-x-auto pb-1 print:hidden">
+        @for (analysis of ordered(); track analysis.id) {
+          <button
+            type="button"
+            class="w-64 shrink-0 rounded-xl border p-4 text-left transition"
+            [class]="tabClass(analysis.id === selectedId())"
+            (click)="selectedId.set(analysis.id)"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <span class="truncate text-sm font-semibold text-slate-800">{{ analysis.title }}</span
+              ><span
+                class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                [class]="statusClass(analysis.status)"
+                >{{ statusLabel(analysis.status) }}</span
+              >
+            </div>
+            <p class="mt-1 text-xs text-slate-400">{{ analysis.period || 'Sem período' }}</p>
+            <p class="mt-2 text-xs text-slate-500">
+              {{ countFor(analysis.id) }}
+              {{ countFor(analysis.id) === 1 ? 'fator' : 'fatores' }}
+            </p>
+          </button>
+        }
+      </div>
+
+      @if (selected(); as analysis) {
+        <section class="ui-table-panel flex flex-wrap items-start justify-between gap-3 p-5">
+          <div class="min-w-0">
+            <h3 class="text-base font-semibold text-slate-800">{{ analysis.title }}</h3>
+            <p class="mt-0.5 text-xs text-slate-400">
+              {{ analysis.period || 'Sem período definido' }} · atualizada em
+              {{ analysis.updated_at | date: 'dd/MM/yyyy' }}
+            </p>
+            @if (analysis.description) {
+              <p class="mt-2 max-w-2xl text-sm text-slate-500">{{ analysis.description }}</p>
+            }
+          </div>
+          @if (canEdit()) {
+            <div class="flex gap-3 print:hidden">
+              <button
+                class="text-xs font-medium text-slate-600"
+                (click)="openAnalysisEdit(analysis)"
+              >
+                Editar análise
+              </button>
+              <button class="text-xs font-medium text-rose-500" (click)="deleteAnalysis(analysis)">
+                Excluir
+              </button>
+            </div>
+          }
+        </section>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          @for (panel of panels(); track panel.key) {
+            <section class="flex flex-col rounded-xl border" [class]="panel.panel">
+              <header
+                class="flex items-center justify-between gap-3 rounded-t-xl border-b px-4 py-3"
+                [class]="panel.title"
+              >
+                <div class="flex items-center gap-2">
+                  <span [appIcon]="panel.icon" class="h-4 w-4 shrink-0"></span>
+                  <div class="min-w-0">
+                    <h4 class="text-sm font-semibold">{{ panel.label }}</h4>
+                    <p class="text-[10px] uppercase tracking-wide opacity-70">{{ panel.scope }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold"
+                    [class]="panel.accent"
+                    >{{ panel.items.length }}</span
+                  >
+                  @if (canEdit()) {
+                    <button
+                      type="button"
+                      class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/70 transition hover:bg-white print:hidden"
+                      (click)="openItemCreate(panel.key)"
+                      [attr.aria-label]="'Adicionar em ' + panel.label"
+                    >
+                      <span appIcon="Plus" class="h-4 w-4"></span>
+                    </button>
+                  }
+                </div>
+              </header>
+
+              <div class="flex-1 space-y-2 p-4">
+                @for (item of panel.items; track item.id) {
+                  <article class="group rounded-lg border border-slate-200 bg-white p-3 text-left">
+                    <div class="flex items-start justify-between gap-2">
+                      <strong class="block text-sm font-medium text-slate-700">{{
+                        item.title
+                      }}</strong>
+                      @if (canEdit()) {
+                        <div
+                          class="flex shrink-0 gap-2 opacity-0 transition group-hover:opacity-100 print:hidden"
+                        >
+                          <button class="text-[11px] text-slate-500" (click)="openItemEdit(item)">
+                            Editar
+                          </button>
+                          <button class="text-[11px] text-rose-500" (click)="deleteItem(item)">
+                            Remover
+                          </button>
+                        </div>
+                      }
+                    </div>
+                    @if (item.description) {
+                      <p class="mt-1 text-xs leading-relaxed text-slate-500">
+                        {{ item.description }}
+                      </p>
+                    }
+                    <div class="mt-2 flex flex-wrap gap-1">
+                      @for (strategy of strategiesOf(item); track strategy) {
+                        <span
+                          class="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                          [class]="panel.badge"
+                        >
+                          {{ strategy }}
+                        </span>
+                      }
+                    </div>
+                  </article>
+                } @empty {
+                  @if (canEdit()) {
+                    <button
+                      type="button"
+                      class="w-full rounded-lg border border-dashed border-slate-300 px-3 py-6 text-center text-xs text-slate-400 transition hover:border-slate-400 hover:text-slate-500"
+                      (click)="openItemCreate(panel.key)"
+                    >
+                      Adicionar fator em {{ panel.label }}
+                    </button>
+                  } @else {
+                    <p
+                      class="rounded-lg border border-dashed border-slate-300 px-3 py-6 text-center text-xs text-slate-400"
+                    >
+                      Nenhum fator registrado.
+                    </p>
+                  }
+                }
+              </div>
+            </section>
+          }
+        </div>
+
+        <section class="space-y-3">
+          <div class="flex items-center gap-2">
+            <span appIcon="Sparkles" class="h-4 w-4 text-slate-400"></span>
+            <h3 class="text-sm font-semibold text-slate-700">Cruzamento FOFA</h3>
+            <span class="text-xs text-slate-400"
+              >· {{ filledQuadrants() }} de 4 quadrantes preenchidos</span
+            >
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            @for (crossing of crossings(); track crossing.key) {
+              <article class="rounded-xl border bg-white p-4" [class]="crossing.panel">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold"
+                    [class]="crossing.accent"
+                  >
+                    {{ crossing.key }}
+                  </span>
+                  <h4 class="text-sm font-semibold text-slate-700">{{ crossing.label }}</h4>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-400">{{ crossing.question }}</p>
+                <ul class="mt-3 space-y-1.5">
+                  @for (item of crossing.items; track item.id) {
+                    <li class="flex items-start gap-1.5 text-xs text-slate-600">
+                      <span
+                        class="mt-1 h-1 w-1 shrink-0 rounded-full"
+                        [class]="crossing.accent"
+                      ></span>
+                      <span>{{ item.title }}</span>
+                    </li>
+                  } @empty {
+                    <li class="text-xs text-slate-300">Sem fatores para cruzar.</li>
+                  }
+                </ul>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    }
+  </div>
+}
+
+<app-modal
+  [open]="analysisFormOpen()"
+  [title]="editingAnalysis() ? 'Editar Análise' : 'Nova Análise SWOT'"
+  width="max-w-lg"
+  (closed)="analysisFormOpen.set(false)"
+>
+  <form [formGroup]="analysisForm" (ngSubmit)="saveAnalysis()" class="space-y-4">
+    @if (formError()) {
+      <p class="rounded-lg bg-rose-50 p-3 text-xs text-rose-600">{{ formError() }}</p>
+    }
+    <label class="ui-form-label"
+      >Título *
+      <input formControlName="title" placeholder="Ex: SWOT Organizacional 2026" />
+    </label>
+    <label class="ui-form-label"
+      >Período
+      <input formControlName="period" placeholder="Ex: 1º semestre 2026" />
+    </label>
+    <label class="ui-form-label"
+      >Descrição
+      <textarea
+        rows="3"
+        formControlName="description"
+        placeholder="Participantes e escopo do workshop"
+      ></textarea>
+    </label>
+    <label class="ui-form-label"
+      >Status
+      <select formControlName="status" class="bg-white">
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ statusLabel(status) }}</option>
+        }
+      </select>
+    </label>
+    <div class="ui-form-actions">
+      <button
+        type="button"
+        class="px-4 py-2 text-sm text-slate-500"
+        (click)="analysisFormOpen.set(false)"
+      >
+        Cancelar
+      </button>
+      <button type="submit" class="ui-button-primary" [disabled]="saving()">
+        <span appIcon="Save" class="h-4 w-4"></span>Salvar
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-modal
+  [open]="itemFormOpen()"
+  [title]="editingItem() ? 'Editar Fator' : 'Novo Fator'"
+  width="max-w-lg"
+  (closed)="itemFormOpen.set(false)"
+>
+  <form [formGroup]="itemForm" (ngSubmit)="saveItem()" class="space-y-4">
+    @if (formError()) {
+      <p class="rounded-lg bg-rose-50 p-3 text-xs text-rose-600">{{ formError() }}</p>
+    }
+    <label class="ui-form-label"
+      >Quadrante *
+      <select formControlName="quadrant" class="bg-white">
+        @for (panel of panels(); track panel.key) {
+          <option [value]="panel.key">{{ panel.label }} — {{ panel.scope }}</option>
+        }
+      </select>
+    </label>
+    <label class="ui-form-label"
+      >Fator *
+      <input
+        formControlName="title"
+        [placeholder]="placeholderFor(itemForm.controls.quadrant.value)"
+      />
+    </label>
+    <label class="ui-form-label"
+      >Descrição
+      <textarea
+        rows="3"
+        formControlName="description"
+        placeholder="Detalhe, evidência ou responsável"
+      ></textarea>
+    </label>
+    <div class="ui-form-actions">
+      <button
+        type="button"
+        class="px-4 py-2 text-sm text-slate-500"
+        (click)="itemFormOpen.set(false)"
+      >
+        Cancelar
+      </button>
+      <button type="submit" class="ui-button-primary" [disabled]="saving()">
+        <span appIcon="Save" class="h-4 w-4"></span>Salvar
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-methodology
+  [open]="methodologyOpen()"
+  [info]="methodology"
+  (closed)="methodologyOpen.set(false)"
+/>

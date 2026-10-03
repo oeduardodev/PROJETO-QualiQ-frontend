@@ -139,6 +139,24 @@ export const METHODOLOGIES: Record<string, MethodologyInfo> = {
     source:
       'Kaplan, R. S.; Norton, D. P. (1996). The Balanced Scorecard: Translating Strategy into Action.',
   },
+  swot: {
+    title: 'Análise SWOT — Matriz de Positionamento Estratégico',
+    methodology: 'SWOT (Strengths, Weaknesses, Opportunities, Threats) + Cruzamento FOFA',
+    reference:
+      'Albert Humphrey, SRI International (1960s); Andrews, R. (1971). The Strategy of Corporate Business. Harvard Business Review.',
+    summary:
+      'A análise SWOT classifica os fatores que influenciam o desempenho da organização em quatro quadrantes: Fatores Internos Positivos (Forças), Fatores Internos Negativos (Fraquezas), Fatores Externos Positivos (Oportunidades) e Fatores Externos Negativos (Ameaças). Cada análise é versionada por período, permitindo comparar revisões do mesmo exercício estratégico. O cruzamento FOFA combina os quadrantes em quatro estratégias de ação: FO (Forças x Oportunidades — usar as forças para aproveitar as oportunidades), FA (Forças x Ameaças — usar as forças para enfrentar as ameaças), OA (Oportunidades x Fraquezas — usar as oportunidades para superar as fraquezas) e AF (Ameaças x Fraquezas — reduzir as fraquezas expostas às ameaças). Cada fator registrado alimenta automaticamente as duas estratégias em que participa, servindo de insumo para os planos de ação do módulo.',
+    steps: [
+      'Definir o escopo e o período da análise (ex: SWOT 2026 — 1º semestre)',
+      'Reunir o comitê diretivo e listar fatores internos (forças e fraquezas) sob controle da organização',
+      'Listar fatores externos (oportunidades e ameaças) do ambiente de mercado, regulatório e tecnológico',
+      'Priorizar os fatores mais relevantes e descrevê-los com evidências no painel 2x2',
+      'Revisar o cruzamento FOFA para definir as estratégias que cada combinação origina',
+      'Exportar ou imprimir o painel aprovado e converter as estratégias em planos de ação 5W2H',
+    ],
+    source:
+      'ISO 9001:2015 — Cláusula 4.4 (Processos) e 6.1 (Ações para abordar riscos e oportunidades); Kaplan & Norton (1996).',
+  },
   helpdesk: {
     title: 'Helpdesk — TI, Manutenção e Almoxarifado',
     methodology: 'ITIL — Gerenciamento de Incidentes e Requisições',

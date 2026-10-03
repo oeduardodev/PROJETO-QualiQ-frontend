@@ -36,6 +36,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: 'Layers',
         leaves: [{ id: 'dimensoes', label: 'Dimensões', icon: 'Layers', route: 'dimensoes' }],
       },
+      {
+        id: 'swot',
+        label: 'SWOT',
+        icon: 'Grid3X3',
+        leaves: [{ id: 'swot', label: 'Análise SWOT', icon: 'Grid3X3', route: 'swot' }],
+      },
     ],
   },
   {
@@ -229,6 +235,7 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   dashboard: 'Visão geral do sistema de gestão da qualidade',
   valor: 'Avaliação estratégica de processos',
   dimensoes: 'Dimensões estratégicas com indicadores e planos vinculados ao SIPOC',
+  swot: 'Análise SWOT — painel editável de forças, fraquezas, oportunidades e ameaças',
   'processos/gerenciamento': 'Criação e edição de processos (CRUD completo)',
   'processos/sipoc':
     'Mapeamento de processos — Fornecedores, Entradas, Processo, Saídas e Clientes',
