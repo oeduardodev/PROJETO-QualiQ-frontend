@@ -24,14 +24,8 @@ interface TicketContext {
   description: string | null;
   severity: string;
   status: string;
-  ishikawa: {
-    maquina: string;
-    metodo: string;
-    mao_de_obra: string;
-    material: string;
-    meio_ambiente: string;
-    medida: string;
-  };
+  ishikawa?: Record<string, unknown> | null;
+  custom_fields?: Record<string, unknown> | null;
 }
 
 interface AnalysisRequest {
@@ -50,6 +44,41 @@ interface AIAnalysis {
     how: string;
     how_much: string;
   }[];
+}
+
+const DEFAULT_MODEL = 'gemini-3.8-flash';
+const GEMINI_TIMEOUT_MS = 60_000;
+const GEMINI_MAX_RETRIES = 2;
+const GEMINI_RETRY_BASE_MS = 1_000;
+const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+
+const ISHIKAWA_LABELS: Record<string, string> = {
+  maquina: 'Máquina',
+  metodo: 'Método',
+  mao_de_obra: 'Mão de Obra',
+  material: 'Material',
+  meio_ambiente: 'Meio Ambiente',
+  medida: 'Medida',
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function extractIshikawa(t: TicketContext): Array<[string, string]> {
+  const direct = asRecord(t.ishikawa);
+  const nested = asRecord(asRecord(t.custom_fields)?.['ishikawa']);
+  const source = direct ?? nested;
+  if (!source) return [];
+  const filled: Array<[string, string]> = [];
+  for (const [key, label] of Object.entries(ISHIKAWA_LABELS)) {
+    const raw = source[key];
+    const value = typeof raw === 'string' ? raw.trim() : '';
+    if (value) filled.push([label, value]);
+  }
+  return filled;
 }
 
 function buildSystemPrompt(): string {
@@ -93,20 +122,11 @@ function buildUserPrompt(req: AnalysisRequest): string {
       prompt += `- **Severidade:** ${t.severity}\n`;
       prompt += `- **Status:** ${t.status}\n`;
       if (t.description) prompt += `- **Descrição:** ${t.description}\n`;
-      const ishi = t.ishikawa;
-      const filled6M = Object.entries(ishi).filter(([, v]) => v.trim());
-      if (filled6M.length > 0) {
+      const ishi = extractIshikawa(t);
+      if (ishi.length > 0) {
         prompt += `- **Análise Ishikawa (6Ms):**\n`;
-        filled6M.forEach(([k, v]) => {
-          const labels: Record<string, string> = {
-            maquina: 'Máquina',
-            metodo: 'Método',
-            mao_de_obra: 'Mão de Obra',
-            material: 'Material',
-            meio_ambiente: 'Meio Ambiente',
-            medida: 'Medida',
-          };
-          prompt += `  - **${labels[k] ?? k}:** ${v}\n`;
+        ishi.forEach(([label, value]) => {
+          prompt += `  - **${label}:** ${value}\n`;
         });
       }
       prompt += `\n`;
@@ -302,41 +322,51 @@ Deno.serve(async (req: Request) => {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(body);
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model = Deno.env.get('AI_MODEL')?.trim() || DEFAULT_MODEL;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
 
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }],
+    const geminiPayload = JSON.stringify({
+      system_instruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }],
         },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userPrompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json',
-        },
-      }),
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+      },
     });
 
-    if (!geminiResponse.ok) {
+    let geminiResponse: Response | null = null;
+    for (let attempt = 0; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+      geminiResponse = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: geminiPayload,
+        signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+      });
+      if (geminiResponse.ok || !RETRYABLE_STATUSES.has(geminiResponse.status)) break;
       const errText = await geminiResponse.text();
-      console.error('Gemini API error:', geminiResponse.status, errText);
-      return new Response(
-        JSON.stringify({ error: `Erro da API de IA (${geminiResponse.status}). Tente novamente.` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      console.error(`Gemini ${geminiResponse.status} (tentativa ${attempt + 1}):`, errText);
+      if (attempt === GEMINI_MAX_RETRIES) break;
+      await new Promise((resolve) => setTimeout(resolve, GEMINI_RETRY_BASE_MS * 2 ** attempt));
+    }
+
+    if (!geminiResponse || !geminiResponse.ok) {
+      const status = geminiResponse?.status ?? 504;
+      return new Response(JSON.stringify({ error: `Erro da API de IA (${status}). Tente novamente.` }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const geminiData = await geminiResponse.json();
 
-    // Gemini 2.5 may return multiple parts — some are "thought" tokens, the last is the actual text
     const parts = geminiData?.candidates?.[0]?.content?.parts ?? [];
     let text = '';
     for (const part of parts) {

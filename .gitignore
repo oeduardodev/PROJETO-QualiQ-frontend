@@ -29,6 +29,10 @@ yarn-error.log
 !.vscode/mcp.json
 .history/*
 
+# Supabase
+/supabase/.temp
+.brush
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/
