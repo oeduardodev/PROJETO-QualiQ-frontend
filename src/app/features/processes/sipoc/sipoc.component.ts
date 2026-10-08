@@ -2,6 +2,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { COLUMNS, LABELS } from './sipoc.constants';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import {
+  normalizeProcessTag,
+  PROCESS_TAG_INPUT_PATTERN,
+  processTagSuggestions,
+} from '@features/processes/data-access/process-code.utils';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
@@ -48,6 +53,7 @@ export class SipocComponent {
   readonly saving = signal(false);
   readonly processOpen = signal(false);
   readonly processError = signal<string | null>(null);
+  readonly processSaving = signal(false);
   readonly associationOpen = signal(false);
   readonly associationType = signal<NodeType>('S');
   readonly associationNodes = signal<SipocNode[]>([]);
@@ -60,16 +66,25 @@ export class SipocComponent {
   });
   readonly processForm = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    code: new FormControl('', { nonNullable: true }),
+    tag: new FormControl('', {
+      nonNullable: true,
+      validators: Validators.pattern(PROCESS_TAG_INPUT_PATTERN),
+    }),
     category_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     owner: new FormControl('', { nonNullable: true }),
   });
   readonly selectedStep = computed(
     () => this.allNodes().find((node) => node.id === this.selectedStepId()) ?? null,
   );
+  readonly tagSuggestions = computed(() => processTagSuggestions(this.processes()));
   private nodesRequestId = 0;
 
   constructor() {
+    this.processForm.controls.tag.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+      const normalized = normalizeProcessTag(value) ?? '';
+      if (value !== normalized)
+        this.processForm.controls.tag.setValue(normalized, { emitEvent: false });
+    });
     this.processControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => {
       if (id) void this.loadNodes(id);
       else {
@@ -211,14 +226,18 @@ export class SipocComponent {
 
   async saveProcess(): Promise<void> {
     if (this.processForm.invalid) {
-      this.processError.set('Título e categoria são obrigatórios.');
+      this.processError.set('Informe título e categoria. A tag deve ter exatamente 3 letras.');
       return;
     }
+    if (this.processSaving()) return;
+    this.processSaving.set(true);
+    this.processError.set(null);
     try {
       const value = this.processForm.getRawValue();
       const saved = await this.processService.createProcess({
-        ...value,
-        code: value.code.trim() || null,
+        title: value.title.trim(),
+        code: normalizeProcessTag(value.tag),
+        category_id: value.category_id,
         owner: value.owner.trim() || null,
         impact_score: 5,
         complexity_score: 5,
@@ -228,9 +247,11 @@ export class SipocComponent {
       this.processControl.setValue(saved.id);
       this.toast.success('Processo criado');
       this.processOpen.set(false);
-      this.processForm.reset({ title: '', code: '', category_id: '', owner: '' });
+      this.processForm.reset({ title: '', tag: '', category_id: '', owner: '' });
     } catch (e) {
       this.processError.set(errorMessage(e, 'Erro ao criar processo'));
+    } finally {
+      this.processSaving.set(false);
     }
   }
 

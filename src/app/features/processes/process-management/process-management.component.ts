@@ -1,6 +1,12 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { toProcessPayload } from '../data-access/process.mapper';
+import {
+  normalizeProcessTag,
+  PROCESS_TAG_INPUT_PATTERN,
+  processTag,
+  processTagSuggestions,
+} from '../data-access/process-code.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -33,7 +39,10 @@ export class ProcessManagementComponent {
   readonly categoryFilter = new FormControl('all', { nonNullable: true });
   readonly form = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    code: new FormControl('', { nonNullable: true }),
+    tag: new FormControl('', {
+      nonNullable: true,
+      validators: Validators.pattern(PROCESS_TAG_INPUT_PATTERN),
+    }),
     category_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     owner: new FormControl('', { nonNullable: true }),
     impact_score: new FormControl(5, { nonNullable: true }),
@@ -42,9 +51,14 @@ export class ProcessManagementComponent {
   });
   readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
   readonly filtered = signal<Process[]>([]);
+  readonly tagSuggestions = computed(() => processTagSuggestions(this.processes()));
 
   constructor() {
     void this.loadProcesses();
+    this.form.controls.tag.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+      const normalized = normalizeProcessTag(value) ?? '';
+      if (value !== normalized) this.form.controls.tag.setValue(normalized, { emitEvent: false });
+    });
     this.search.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.filterProcesses());
     this.categoryFilter.valueChanges
       .pipe(takeUntilDestroyed())
@@ -87,7 +101,7 @@ export class ProcessManagementComponent {
     this.editing.set(null);
     this.form.reset({
       title: '',
-      code: '',
+      tag: '',
       category_id: '',
       owner: '',
       impact_score: 5,
@@ -102,7 +116,7 @@ export class ProcessManagementComponent {
     this.editing.set(process);
     this.form.reset({
       title: process.title,
-      code: process.code ?? '',
+      tag: processTag(process.code),
       category_id: process.category_id,
       owner: process.owner ?? '',
       impact_score: process.impact_score,
@@ -114,16 +128,17 @@ export class ProcessManagementComponent {
   }
 
   async saveProcess(): Promise<void> {
+    if (this.saving()) return;
     if (this.form.invalid) {
-      this.formError.set('Título e categoria são obrigatórios.');
+      this.formError.set('Informe título e categoria. A tag deve ter exatamente 3 letras.');
       return;
     }
     this.saving.set(true);
     this.formError.set(null);
     try {
       const value = this.form.getRawValue();
-      const payload = toProcessPayload(value);
       const current = this.editing();
+      const payload = toProcessPayload(value, current);
       const saved = current
         ? await this.processService.updateProcess(current.id, payload)
         : await this.processService.createProcess(payload);

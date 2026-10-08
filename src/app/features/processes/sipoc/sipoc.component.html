@@ -225,7 +225,20 @@
     <label class="ui-form-label"
       >Título *<input formControlName="title" class="ui-form-control" /></label
     ><label class="ui-form-label"
-      >Código<input formControlName="code" class="ui-form-control" /></label
+      >Tag do código<input
+        formControlName="tag"
+        list="sipoc-process-tags"
+        placeholder="Ex: ARQ"
+        autocomplete="off"
+        class="ui-form-control"
+      /><datalist id="sipoc-process-tags">
+        @for (tag of tagSuggestions(); track tag) {
+          <option [value]="tag"></option>
+        }
+      </datalist>
+      <span class="mt-1 text-xs font-normal text-slate-400"
+        >Use 3 letras. Espaços são removidos; a numeração é gerada ao salvar.</span
+      ></label
     ><label class="ui-form-label"
       >Categoria *<select formControlName="category_id" class="ui-form-control bg-white">
         <option value="">Selecionar...</option>
@@ -245,7 +258,8 @@
         Cancelar</button
       ><button
         type="submit"
-        class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
+        [disabled]="processSaving()"
+        class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         Criar
       </button>
