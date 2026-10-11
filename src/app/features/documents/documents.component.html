@@ -203,6 +203,12 @@
                     }}</span>
                   </button>
                   <div class="ui-kanban-card-footer">
+                    <button
+                      class="text-[11px] font-medium text-slate-600"
+                      (click)="openWorkflow(document)"
+                    >
+                      Histórico
+                    </button>
                     @if (column.value !== 'obsoleto') {
                       <button
                         class="text-[11px] font-medium text-blue-600"
@@ -288,10 +294,69 @@
     }
   </div>
 }
-<app-modal
+<app-side-drawer
+  [open]="!!workflowDocument()"
+  [title]="workflowDocument()?.title || 'Documento'"
+  subtitle="Histórico de workflow"
+  width="max-w-lg"
+  (closed)="workflowDocument.set(null)"
+>
+  @if (workflowDocument(); as document) {
+    <div class="space-y-5">
+      <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+        <p class="font-semibold text-slate-700">{{ document.title }}</p>
+        <p class="mt-1 text-xs text-slate-500">Status atual: {{ document.status }}</p>
+        <p class="mt-1 text-xs text-slate-500">
+          Tipo: {{ store.typeName(document.type_id) }} · Processo:
+          {{ store.processName(document.process_id) }}
+        </p>
+        <p class="mt-1 text-xs text-slate-500">
+          Responsável: {{ store.profileName(document.owner_id) }}
+        </p>
+        @if (document.drive_link) {
+          <a
+            [href]="document.drive_link"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-2 inline-block text-xs text-blue-600"
+            >Abrir documento</a
+          >
+        }
+      </div>
+      <section>
+        <h3 class="mb-3 text-sm font-semibold text-slate-700">Histórico de alterações</h3>
+        @if (workflowLoading()) {
+          <p class="text-xs text-slate-400">Carregando histórico...</p>
+        } @else if (workflowError()) {
+          <p class="text-xs text-rose-600">{{ workflowError() }}</p>
+        } @else {
+          <div class="space-y-2">
+            @for (entry of workflowEntries(); track entry.id) {
+              <article class="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
+                <p class="font-medium text-slate-700">
+                  {{ entry.from_status || 'Início' }} → {{ entry.to_status }}
+                </p>
+                <p class="mt-1 text-slate-400">
+                  {{ store.profileName(entry.changed_by) }} · {{ formatDate(entry.changed_at) }}
+                </p>
+                @if (entry.notes) {
+                  <p class="mt-2 text-slate-500">{{ entry.notes }}</p>
+                }
+              </article>
+            } @empty {
+              <p class="text-xs text-slate-400">Nenhuma alteração de status registrada.</p>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
+</app-side-drawer>
+<app-side-drawer
   [open]="documentOpen()"
   [title]="editingDocument() ? 'Editar Documento' : 'Novo Documento'"
-  width="max-w-2xl"
+  [subtitle]="editingDocument() ? store.typeName(editingDocument()!.type_id) : ''"
+  width="max-w-lg"
   (closed)="documentOpen.set(false)"
   ><form
     [formGroup]="documentForm"
@@ -341,7 +406,7 @@
         Salvar
       </button>
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
 <app-modal
   [open]="typeOpen()"

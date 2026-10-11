@@ -5,6 +5,7 @@ import { toNotificationClassificationPayload } from './data-access/notification-
 import { toNotificationTicketPayload } from './data-access/notification-ticket.mapper';
 import { NotificationService } from '@features/notifications/data-access/notification.service';
 import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { SlaService } from '@features/processes/data-access/sla.service';
@@ -15,6 +16,8 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService } from '@core/services/auth.service';
 import type {
   AnalysisTool,
+  ActionPlan,
+  IshikawaData,
   FormFieldSchema,
   NotificationClassification,
   NotificationSeverity,
@@ -29,6 +32,7 @@ import type {
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
@@ -36,7 +40,13 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, ModalComponent, MethodologyComponent],
+  imports: [
+    ReactiveFormsModule,
+    IconDirective,
+    SideDrawerComponent,
+    ModalComponent,
+    MethodologyComponent,
+  ],
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -44,6 +54,7 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 export class NotificationsComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly ticketService = inject(TicketService);
+  private readonly actionPlanService = inject(ActionPlanService);
   private readonly processService = inject(ProcessService);
   private readonly riskService = inject(RiskService);
   private readonly slaService = inject(SlaService);
@@ -67,6 +78,25 @@ export class NotificationsComponent {
   readonly methodologyOpen = signal(false);
   readonly ticketOpen = signal(false);
   readonly editingTicket = signal<Ticket | null>(null);
+  readonly linkedPlans = signal<ActionPlan[]>([]);
+  readonly linkedPlansLoading = signal(false);
+  readonly ishikawa = signal<IshikawaData>({
+    maquina: '',
+    metodo: '',
+    mao_de_obra: '',
+    material: '',
+    meio_ambiente: '',
+    medida: '',
+  });
+  readonly fiveWhys = signal<string[]>(['', '', '', '', '']);
+  readonly ishikawaFields = [
+    { key: 'maquina', label: 'Máquina' },
+    { key: 'metodo', label: 'Método' },
+    { key: 'mao_de_obra', label: 'Mão de obra' },
+    { key: 'material', label: 'Material' },
+    { key: 'meio_ambiente', label: 'Meio ambiente' },
+    { key: 'medida', label: 'Medida' },
+  ] as const;
   readonly classificationOpen = signal(false);
   readonly editingClassification = signal<NotificationClassification | null>(null);
   readonly typeOpen = signal(false);
@@ -87,6 +117,7 @@ export class NotificationsComponent {
       nonNullable: true,
       validators: Validators.required,
     }),
+    analysis_completed: new FormControl(false, { nonNullable: true }),
   });
   readonly classificationForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
@@ -177,6 +208,27 @@ export class NotificationsComponent {
 
   openTicket(ticket?: Ticket): void {
     this.editingTicket.set(ticket ?? null);
+    this.linkedPlans.set([]);
+    if (ticket) void this.loadLinkedPlans(ticket.id);
+    const savedIshikawa = ticket?.custom_fields?.['ishikawa'];
+    const cause =
+      savedIshikawa && typeof savedIshikawa === 'object'
+        ? (savedIshikawa as Partial<IshikawaData>)
+        : {};
+    this.ishikawa.set({
+      maquina: cause.maquina ?? '',
+      metodo: cause.metodo ?? '',
+      mao_de_obra: cause.mao_de_obra ?? '',
+      material: cause.material ?? '',
+      meio_ambiente: cause.meio_ambiente ?? '',
+      medida: cause.medida ?? '',
+    });
+    const savedWhys = ticket?.custom_fields?.['five_whys'];
+    this.fiveWhys.set(
+      Array.isArray(savedWhys)
+        ? [...savedWhys.map(String), '', '', '', '', ''].slice(0, 5)
+        : ['', '', '', '', ''],
+    );
     this.dynamicValues.clear();
     const type = this.types().find((item) => item.id === ticket?.notification_type_id);
     for (const field of type?.form_schema ?? []) {
@@ -198,6 +250,7 @@ export class NotificationsComponent {
             risk_id: ticket.risk_id ?? '',
             sla_id: ticket.sla_id ?? '',
             notification_type_id: ticket.notification_type_id ?? '',
+            analysis_completed: ticket.analysis_completed,
           }
         : {
             title: '',
@@ -210,9 +263,40 @@ export class NotificationsComponent {
             risk_id: '',
             sla_id: '',
             notification_type_id: '',
+            analysis_completed: false,
           },
     );
     this.ticketOpen.set(true);
+  }
+
+  private async loadLinkedPlans(ticketId: string): Promise<void> {
+    this.linkedPlansLoading.set(true);
+    try {
+      const plans = await this.actionPlanService.fetchActionPlansByTicket(ticketId);
+      if (this.editingTicket()?.id === ticketId) this.linkedPlans.set(plans);
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Erro ao carregar planos de ação'));
+    } finally {
+      this.linkedPlansLoading.set(false);
+    }
+  }
+
+  analysisTool(): AnalysisTool {
+    this.dynamicVersion();
+    return (
+      this.types().find((type) => type.id === this.ticketForm.controls.notification_type_id.value)
+        ?.analysis_tool ?? 'Nenhuma'
+    );
+  }
+
+  updateIshikawa(key: keyof IshikawaData, value: string): void {
+    this.ishikawa.update((data) => ({ ...data, [key]: value }));
+  }
+
+  updateFiveWhys(index: number, value: string): void {
+    this.fiveWhys.update((items) =>
+      items.map((item, position) => (position === index ? value : item)),
+    );
   }
 
   async saveTicket(): Promise<void> {
@@ -223,6 +307,11 @@ export class NotificationsComponent {
     this.saving.set(true);
     try {
       const value = this.ticketForm.getRawValue();
+      const tool = this.analysisTool();
+      if (value.status === 'concluido' && tool !== 'Nenhuma' && !value.analysis_completed) {
+        this.toast.error('Conclua a análise de causa antes de finalizar a notificação.');
+        return;
+      }
       const type = this.types().find((item) => item.id === value.notification_type_id);
       const customFields = Object.fromEntries(
         [...this.dynamicValues].map(([key, control]) => [key, control.value]),
@@ -240,13 +329,19 @@ export class NotificationsComponent {
         current?.notification_type_id === value.notification_type_id
           ? { ...current.custom_fields, ...customFields }
           : customFields;
+      if (this.editingTicket() && tool === 'Ishikawa')
+        preservedFields['ishikawa'] = this.ishikawa();
+      if (this.editingTicket() && tool === '5 Porquês')
+        preservedFields['five_whys'] = this.fiveWhys();
+      const { analysis_completed, ...ticketValue } = value;
       const payload = toNotificationTicketPayload(
-        value,
+        ticketValue,
         type,
         preservedFields,
         type ? this.classificationName(type.classification_id) : null,
         current ?? undefined,
       );
+      payload.analysis_completed = analysis_completed;
       const saved = current
         ? await this.ticketService.updateTicket(current.id, payload)
         : await this.ticketService.createTicket(payload);
@@ -267,6 +362,7 @@ export class NotificationsComponent {
           risk_id: '',
           sla_id: '',
           notification_type_id: '',
+          analysis_completed: false,
         });
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao salvar notificação'));
@@ -318,6 +414,22 @@ export class NotificationsComponent {
       this.dynamicValues.set(name, control);
     }
     return control;
+  }
+
+  extraTicketFields(ticket: Ticket): { label: string; value: string }[] {
+    const schemaNames = new Set(this.dynamicFields().map((field) => field.name));
+    return Object.entries(ticket.custom_fields ?? {})
+      .filter(
+        ([key]) =>
+          !schemaNames.has(key) &&
+          key !== 'ishikawa' &&
+          key !== 'five_whys' &&
+          !key.startsWith('_meta_'),
+      )
+      .map(([key, value]) => ({
+        label: key.replace(/_/g, ' '),
+        value: typeof value === 'object' ? JSON.stringify(value) : String(value ?? ''),
+      }));
   }
 
   clearSelectedStep(): void {

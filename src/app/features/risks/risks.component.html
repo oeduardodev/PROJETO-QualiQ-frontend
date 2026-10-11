@@ -193,10 +193,13 @@
     }
   </div>
 }
-<app-modal
+<app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar Risco' : 'Novo Risco'"
-  width="max-w-2xl"
+  [subtitle]="
+    editing() ? levelLabel(editing()!.risk_score) + ' · Score ' + editing()!.risk_score : ''
+  "
+  width="max-w-xl"
   (closed)="formOpen.set(false)"
   ><form [formGroup]="form" (ngSubmit)="saveRisk()" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     @if (formError()) {
@@ -270,16 +273,29 @@
         Salvar
       </button>
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
-<app-modal
+<app-side-drawer
   [open]="detailOpen()"
   [title]="selectedRisk()?.title || 'Detalhes do risco'"
-  width="max-w-3xl"
+  [subtitle]="
+    selectedRisk()
+      ? levelLabel(selectedRisk()!.risk_score) + ' · Score ' + selectedRisk()!.risk_score
+      : ''
+  "
+  width="max-w-xl"
   (closed)="detailOpen.set(false)"
 >
   @if (selectedRisk()) {
     <div class="space-y-6">
+      @if (detailLoading()) {
+        <div class="flex justify-center py-8">
+          <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+        </div>
+      }
+      @if (detailError()) {
+        <p class="rounded-lg bg-rose-50 p-3 text-sm text-rose-600">{{ detailError() }}</p>
+      }
       <div class="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-4">
         <div>
           <span class="block text-xs text-slate-400">Processo</span
@@ -298,6 +314,42 @@
           >{{ selectedRisk()!.owner || '—' }}
         </div>
       </div>
+      <div class="rounded-lg border border-slate-200 p-4 text-sm">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs text-slate-400">
+              Tipo: {{ selectedRisk()!.risk_type }} · Status:
+              {{ statusLabel(selectedRisk()!.status) }}
+            </p>
+            <p class="mt-1 text-xs text-slate-400">
+              Probabilidade {{ selectedRisk()!.probability }}/5 · Impacto
+              {{ selectedRisk()!.impact }}/5
+            </p>
+            @if (selectedRisk()!.step_id) {
+              <p class="mt-1 text-xs text-slate-400">
+                Etapa: {{ stepName(selectedRisk()!.step_id) }}
+              </p>
+            }
+          </div>
+          @if (canManage()) {
+            <button
+              type="button"
+              class="text-xs font-medium text-blue-600"
+              (click)="detailOpen.set(false); openEditRisk(selectedRisk()!)"
+            >
+              Editar risco
+            </button>
+          }
+        </div>
+        @if (selectedRisk()!.description) {
+          <p class="mt-3 text-slate-600">{{ selectedRisk()!.description }}</p>
+        }
+        @if (selectedRisk()!.barriers) {
+          <p class="mt-2 text-xs text-slate-500">
+            Barreiras e controles: {{ selectedRisk()!.barriers }}
+          </p>
+        }
+      </div>
       @for (section of detailSections(); track section.key) {
         <section>
           <div class="mb-2 flex items-center justify-between">
@@ -309,7 +361,13 @@
           <div class="space-y-2">
             @for (item of section.items; track item.id) {
               <div class="flex items-start justify-between rounded-lg border border-slate-200 p-3">
-                <span class="text-sm text-slate-600">{{ item.description }}</span
+                <span class="text-sm text-slate-600"
+                  >{{ item.description }}
+                  @if (detailMeta(section.key, item)) {
+                    <small class="mt-1 block text-xs text-slate-400">{{
+                      detailMeta(section.key, item)
+                    }}</small>
+                  }</span
                 ><button class="text-xs text-rose-500" (click)="removeDetail(section.key, item.id)">
                   Excluir
                 </button>
@@ -324,9 +382,24 @@
           </div>
         </section>
       }
+      <section>
+        <h3 class="mb-2 text-sm font-semibold text-slate-700">
+          Histórico de notificações ({{ riskTickets().length }})
+        </h3>
+        <div class="space-y-2">
+          @for (ticket of riskTickets(); track ticket.id) {
+            <div class="rounded-lg border border-slate-200 p-3 text-xs">
+              <strong class="text-slate-700">{{ ticket.title }}</strong>
+              <p class="mt-1 text-slate-500">{{ ticket.status }} · {{ ticket.severity }}</p>
+            </div>
+          } @empty {
+            <p class="ui-empty-state">Nenhuma notificação vinculada.</p>
+          }
+        </div>
+      </section>
     </div>
   }
-</app-modal>
+</app-side-drawer>
 <app-methodology
   [open]="methodologyOpen()"
   [info]="methodology"

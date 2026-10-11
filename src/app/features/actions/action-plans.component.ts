@@ -7,14 +7,14 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import type { ActionPlan, ActionPlanStatus, Ticket } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
-import { ModalComponent } from '@shared/components/modal/modal.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
   selector: 'app-action-plans',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, ModalComponent, MethodologyComponent],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, MethodologyComponent],
   templateUrl: './action-plans.component.html',
   styleUrl: './action-plans.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -64,6 +64,10 @@ export class ActionPlansComponent {
 
   byStatus(status: ActionPlanStatus): ActionPlan[] {
     return this.plans().filter((plan) => plan.status === status);
+  }
+
+  ticketName(ticketId: string): string {
+    return this.tickets().find((ticket) => ticket.id === ticketId)?.title ?? '—';
   }
 
   openCreateActionPlan(): void {

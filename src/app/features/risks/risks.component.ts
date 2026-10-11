@@ -5,6 +5,7 @@ import { STATUSES, TYPES } from './risks.constants';
 import { toRiskPayload } from './data-access/risk.mapper';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import { TicketService } from '@features/notifications/data-access/ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -18,23 +19,25 @@ import type {
   RiskStatus,
   RiskType,
   SipocNode,
+  Ticket,
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
-import { ModalComponent } from '@shared/components/modal/modal.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
   selector: 'app-risks',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, MethodologyComponent, ModalComponent],
+  imports: [ReactiveFormsModule, IconDirective, MethodologyComponent, SideDrawerComponent],
   templateUrl: './risks.component.html',
   styleUrl: './risks.component.scss',
 })
 export class RisksComponent {
   private readonly riskService = inject(RiskService);
   private readonly processService = inject(ProcessService);
+  private readonly ticketService = inject(TicketService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -61,6 +64,9 @@ export class RisksComponent {
   readonly factors = signal<RiskFactor[]>([]);
   readonly actions = signal<RiskPreventiveAction[]>([]);
   readonly plans = signal<RiskContingencyPlan[]>([]);
+  readonly riskTickets = signal<Ticket[]>([]);
+  readonly detailLoading = signal(false);
+  readonly detailError = signal<string | null>(null);
   readonly search = new FormControl('', { nonNullable: true });
   readonly processFilter = new FormControl('all', { nonNullable: true });
   readonly form = new FormGroup({
@@ -226,10 +232,23 @@ export class RisksComponent {
   async openDetail(risk: Risk): Promise<void> {
     this.selectedRisk.set(risk);
     this.detailOpen.set(true);
-    const { factors, actions, plans } = await this.riskService.fetchDetails(risk.id);
-    this.factors.set(factors);
-    this.actions.set(actions);
-    this.plans.set(plans);
+    this.detailError.set(null);
+    this.detailLoading.set(true);
+    try {
+      const [{ factors, actions, plans }, tickets] = await Promise.all([
+        this.riskService.fetchDetails(risk.id),
+        this.ticketService.fetchTicketsByProcess(risk.process_id),
+      ]);
+      if (this.selectedRisk()?.id !== risk.id) return;
+      this.factors.set(factors);
+      this.actions.set(actions);
+      this.plans.set(plans);
+      this.riskTickets.set(tickets.filter((ticket) => ticket.risk_id === risk.id));
+    } catch (error) {
+      this.detailError.set(errorMessage(error, 'Erro ao carregar detalhes do risco'));
+    } finally {
+      this.detailLoading.set(false);
+    }
   }
 
   async addDetail(kind: 'factor' | 'action' | 'plan'): Promise<void> {
@@ -276,6 +295,30 @@ export class RisksComponent {
 
   processName(id: string): string {
     return this.processes().find((process) => process.id === id)?.title ?? '—';
+  }
+
+  stepName(id: string | null): string {
+    return this.nodes().find((node) => node.id === id)?.title ?? '—';
+  }
+
+  detailMeta(
+    kind: 'factor' | 'action' | 'plan',
+    item: RiskFactor | RiskPreventiveAction | RiskContingencyPlan,
+  ): string {
+    if (kind === 'factor') return (item as RiskFactor).category || '';
+    if (kind === 'action') {
+      const action = item as RiskPreventiveAction;
+      return [action.responsible, action.status].filter(Boolean).join(' · ');
+    }
+    const plan = item as RiskContingencyPlan;
+    return [
+      plan.trigger && `Gatilho: ${plan.trigger}`,
+      plan.responsible,
+      plan.estimated_cost,
+      plan.status,
+    ]
+      .filter(Boolean)
+      .join(' · ');
   }
 
   levelLabel(score: number): string {

@@ -1,7 +1,11 @@
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { COLUMNS, LABELS } from './sipoc.constants';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import { IndicatorService } from '@features/indicators/data-access/indicator.service';
+import { RiskService } from '@features/risks/data-access/risk.service';
+import { DocumentService } from '@features/documents/data-access/document.service';
+import { SlaService } from '@features/processes/data-access/sla.service';
 import {
   normalizeProcessTag,
   PROCESS_TAG_INPUT_PATTERN,
@@ -12,6 +16,10 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService } from '@core/services/auth.service';
 import type {
   NodeType,
+  Indicator,
+  Risk,
+  GEDDocument,
+  SLA,
   Process,
   SipocNode,
   SipocStepAssociation,
@@ -19,19 +27,38 @@ import type {
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
+type CustomFieldType = 'text' | 'number' | 'date' | 'link';
+interface CustomFieldEntry {
+  key: string;
+  label: string;
+  type: CustomFieldType;
+  value: string;
+}
+
 @Component({
   selector: 'app-sipoc',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, MethodologyComponent, ModalComponent],
+  imports: [
+    ReactiveFormsModule,
+    IconDirective,
+    MethodologyComponent,
+    SideDrawerComponent,
+    ModalComponent,
+  ],
   templateUrl: './sipoc.component.html',
   styleUrl: './sipoc.component.scss',
 })
 export class SipocComponent {
   private readonly processService = inject(ProcessService);
+  private readonly indicatorService = inject(IndicatorService);
+  private readonly riskService = inject(RiskService);
+  private readonly documentService = inject(DocumentService);
+  private readonly slaService = inject(SlaService);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly columns = COLUMNS;
@@ -42,6 +69,16 @@ export class SipocComponent {
   readonly allNodes = signal<SipocNode[]>([]);
   readonly stepAssociations = signal<SipocStepAssociation[]>([]);
   readonly selectedStepId = signal<string | null>(null);
+  readonly processDetailOpen = signal(false);
+  readonly processDetailTab = signal<'sipoc' | 'risks' | 'indicators' | 'documents' | 'slas'>(
+    'sipoc',
+  );
+  readonly processDetailLoading = signal(false);
+  readonly processDetailError = signal<string | null>(null);
+  readonly detailRisks = signal<Risk[]>([]);
+  readonly detailIndicators = signal<Indicator[]>([]);
+  readonly detailDocuments = signal<GEDDocument[]>([]);
+  readonly detailSlas = signal<SLA[]>([]);
   readonly loading = signal(true);
   readonly nodesLoading = signal(false);
   readonly error = signal<string | null>(null);
@@ -50,6 +87,10 @@ export class SipocComponent {
   readonly editingNode = signal<SipocNode | null>(null);
   readonly nodeType = signal<NodeType>('S');
   readonly nodeError = signal<string | null>(null);
+  readonly customFields = signal<CustomFieldEntry[]>([]);
+  readonly customFieldsDirty = signal(false);
+  readonly newCustomFieldLabel = signal('');
+  readonly newCustomFieldType = signal<CustomFieldType>('text');
   readonly saving = signal(false);
   readonly processOpen = signal(false);
   readonly processError = signal<string | null>(null);
@@ -60,6 +101,7 @@ export class SipocComponent {
   readonly associationIds = signal(new Set<string>());
   readonly associationLoading = signal(false);
   readonly processControl = new FormControl('', { nonNullable: true });
+  readonly selectedProcessId = toSignal(this.processControl.valueChanges, { initialValue: '' });
   readonly nodeForm = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
@@ -75,6 +117,9 @@ export class SipocComponent {
   });
   readonly selectedStep = computed(
     () => this.allNodes().find((node) => node.id === this.selectedStepId()) ?? null,
+  );
+  readonly selectedProcess = computed(
+    () => this.processes().find((process) => process.id === this.selectedProcessId()) ?? null,
   );
   readonly tagSuggestions = computed(() => processTagSuggestions(this.processes()));
   private nodesRequestId = 0;
@@ -119,6 +164,7 @@ export class SipocComponent {
   async loadNodes(processId: string): Promise<void> {
     const requestId = ++this.nodesRequestId;
     this.nodesLoading.set(true);
+    this.processDetailOpen.set(false);
     this.selectedStepId.set(null);
     try {
       const relevant = await this.processService.fetchRelevantNodes(processId);
@@ -151,17 +197,136 @@ export class SipocComponent {
     this.nodeType.set(type);
     this.nodeForm.reset({ title: '', description: '' });
     this.nodeError.set(null);
+    this.customFields.set([]);
+    this.customFieldsDirty.set(false);
     this.nodeOpen.set(true);
   }
 
   openNode(node: SipocNode): void {
-    if (node.node_type === 'P')
+    if (node.node_type === 'P') {
       this.selectedStepId.update((id) => (id === node.id ? null : node.id));
+      if (this.selectedStepId()) void this.openProcessDetail();
+      return;
+    }
+    this.openNodeEditor(node);
+  }
+
+  openNodeEditor(node: SipocNode): void {
     this.editingNode.set(node);
     this.nodeType.set(node.node_type);
     this.nodeForm.reset({ title: node.title, description: node.description ?? '' });
     this.nodeError.set(null);
+    const raw = node.custom_fields ?? {};
+    this.customFields.set(
+      Object.entries(raw)
+        .filter(([key]) => !key.startsWith('_meta_'))
+        .map(([key, value]) => {
+          const meta = raw[`_meta_${key}`];
+          const info =
+            meta && typeof meta === 'object' ? (meta as { label?: string; type?: string }) : {};
+          const type =
+            info.type === 'number' || info.type === 'date' || info.type === 'link'
+              ? info.type
+              : 'text';
+          return { key, label: info.label || key, type, value: String(value ?? '') };
+        }),
+    );
+    this.customFieldsDirty.set(false);
     this.nodeOpen.set(true);
+  }
+
+  addCustomField(): void {
+    const label = this.newCustomFieldLabel().trim();
+    const key = label
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s_]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+    if (!key || this.customFields().some((entry) => entry.key === key)) return;
+    this.customFields.update((items) => [
+      ...items,
+      { key, label, type: this.newCustomFieldType(), value: '' },
+    ]);
+    this.customFieldsDirty.set(true);
+    this.newCustomFieldLabel.set('');
+    this.newCustomFieldType.set('text');
+  }
+
+  updateCustomField(key: string, value: string): void {
+    this.customFields.update((items) =>
+      items.map((item) => (item.key === key ? { ...item, value } : item)),
+    );
+    this.customFieldsDirty.set(true);
+  }
+
+  setCustomFieldType(type: string): void {
+    if (type === 'text' || type === 'number' || type === 'date' || type === 'link')
+      this.newCustomFieldType.set(type);
+  }
+
+  removeCustomField(key: string): void {
+    this.customFields.update((items) => items.filter((item) => item.key !== key));
+    this.customFieldsDirty.set(true);
+  }
+
+  private serializeCustomFields(): Record<string, unknown> {
+    const fields: Record<string, unknown> = {};
+    for (const entry of this.customFields()) {
+      fields[entry.key] = entry.type === 'number' ? Number(entry.value) || 0 : entry.value;
+      fields[`_meta_${entry.key}`] = { label: entry.label, type: entry.type };
+    }
+    return fields;
+  }
+
+  async openProcessDetail(): Promise<void> {
+    const process = this.selectedProcess();
+    if (!process) return;
+    this.processDetailOpen.set(true);
+    this.processDetailTab.set('sipoc');
+    this.processDetailError.set(null);
+    this.processDetailLoading.set(true);
+    try {
+      const [risks, indicators, documents, slas] = await Promise.all([
+        this.riskService.fetchRisksByProcess(process.id),
+        this.indicatorService.fetchIndicatorsByProcess(process.id),
+        this.documentService.fetchDocumentsByProcess(process.id),
+        this.slaService.fetchSlasByProcess(process.id),
+      ]);
+      if (!this.processDetailOpen() || this.selectedProcess()?.id !== process.id) return;
+      this.detailRisks.set(risks);
+      this.detailIndicators.set(indicators);
+      this.detailDocuments.set(documents);
+      this.detailSlas.set(slas);
+    } catch (error) {
+      this.processDetailError.set(errorMessage(error, 'Erro ao carregar dados do processo'));
+    } finally {
+      this.processDetailLoading.set(false);
+    }
+  }
+
+  detailNodes(type: NodeType): SipocNode[] {
+    const ids = new Set(this.stepAssociations().map((item) => item.associated_node_id));
+    return this.allNodes().filter((node) => node.node_type === type && ids.has(node.id));
+  }
+
+  setProcessDetailTab(tab: string | undefined): void {
+    if (
+      tab === 'sipoc' ||
+      tab === 'risks' ||
+      tab === 'indicators' ||
+      tab === 'documents' ||
+      tab === 'slas'
+    )
+      this.processDetailTab.set(tab);
+  }
+
+  editSelectedStep(): void {
+    const step = this.selectedStep();
+    if (!step) return;
+    this.processDetailOpen.set(false);
+    this.openNodeEditor(step);
   }
 
   async saveNode(): Promise<void> {
@@ -174,7 +339,7 @@ export class SipocComponent {
       const value = this.nodeForm.getRawValue();
       const current = this.editingNode();
       const steps = !current && this.nodeType() !== 'P' ? this.nodesFor('P') : [];
-      const saved =
+      let saved =
         current || this.nodeType() === 'P'
           ? await this.processService.saveNode(
               value,
@@ -188,6 +353,11 @@ export class SipocComponent {
               this.processControl.value,
               steps,
             );
+      if (this.customFieldsDirty()) {
+        saved = await this.processService.updateSipocNode(saved.id, {
+          custom_fields: this.serializeCustomFields(),
+        });
+      }
       if (steps.length) {
         this.stepAssociations.update((items) => [
           ...items,

@@ -12,9 +12,11 @@ import type {
   CopyStatus,
   DocumentStatus,
   DocumentType,
+  DocumentWorkflow,
   GEDDocument,
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { DocumentsStore } from './documents.store';
@@ -22,7 +24,7 @@ import { DocumentsStore } from './documents.store';
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, ModalComponent],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, ModalComponent],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -42,6 +44,10 @@ export class DocumentsComponent {
   readonly search = new FormControl('', { nonNullable: true });
   readonly documentOpen = signal(false);
   readonly editingDocument = signal<GEDDocument | null>(null);
+  readonly workflowDocument = signal<GEDDocument | null>(null);
+  readonly workflowEntries = signal<DocumentWorkflow[]>([]);
+  readonly workflowLoading = signal(false);
+  readonly workflowError = signal<string | null>(null);
   readonly typeOpen = signal(false);
   readonly editingType = signal<DocumentType | null>(null);
   readonly formError = signal<string | null>(null);
@@ -151,6 +157,21 @@ export class DocumentsComponent {
           },
     );
     this.documentOpen.set(true);
+  }
+
+  async openWorkflow(document: GEDDocument): Promise<void> {
+    this.workflowDocument.set(document);
+    this.workflowEntries.set([]);
+    this.workflowError.set(null);
+    this.workflowLoading.set(true);
+    try {
+      const entries = await this.documentService.fetchDocumentWorkflows(document.id);
+      if (this.workflowDocument()?.id === document.id) this.workflowEntries.set(entries);
+    } catch (error) {
+      this.workflowError.set(errorMessage(error, 'Erro ao carregar histórico do documento'));
+    } finally {
+      this.workflowLoading.set(false);
+    }
   }
 
   async saveDocument(): Promise<void> {

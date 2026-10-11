@@ -239,10 +239,11 @@
     }
   </div>
 }
-<app-modal
+<app-side-drawer
   [open]="ticketOpen()"
   [title]="editingTicket() ? 'Editar Notificação' : 'Nova Notificação'"
-  width="max-w-2xl"
+  [subtitle]="editingTicket() ? processName(editingTicket()!.process_id) : ''"
+  width="max-w-lg"
   (closed)="ticketOpen.set(false)"
   ><form
     [formGroup]="ticketForm"
@@ -253,17 +254,28 @@
     ><label class="ui-form-label sm:col-span-2"
       >Descrição<textarea rows="3" formControlName="description"></textarea></label
     ><label class="ui-form-label"
-      >Processo *<select formControlName="process_id">
+      >Processo *<select formControlName="process_id" (change)="clearSelectedStep()">
         <option value="">Selecionar...</option>
         @for (process of processes(); track process.id) {
           <option [value]="process.id">{{ process.title }}</option>
         }
       </select></label
     ><label class="ui-form-label"
-      >Tipo<select formControlName="notification_type_id">
+      >Tipo<select
+        #drawerNotificationType
+        formControlName="notification_type_id"
+        (change)="selectNotificationType(drawerNotificationType.value)"
+      >
         <option value="">—</option>
         @for (type of types(); track type.id) {
           <option [value]="type.id">{{ type.name }}</option>
+        }
+      </select></label
+    ><label class="ui-form-label"
+      >Etapa SIPOC<select formControlName="step_id">
+        <option value="">—</option>
+        @for (step of stepsForProcess(); track step.id) {
+          <option [value]="step.id">{{ step.title }}</option>
         }
       </select></label
     ><label class="ui-form-label"
@@ -292,13 +304,120 @@
           <option [value]="sla.id">{{ sla.title }}</option>
         }
       </select></label
-    >
+    ><label class="ui-form-label"
+      >Data/hora do incidente<input type="datetime-local" formControlName="incident_datetime"
+    /></label>
+    @if (editingTicket(); as ticket) {
+      <div
+        class="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500 sm:col-span-2"
+      >
+        <p>
+          Classificação: {{ ticket.classification_flag || '—' }} · Tipo:
+          {{ ticket.incident_type || '—' }}
+        </p>
+        <p class="mt-1">Ferramenta de análise: {{ analysisTool() }}</p>
+        @if (ticket.free_description && ticket.free_description !== ticket.description) {
+          <p class="mt-1">Descrição livre: {{ ticket.free_description }}</p>
+        }
+      </div>
+    }
+    @for (field of dynamicFields(); track field.name) {
+      <label class="ui-form-label" [class.sm:col-span-2]="field.type === 'text'">
+        {{ field.label }}{{ field.required ? ' *' : '' }}
+        @if (field.type === 'select') {
+          <select [formControl]="dynamicControl(field.name)">
+            <option value="">Selecionar...</option>
+            @for (option of field.options || []; track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        } @else {
+          <input [type]="field.type" [formControl]="dynamicControl(field.name)" />
+        }
+      </label>
+    }
+    @if (editingTicket() && analysisTool() !== 'Nenhuma') {
+      <section class="space-y-3 border-t border-slate-100 pt-4 sm:col-span-2">
+        <h3 class="text-sm font-semibold text-slate-700">
+          Análise de causa raiz · {{ analysisTool() }}
+        </h3>
+        @if (analysisTool() === 'Ishikawa') {
+          @for (field of ishikawaFields; track field.key) {
+            <label class="ui-form-label"
+              >{{ field.label
+              }}<input
+                [value]="ishikawa()[field.key]"
+                #ishikawaInput
+                (input)="updateIshikawa(field.key, ishikawaInput.value)"
+            /></label>
+          }
+        } @else if (analysisTool() === '5 Porquês') {
+          @for (answer of fiveWhys(); track $index) {
+            <label class="ui-form-label"
+              >{{ $index + 1 }}º porquê<input
+                [value]="answer"
+                #whyInput
+                (input)="updateFiveWhys($index, whyInput.value)"
+            /></label>
+          }
+        }
+        <label class="flex items-center gap-2 text-xs font-medium text-slate-600"
+          ><input type="checkbox" formControlName="analysis_completed" />Análise concluída</label
+        >
+        @if (
+          ticketForm.controls.status.value === 'concluido' &&
+          !ticketForm.controls.analysis_completed.value
+        ) {
+          <p class="rounded-lg bg-rose-50 p-2 text-xs text-rose-600">
+            Conclua a análise antes de finalizar.
+          </p>
+        }
+      </section>
+    }
+    @if (editingTicket(); as ticket) {
+      @if (extraTicketFields(ticket).length) {
+        <section class="space-y-2 border-t border-slate-100 pt-4 sm:col-span-2">
+          <h3 class="text-sm font-semibold text-slate-700">Outros dados registrados</h3>
+          @for (field of extraTicketFields(ticket); track field.label) {
+            <p class="text-xs text-slate-500">
+              <strong class="capitalize">{{ field.label }}:</strong> {{ field.value }}
+            </p>
+          }
+        </section>
+      }
+    }
+    @if (editingTicket()) {
+      <section class="border-t border-slate-100 pt-4 sm:col-span-2">
+        <h3 class="text-sm font-semibold text-slate-700">Planos de ação vinculados</h3>
+        @if (linkedPlansLoading()) {
+          <p class="mt-2 text-xs text-slate-400">Carregando planos...</p>
+        } @else {
+          <div class="mt-2 space-y-2">
+            @for (plan of linkedPlans(); track plan.id) {
+              <div class="rounded-lg border border-slate-200 p-3 text-xs">
+                <div class="flex justify-between gap-2">
+                  <strong class="text-slate-700">{{ plan.title }}</strong
+                  ><span class="text-slate-500">{{ plan.status }}</span>
+                </div>
+                @if (plan.who || plan.when) {
+                  <p class="mt-1 text-slate-400">
+                    {{ plan.who || '—' }} · {{ plan.when || 'Sem prazo' }}
+                  </p>
+                }
+              </div>
+            } @empty {
+              <p class="text-xs text-slate-400">Nenhum plano de ação vinculado.</p>
+            }
+          </div>
+        }
+      </section>
+    }
     <div class="ui-form-actions">
       <button type="button" class="ui-button-secondary" (click)="ticketOpen.set(false)">
         Cancelar</button
       ><button type="submit" class="ui-button-primary">Salvar</button>
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
 <app-modal
   [open]="classificationOpen()"

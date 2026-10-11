@@ -71,10 +71,11 @@
     </div>
   </div>
 }
-<app-modal
+<app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar Plano de Ação' : 'Novo Plano de Ação'"
-  width="max-w-3xl"
+  [subtitle]="editing() ? 'Chamado: ' + ticketName(editing()!.ticket_id) : ''"
+  width="max-w-lg"
   (closed)="formOpen.set(false)"
   ><form
     [formGroup]="form"
@@ -111,7 +112,7 @@
         Cancelar</button
       ><button type="submit" class="ui-button-primary">Salvar</button>
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
 <app-methodology
   [open]="methodologyOpen()"

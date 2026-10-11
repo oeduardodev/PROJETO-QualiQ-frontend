@@ -16,14 +16,14 @@ import type {
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
-import { ModalComponent } from '@shared/components/modal/modal.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
   selector: 'app-helpdesk',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, ModalComponent, MethodologyComponent],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, MethodologyComponent],
   templateUrl: './helpdesk.component.html',
   styleUrl: './helpdesk.component.scss',
   host: { class: 'ui-standard-fields' },

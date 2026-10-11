@@ -89,10 +89,11 @@
     </div>
   </div>
 }
-<app-modal
+<app-side-drawer
   [open]="formOpen()"
   [title]="readOnly() ? 'Detalhes do Chamado' : editing() ? 'Editar Chamado' : 'Novo Chamado'"
-  width="max-w-2xl"
+  [subtitle]="editing() ? categoryLabel(editing()!.category) : ''"
+  width="max-w-lg"
   (closed)="formOpen.set(false)"
   ><form [formGroup]="form" (ngSubmit)="saveTicket()" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
@@ -134,7 +135,7 @@
         <button type="submit" [disabled]="saving()" class="ui-button-primary">Salvar</button>
       }
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
 <app-methodology
   [open]="methodologyOpen()"
