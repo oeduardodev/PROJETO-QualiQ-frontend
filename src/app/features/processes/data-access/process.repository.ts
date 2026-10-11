@@ -58,6 +58,32 @@ export class ProcessRepository {
     );
   }
 
+  async createCategory(
+    input: Pick<ValueChainCategory, 'name' | 'description' | 'color_key' | 'order_index'>,
+  ): Promise<ValueChainCategory> {
+    const { data, error } = await this.client
+      .from('value_chain_categories')
+      .insert(input)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async updateCategory(
+    id: string,
+    patch: Partial<Pick<ValueChainCategory, 'name' | 'description' | 'color_key' | 'order_index'>>,
+  ): Promise<ValueChainCategory> {
+    const { data, error } = await this.client
+      .from('value_chain_categories')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   fetchSipocNodes(): Promise<SipocNode[]> {
     return fetchAllPages((from, to) =>
       this.client.from('sipoc_nodes').select('*').order('created_at').order('id').range(from, to),

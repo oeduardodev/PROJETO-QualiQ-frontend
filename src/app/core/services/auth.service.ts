@@ -1,13 +1,14 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Profile, UserRole } from '@core/models/database';
+import type { Profile } from '@core/models/database';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { ProfileRepository } from '@core/data-access/profile.repository';
 
 type PermissionAction = 'read' | 'create' | 'update' | 'delete';
+type AppRole = 'admin' | 'gestor' | 'operador';
 
-const PERMISSIONS: Record<Exclude<UserRole, 'Admin'>, Record<string, PermissionAction[]>> = {
-  Gestor: {
+const PERMISSIONS: Record<Exclude<AppRole, 'admin'>, Record<string, PermissionAction[]>> = {
+  gestor: {
     processes: ['read', 'create', 'update', 'delete'],
     sipoc_nodes: ['read'],
     tickets: ['read', 'create', 'update', 'delete'],
@@ -20,7 +21,7 @@ const PERMISSIONS: Record<Exclude<UserRole, 'Admin'>, Record<string, PermissionA
     controlled_copies: ['read', 'create', 'update', 'delete'],
     slas: ['read', 'create', 'update', 'delete'],
   },
-  Operador: {
+  operador: {
     processes: ['read'],
     sipoc_nodes: ['read'],
     tickets: ['read', 'create', 'update', 'delete'],
@@ -38,10 +39,13 @@ export class AuthService {
   readonly user = signal<User | null>(null);
   readonly profile = signal<Profile | null>(null);
   readonly loading = signal(true);
-  readonly role = computed(() => this.profile()?.role ?? null);
-  readonly isAdmin = computed(() => this.role() === 'Admin');
-  readonly isGestor = computed(() => this.role() === 'Gestor');
-  readonly isOperador = computed(() => this.role() === 'Operador');
+  readonly role = computed<AppRole | null>(() => {
+    const role = this.profile()?.role?.toLowerCase();
+    return role === 'admin' || role === 'gestor' || role === 'operador' ? role : null;
+  });
+  readonly isAdmin = computed(() => this.role() === 'admin');
+  readonly isGestor = computed(() => this.role() === 'gestor');
+  readonly isOperador = computed(() => this.role() === 'operador');
   private initialized = false;
   private sessionRequestId = 0;
 
@@ -77,7 +81,7 @@ export class AuthService {
   can(action: PermissionAction, resource: string): boolean {
     const role = this.role();
     if (!role) return false;
-    if (role === 'Admin') return true;
+    if (role === 'admin') return true;
     return PERMISSIONS[role][resource]?.includes(action) ?? false;
   }
 

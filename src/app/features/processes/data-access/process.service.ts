@@ -87,6 +87,19 @@ export class ProcessService {
     return this.repository.fetchCategories();
   }
 
+  createCategory(
+    input: Pick<ValueChainCategory, 'name' | 'description' | 'color_key' | 'order_index'>,
+  ): Promise<ValueChainCategory> {
+    return this.repository.createCategory(input);
+  }
+
+  updateCategory(
+    id: string,
+    patch: Partial<Pick<ValueChainCategory, 'name' | 'description' | 'color_key' | 'order_index'>>,
+  ): Promise<ValueChainCategory> {
+    return this.repository.updateCategory(id, patch);
+  }
+
   fetchSipocNodes(): Promise<SipocNode[]> {
     return this.repository.fetchSipocNodes();
   }

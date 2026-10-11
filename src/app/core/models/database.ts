@@ -95,7 +95,7 @@ export interface ValueChainCategory {
   id: string;
   name: string;
   description: string | null;
-  color_key: 'blue' | 'green' | 'orange';
+  color_key: string;
   order_index: number;
   created_at: string;
 }
@@ -105,6 +105,7 @@ export type NodeType = 'S' | 'I' | 'P' | 'O' | 'C';
 export interface Process {
   id: string;
   category_id: string;
+  order_index: number;
   title: string;
   code: string | null;
   impact_score: number;
@@ -214,7 +215,7 @@ export interface ActionPlan {
   updated_at: string;
 }
 
-export type UserRole = 'Admin' | 'Gestor' | 'Operador';
+export type UserRole = 'Admin' | 'Gestor' | 'Operador' | 'admin' | 'gestor' | 'operador';
 
 export interface Profile {
   id: string;

@@ -16,57 +16,183 @@
         <h2 class="ui-page-title">Cadeia de Valor</h2>
         <p class="ui-page-subtitle">{{ total() }} processos mapeados</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button
+          type="button"
           class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
           (click)="methodologyOpen.set(true)"
         >
           <span appIcon="Info" class="h-4 w-4"></span>Metodologia
         </button>
-        @if (auth.can('create', 'processes')) {
-          <a
-            href="/processos/gerenciamento"
-            class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-            ><span appIcon="Plus" class="h-4 w-4"></span>Novo Processo</a
+        @if (auth.isAdmin()) {
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium"
+            [class]="
+              manageMode()
+                ? 'border-slate-800 bg-slate-800 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            "
+            [attr.aria-pressed]="manageMode()"
+            (click)="toggleManageMode()"
           >
+            <span appIcon="Cog" class="h-4 w-4"></span>
+            {{ manageMode() ? 'Concluir edição' : 'Configurar matriz' }}
+          </button>
         }
       </div>
     </div>
+    @if (auth.isAdmin() && manageMode()) {
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+      >
+        <p class="text-sm text-slate-600">
+          Arraste os processos para mudar a ordem. Use a engrenagem de cada classificação para
+          editar nome e cor.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            (click)="openCreateCategory()"
+          >
+            <span appIcon="Plus" class="h-4 w-4"></span>Nova classificação
+          </button>
+          <a
+            href="/processos/gerenciamento"
+            class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            <span appIcon="Plus" class="h-4 w-4"></span>Novo processo
+          </a>
+        </div>
+      </div>
+    }
     <div class="space-y-4">
-      @for (category of categories(); track category.id) {
-        <section class="rounded-2xl border p-5" [class]="laneClass(category.color_key)">
-          <div class="mb-4 flex items-center justify-between">
+      @for (category of categories(); track category.id; let categoryIndex = $index) {
+        <section
+          class="rounded-2xl border p-5"
+          [style.border-color]="colorHex(category.color_key) + '55'"
+          [style.background-color]="colorHex(category.color_key) + '0d'"
+        >
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2.5">
-              <span class="h-3 w-3 rounded-full" [class]="dotClass(category.color_key)"></span>
-              <h3 class="text-sm font-semibold" [class]="labelClass(category.color_key)">
+              <span
+                class="h-3 w-3 rounded-full"
+                [style.background-color]="colorHex(category.color_key)"
+              ></span>
+              <h3 class="text-sm font-semibold" [style.color]="colorHex(category.color_key)">
                 {{ category.name }}
               </h3>
               @if (category.description) {
-                <span class="hidden text-xs text-slate-400 sm:inline"
+                <span class="hidden text-xs text-slate-500 sm:inline"
                   >· {{ category.description }}</span
                 >
               }
             </div>
-            <span class="text-xs font-medium text-slate-600"
-              >{{ category.processes.length }}
-              {{ category.processes.length === 1 ? 'processo' : 'processos' }}</span
-            >
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-slate-600">
+                {{ category.processes.length }}
+                {{ category.processes.length === 1 ? 'processo' : 'processos' }}
+              </span>
+              @if (auth.isAdmin() && manageMode()) {
+                <button
+                  type="button"
+                  class="matrix-icon-button"
+                  [disabled]="reordering() || categoryIndex === 0"
+                  [attr.aria-label]="'Mover classificação ' + category.name + ' para cima'"
+                  title="Mover classificação para cima"
+                  (click)="moveCategory(category.id, -1)"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  class="matrix-icon-button"
+                  [disabled]="reordering() || categoryIndex === categories().length - 1"
+                  [attr.aria-label]="'Mover classificação ' + category.name + ' para baixo'"
+                  title="Mover classificação para baixo"
+                  (click)="moveCategory(category.id, 1)"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  class="matrix-icon-button"
+                  [attr.aria-label]="'Editar classificação ' + category.name"
+                  title="Editar classificação"
+                  (click)="openEditCategory(category)"
+                >
+                  <span appIcon="Cog" class="h-4 w-4"></span>
+                </button>
+              }
+            </div>
           </div>
           @if (category.processes.length) {
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              @for (process of category.processes; track process.id) {
-                <article
-                  class="group flex items-center gap-2.5 rounded-xl border bg-white px-4 py-3 transition hover:-translate-y-0.5 hover:shadow-md"
+              @for (process of category.processes; track process.id; let processIndex = $index) {
+                <div
+                  class="matrix-process-card group flex items-center gap-1 rounded-xl border bg-white px-2 py-2 transition hover:-translate-y-0.5 hover:shadow-md"
+                  [class.matrix-dragging]="draggedProcessId() === process.id"
+                  [draggable]="auth.isAdmin() && manageMode() && !reordering()"
+                  (dragstart)="onDragStart($event, process)"
+                  (dragend)="draggedProcessId.set(null)"
+                  (dragover)="onDragOver($event)"
+                  (drop)="onDrop($event, category.id, process.id)"
                 >
-                  <span class="h-2 w-2 rounded-full" [class]="dotClass(category.color_key)"></span
-                  ><span class="flex-1 truncate text-sm font-medium text-slate-800">{{
-                    process.title
-                  }}</span
-                  ><span
-                    appIcon="ChevronRight"
-                    class="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5"
-                  ></span>
-                </article>
+                  @if (auth.isAdmin() && manageMode()) {
+                    <span
+                      class="cursor-grab px-1 text-xs text-slate-400"
+                      title="Arraste para ordenar"
+                      >⋮⋮</span
+                    >
+                  }
+                  <button
+                    type="button"
+                    class="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
+                    [attr.aria-label]="'Abrir resumo de ' + process.title"
+                    (click)="openSummary(process)"
+                  >
+                    <span
+                      class="h-2 w-2 shrink-0 rounded-full"
+                      [style.background-color]="colorHex(category.color_key)"
+                    ></span>
+                    <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">{{
+                      process.title
+                    }}</span>
+                    @if (strategicProcessIds().has(process.id)) {
+                      <span
+                        appIcon="Target"
+                        class="h-4 w-4 shrink-0 text-violet-600"
+                        title="Vínculo estratégico"
+                      ></span>
+                    }
+                    <span appIcon="ChevronRight" class="h-4 w-4 shrink-0 text-slate-300"></span>
+                  </button>
+                  @if (auth.isAdmin() && manageMode()) {
+                    <div class="flex shrink-0 items-center gap-0.5">
+                      <button
+                        type="button"
+                        class="matrix-icon-button"
+                        [disabled]="reordering() || processIndex === 0"
+                        [attr.aria-label]="'Mover ' + process.title + ' para a esquerda'"
+                        title="Mover para a esquerda"
+                        (click)="moveProcess(category.id, process.id, -1)"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        class="matrix-icon-button"
+                        [disabled]="reordering() || processIndex === category.processes.length - 1"
+                        [attr.aria-label]="'Mover ' + process.title + ' para a direita'"
+                        title="Mover para a direita"
+                        (click)="moveProcess(category.id, process.id, 1)"
+                      >
+                        →
+                      </button>
+                    </div>
+                  }
+                </div>
               }
             </div>
           } @else {
@@ -79,6 +205,221 @@
     </div>
   </div>
 }
+
+<app-modal
+  [open]="!!selectedProcess()"
+  [title]="selectedProcess()?.title ?? 'Resumo do processo'"
+  width="max-w-5xl"
+  (closed)="closeSummary()"
+>
+  @if (selectedProcess(); as process) {
+    <div class="space-y-5">
+      <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        @if (process.code) {
+          <span class="rounded bg-slate-100 px-2 py-1 font-mono">{{ process.code }}</span>
+        }
+        @if (process.owner) {
+          <span>Responsável: {{ process.owner }}</span>
+        }
+        @if (strategicProcessIds().has(process.id)) {
+          <span class="rounded-full bg-violet-50 px-2 py-1 font-medium text-violet-700">
+            Vinculado ao planejamento estratégico
+          </span>
+        }
+        @if (auth.isAdmin()) {
+          <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              (click)="openManagementFromSummary()"
+            >
+              <span appIcon="Cog" class="h-4 w-4"></span>Configurar matriz
+            </button>
+          </div>
+        }
+      </div>
+      @if (strategicDimensions(process.id).length) {
+        <p class="text-sm text-violet-700">
+          Dimensões estratégicas: {{ strategicDimensions(process.id).join(', ') }}
+        </p>
+      }
+      @if (summaryLoading()) {
+        <div class="flex items-center gap-2 py-10 text-sm text-slate-500">
+          <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>Carregando resumo...
+        </div>
+      } @else if (summaryError()) {
+        <div class="py-8 text-sm text-red-600">
+          {{ summaryError() }}
+          <button type="button" class="ml-2 underline" (click)="openSummary(process)">
+            Tentar novamente
+          </button>
+        </div>
+      } @else if (summary(); as details) {
+        <div class="grid gap-4 md:grid-cols-2">
+          <section class="matrix-summary-section md:col-span-2">
+            <h3>Gerenciamento do processo</h3>
+            <dl class="grid gap-3 text-sm sm:grid-cols-4">
+              <div>
+                <dt class="text-xs text-slate-500">Classificação</dt>
+                <dd class="font-medium text-slate-700">{{ categoryName(process.category_id) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Impacto</dt>
+                <dd class="font-medium text-slate-700">{{ process.impact_score }}/10</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Complexidade</dt>
+                <dd class="font-medium text-slate-700">{{ process.complexity_score }}/10</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-slate-500">Maturidade</dt>
+                <dd class="font-medium text-slate-700">{{ process.maturity_level }}/5</dd>
+              </div>
+            </dl>
+          </section>
+          <section class="matrix-summary-section">
+            <h3>
+              Mapeamento de processos <span>{{ mappedSteps(details.nodes).length }} etapas</span>
+            </h3>
+            <p class="mb-3 text-xs text-slate-500">
+              {{ nodeCount(details.nodes, 'S') }} fornecedores ·
+              {{ nodeCount(details.nodes, 'I') }} entradas ·
+              {{ nodeCount(details.nodes, 'O') }} saídas ·
+              {{ nodeCount(details.nodes, 'C') }} clientes
+            </p>
+            @for (step of mappedSteps(details.nodes); track step.id) {
+              <div class="matrix-summary-item">
+                <strong>{{ step.title }}</strong>
+                @if (step.description) {
+                  <small>{{ step.description }}</small>
+                }
+              </div>
+            } @empty {
+              <p class="matrix-summary-empty">Nenhuma etapa mapeada.</p>
+            }
+          </section>
+          <section class="matrix-summary-section">
+            <h3>
+              Indicadores <span>{{ details.indicators.length }}</span>
+            </h3>
+            @for (indicator of details.indicators; track indicator.id) {
+              <div class="matrix-summary-item">
+                <strong>{{ indicator.title }}</strong>
+                <small
+                  >Resultado: {{ indicator.current_value }} {{ indicator.unit }} · Meta:
+                  {{ indicator.goal_value }} {{ indicator.unit }}</small
+                >
+              </div>
+            } @empty {
+              <p class="matrix-summary-empty">Nenhum indicador vinculado.</p>
+            }
+          </section>
+          <section class="matrix-summary-section">
+            <h3>
+              Documentos <span>{{ details.documents.length }}</span>
+            </h3>
+            @for (document of details.documents; track document.id) {
+              <div class="matrix-summary-item">
+                <strong>{{ document.title }}</strong>
+                <small>Status: {{ document.status }}</small>
+              </div>
+            } @empty {
+              <p class="matrix-summary-empty">Nenhum documento vinculado.</p>
+            }
+          </section>
+          <section class="matrix-summary-section">
+            <h3>
+              SLAs <span>{{ details.slas.length }}</span>
+            </h3>
+            @for (sla of details.slas; track sla.id) {
+              <div class="matrix-summary-item">
+                <strong>{{ sla.title }}</strong>
+                <small>{{ slaRelation(sla, process.id) }} · {{ sla.status }}</small>
+              </div>
+            } @empty {
+              <p class="matrix-summary-empty">Nenhum SLA vinculado.</p>
+            }
+          </section>
+          <section class="matrix-summary-section">
+            <h3>
+              Riscos <span>{{ details.risks.length }}</span>
+            </h3>
+            @for (risk of details.risks; track risk.id) {
+              <div class="matrix-summary-item">
+                <strong>{{ risk.title }}</strong>
+                <small>Nível: {{ risk.risk_level }} · Status: {{ risk.status }}</small>
+              </div>
+            } @empty {
+              <p class="matrix-summary-empty">Nenhum risco vinculado.</p>
+            }
+          </section>
+          <section class="matrix-summary-section">
+            <h3>
+              Planos de ação <span>{{ details.plans.length }}</span>
+            </h3>
+            @for (plan of details.plans; track plan.id) {
+              <div class="matrix-summary-item">
+                <strong>{{ plan.title }}</strong>
+                <small>Status: {{ plan.status }}</small>
+              </div>
+            } @empty {
+              <p class="matrix-summary-empty">Nenhum plano de ação vinculado.</p>
+            }
+          </section>
+        </div>
+      }
+    </div>
+  }
+</app-modal>
+
+<app-modal
+  [open]="categoryEditorOpen()"
+  [title]="editingCategory() ? 'Editar classificação' : 'Nova classificação'"
+  width="max-w-lg"
+  (closed)="categoryEditorOpen.set(false)"
+>
+  <form [formGroup]="categoryForm" class="space-y-4" (ngSubmit)="saveCategory()">
+    <label class="block text-sm font-medium text-slate-700">
+      Nome
+      <input formControlName="name" class="matrix-form-input mt-1" maxlength="100" />
+    </label>
+    <label class="block text-sm font-medium text-slate-700">
+      Descrição
+      <textarea formControlName="description" class="matrix-form-input mt-1" rows="3"></textarea>
+    </label>
+    <label class="ui-form-label">
+      Cor
+      <select formControlName="color_key">
+        <option value="blue">Azul</option>
+        <option value="green">Verde</option>
+        <option value="orange">Laranja</option>
+        <option value="amber">Âmbar</option>
+        <option value="rose">Rosa</option>
+        <option value="violet">Violeta</option>
+      </select>
+    </label>
+    @if (categoryError()) {
+      <p class="text-sm text-red-600">{{ categoryError() }}</p>
+    }
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <button
+        type="button"
+        class="rounded-lg border border-slate-200 px-4 py-2 text-sm"
+        (click)="categoryEditorOpen.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        [disabled]="categorySaving() || categoryForm.invalid"
+      >
+        {{ categorySaving() ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
 <app-methodology
   [open]="methodologyOpen()"
   [info]="methodology"

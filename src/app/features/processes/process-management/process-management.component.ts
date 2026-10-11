@@ -178,6 +178,18 @@ export class ProcessManagementComponent {
 
   categoryColor(id: string): string {
     const key = this.categories().find((item) => item.id === id)?.color_key;
-    return key === 'green' ? 'bg-emerald-400' : key === 'orange' ? 'bg-orange-400' : 'bg-blue-400';
+    if (key && /^#[0-9a-fA-F]{6}$/.test(key)) return key;
+    return (
+      (
+        {
+          blue: '#3b82f6',
+          green: '#10b981',
+          orange: '#f97316',
+          amber: '#f59e0b',
+          rose: '#f43f5e',
+          violet: '#8b5cf6',
+        } as Record<string, string>
+      )[key ?? 'blue'] ?? '#3b82f6'
+    );
   }
 }
