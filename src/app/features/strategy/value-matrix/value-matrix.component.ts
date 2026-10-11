@@ -3,6 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
+import { formatIndicatorValue } from '@features/indicators/data-access/indicator-unit.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { SlaService } from '@features/processes/data-access/sla.service';
 import { RiskService } from '@features/risks/data-access/risk.service';
@@ -14,6 +15,7 @@ import type {
   DimensionLink,
   GEDDocument,
   Indicator,
+  IndicatorUnitType,
   Process,
   Risk,
   SipocNode,
@@ -67,6 +69,10 @@ export class ValueMatrixComponent {
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['valor'];
+
+  formatIndicatorValue(value: number, unit: IndicatorUnitType): string {
+    return formatIndicatorValue(value, unit);
+  }
   readonly methodologyOpen = signal(false);
   readonly manageMode = signal(false);
   readonly loading = signal(true);
@@ -93,7 +99,12 @@ export class ValueMatrixComponent {
     this.categories().reduce((sum, item) => sum + item.processes.length, 0),
   );
   readonly strategicProcessIds = computed(
-    () => new Set(this.dimensionLinks().map((link) => link.process_id)),
+    () =>
+      new Set(
+        this.dimensionLinks()
+          .filter((link) => link.item_type === 'indicator' || link.item_type === 'action_plan')
+          .map((link) => link.process_id),
+      ),
   );
   private summaryRequestId = 0;
 
@@ -105,11 +116,10 @@ export class ValueMatrixComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [categories, processes, dimensions, links] = await Promise.all([
+      const [categories, processes, currentDimensions] = await Promise.all([
         this.processService.fetchCategories(),
         this.processService.fetchProcesses(),
-        this.dimensionService.fetchDimensions(),
-        this.dimensionService.fetchAllDimensionLinks(),
+        this.dimensionService.fetchCurrentData(),
       ]);
       this.categories.set(
         categories.map((category) => ({
@@ -123,8 +133,8 @@ export class ValueMatrixComponent {
             ),
         })),
       );
-      this.dimensions.set(dimensions);
-      this.dimensionLinks.set(links);
+      this.dimensions.set(currentDimensions.dimensions);
+      this.dimensionLinks.set(currentDimensions.links);
     } catch (error) {
       this.error.set(errorMessage(error, 'Erro ao carregar dados'));
     } finally {
@@ -158,7 +168,11 @@ export class ValueMatrixComponent {
   strategicDimensions(processId: string): string[] {
     const dimensionIds = new Set(
       this.dimensionLinks()
-        .filter((link) => link.process_id === processId)
+        .filter(
+          (link) =>
+            link.process_id === processId &&
+            (link.item_type === 'indicator' || link.item_type === 'action_plan'),
+        )
         .map((link) => link.dimension_id),
     );
     return this.dimensions()

@@ -23,6 +23,7 @@ export interface Database {
       indicators: TableDefinition<Indicator>;
       indicator_history: TableDefinition<IndicatorHistoryEntry>;
       profiles: TableDefinition<Profile>;
+      dimension_versions: TableDefinition<DimensionVersion>;
       dimensions: TableDefinition<Dimension>;
       dimension_links: TableDefinition<DimensionLink>;
       risks: TableDefinition<Risk, 'risk_score' | 'risk_level'>;
@@ -85,6 +86,25 @@ export interface Database {
       consume_ai_quota: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      create_dimension_version: {
+        Args: { p_label: string };
+        Returns: DimensionVersion;
+      };
+      save_dimension_with_links: {
+        Args: {
+          p_id: string | null;
+          p_version_id: string;
+          p_name: string;
+          p_description: string;
+          p_objective: string;
+          p_classification_key: string;
+          p_color_key: string;
+          p_order_index: number;
+          p_indicator_ids: string[];
+          p_plan_ids: string[];
+        };
+        Returns: Dimension;
       };
     };
     Enums: Record<string, never>;
@@ -227,6 +247,7 @@ export interface Profile {
 
 export type IndicatorFrequency = 'diario' | 'semanal' | 'mensal';
 export type IndicatorStatus = 'no_alvo' | 'atencao' | 'critico';
+export type IndicatorUnitType = 'numero_absoluto' | 'percentual' | 'monetario';
 
 export interface Indicator {
   id: string;
@@ -234,7 +255,7 @@ export interface Indicator {
   process_id: string;
   step_id: string | null;
   goal_value: number;
-  unit: string;
+  unit: IndicatorUnitType;
   current_value: number;
   frequency: IndicatorFrequency;
   status: IndicatorStatus;
@@ -253,11 +274,25 @@ export interface IndicatorHistoryEntry {
 }
 
 export type DimensionColor = 'blue' | 'green' | 'orange' | 'amber' | 'rose' | 'violet';
+export type DimensionClassification =
+  'financeira' | 'clientes' | 'processos_internos' | 'aprendizado_crescimento';
+
+export interface DimensionVersion {
+  id: string;
+  version_number: number;
+  label: string;
+  created_by: string | null;
+  created_at: string;
+}
 
 export interface Dimension {
   id: string;
+  version_id: string;
+  code: string;
+  classification_key: DimensionClassification;
   name: string;
   description: string | null;
+  objective: string | null;
   color_key: string;
   order_index: number;
   custom_fields: Record<string, unknown> | null;
@@ -265,11 +300,18 @@ export interface Dimension {
   updated_at: string;
 }
 
-export type DimensionItemType = 'indicator' | 'action_plan';
+export type DimensionItemType =
+  | 'indicator'
+  | 'action_plan'
+  | 'swot_analysis'
+  | 'pestel_analysis'
+  | 'porter_five_forces_analysis'
+  | 'environmental_analysis';
 
 export interface DimensionLink {
   id: string;
   dimension_id: string;
+  version_id: string;
   item_type: DimensionItemType;
   item_id: string;
   process_id: string;

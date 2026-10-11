@@ -1,18 +1,24 @@
-import { toDimensionPayload } from '../data-access/dimension.mapper';
 import { errorMessage } from '@shared/utils/error.utils';
 import { DimensionService } from '@features/strategy/data-access/dimension.service';
 import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
+import { formatIndicatorValue } from '@features/indicators/data-access/indicator-unit.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { AuthService } from '@core/services/auth.service';
 import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type {
   ActionPlan,
+  ActionPlanStatus,
   Dimension,
-  DimensionItemType,
+  DimensionClassification,
   DimensionLink,
+  DimensionVersion,
   Indicator,
+  IndicatorUnitType,
+  IndicatorHistoryEntry,
   Process,
   Ticket,
 } from '@core/models/database';
@@ -21,6 +27,22 @@ import { MethodologyComponent } from '@shared/components/methodology/methodology
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
+
+const CLASSIFICATIONS: { key: DimensionClassification; label: string; icon: string }[] = [
+  { key: 'financeira', label: 'Financeira', icon: 'TrendingUp' },
+  { key: 'clientes', label: 'Clientes', icon: 'Users' },
+  { key: 'processos_internos', label: 'Processos Internos', icon: 'Workflow' },
+  { key: 'aprendizado_crescimento', label: 'Aprendizado e Crescimento', icon: 'BookOpen' },
+];
+
+const COLORS: Record<string, { bg: string; text: string; line: string }> = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-700', line: '#2563eb' },
+  green: { bg: 'bg-emerald-50', text: 'text-emerald-700', line: '#059669' },
+  orange: { bg: 'bg-orange-50', text: 'text-orange-700', line: '#ea580c' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-700', line: '#d97706' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-700', line: '#e11d48' },
+  violet: { bg: 'bg-violet-50', text: 'text-violet-700', line: '#7c3aed' },
+};
 
 @Component({
   selector: 'app-dimensions',
@@ -36,69 +58,143 @@ export class DimensionsComponent {
   private readonly processService = inject(ProcessService);
   private readonly ticketService = inject(TicketService);
   private readonly toast = inject(ToastService);
+  readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['dimensoes'];
+  readonly classifications = CLASSIFICATIONS;
+  readonly versions = signal<DimensionVersion[]>([]);
+  readonly selectedVersionId = signal<string | null>(null);
+  readonly versionSelection = new FormControl('', { nonNullable: true });
   readonly dimensions = signal<Dimension[]>([]);
   readonly links = signal<DimensionLink[]>([]);
   readonly indicators = signal<Indicator[]>([]);
   readonly plans = signal<ActionPlan[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly tickets = signal<Ticket[]>([]);
+  readonly histories = signal<Record<string, IndicatorHistoryEntry[]>>({});
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly formOpen = signal(false);
   readonly editing = signal<Dimension | null>(null);
-  readonly linkOpen = signal(false);
-  readonly linkDimension = signal<Dimension | null>(null);
-  readonly linkType = signal<DimensionItemType>('indicator');
+  readonly saving = signal(false);
+  readonly selectedIndicatorIds = signal<Set<string>>(new Set());
+  readonly selectedPlanIds = signal<Set<string>>(new Set());
+  readonly indicatorSearch = signal('');
+  readonly planSearch = signal('');
+  readonly selectedDimension = signal<Dimension | null>(null);
+  readonly historyLoading = signal(false);
+  readonly versionOpen = signal(false);
+  readonly versionSaving = signal(false);
+  readonly versionError = signal<string | null>(null);
+  readonly versionLabel = new FormControl('', {
+    nonNullable: true,
+    validators: Validators.required,
+  });
   readonly methodologyOpen = signal(false);
   readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
+    objective: new FormControl('', { nonNullable: true }),
+    classification_key: new FormControl<DimensionClassification>('processos_internos', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     color_key: new FormControl('blue', { nonNullable: true }),
-    order_index: new FormControl(0, { nonNullable: true }),
   });
-  readonly ordered = computed(() =>
-    [...this.dimensions()].sort((a, b) => a.order_index - b.order_index),
+  readonly filteredIndicators = computed(() => {
+    const term = this.normalizeSearch(this.indicatorSearch());
+    return this.indicators().filter((item) =>
+      this.normalizeSearch(`${item.title} ${this.processName(item.process_id)}`).includes(term),
+    );
+  });
+  readonly filteredPlans = computed(() => {
+    const term = this.normalizeSearch(this.planSearch());
+    return this.plans().filter((item) =>
+      this.normalizeSearch(`${item.title} ${this.processName(this.itemProcessId(item))}`).includes(
+        term,
+      ),
+    );
+  });
+  readonly orderedVersions = computed(() =>
+    [...this.versions()].sort((a, b) => b.version_number - a.version_number),
   );
-  readonly availableItems = computed(() => {
-    const dimension = this.linkDimension();
-    if (!dimension) return [];
-    const linked = new Set(
-      this.links()
-        .filter((item) => item.dimension_id === dimension.id && item.item_type === this.linkType())
-        .map((item) => item.item_id),
-    );
-    return (this.linkType() === 'indicator' ? this.indicators() : this.plans()).filter(
-      (item) => !linked.has(item.id),
-    );
-  });
+  readonly currentVersion = computed(() => this.orderedVersions()[0] ?? null);
+  readonly selectedVersion = computed(
+    () => this.versions().find((item) => item.id === this.selectedVersionId()) ?? null,
+  );
+  readonly canManage = computed(
+    () =>
+      this.auth.isAdmin() &&
+      !this.loading() &&
+      !this.error() &&
+      this.selectedVersionId() === this.currentVersion()?.id,
+  );
+  readonly ordered = computed(() =>
+    [...this.dimensions()].sort(
+      (a, b) => a.order_index - b.order_index || a.code.localeCompare(b.code),
+    ),
+  );
+  private versionRequestId = 0;
+  private historyRequestId = 0;
 
   constructor() {
+    this.versionSelection.valueChanges.pipe(takeUntilDestroyed()).subscribe((versionId) => {
+      void this.selectVersion(versionId);
+    });
     void this.loadDimensions();
   }
 
   async loadDimensions(): Promise<void> {
+    const requestId = ++this.versionRequestId;
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [dimensions, indicators, plans, processes, tickets, links] = await Promise.all([
-        this.dimensionService.fetchDimensions(),
+      const [versions, indicators, plans, processes, tickets] = await Promise.all([
+        this.dimensionService.fetchVersions(),
         this.indicatorService.fetchIndicators(),
         this.actionPlanService.fetchActionPlans(),
         this.processService.fetchProcesses(),
         this.ticketService.fetchTickets(),
-        this.dimensionService.fetchAllDimensionLinks(),
       ]);
-      this.dimensions.set(dimensions);
+      if (requestId !== this.versionRequestId) return;
+      this.versions.set(versions);
       this.indicators.set(indicators);
       this.plans.set(plans);
       this.processes.set(processes);
       this.tickets.set(tickets);
+      const selectedId = versions.some((item) => item.id === this.selectedVersionId())
+        ? this.selectedVersionId()
+        : this.currentVersion()?.id;
+      if (selectedId) await this.selectVersion(selectedId);
+    } catch (error) {
+      if (requestId === this.versionRequestId)
+        this.error.set(errorMessage(error, 'Erro ao carregar dimensões'));
+    } finally {
+      if (requestId === this.versionRequestId) this.loading.set(false);
+    }
+  }
+
+  async selectVersion(versionId: string): Promise<void> {
+    if (!this.versions().some((item) => item.id === versionId)) return;
+    const requestId = ++this.versionRequestId;
+    this.selectedVersionId.set(versionId);
+    this.versionSelection.setValue(versionId, { emitEvent: false });
+    this.closeDetail();
+    this.formOpen.set(false);
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const [dimensions, links] = await Promise.all([
+        this.dimensionService.fetchDimensions(versionId),
+        this.dimensionService.fetchAllDimensionLinks(versionId),
+      ]);
+      if (requestId !== this.versionRequestId) return;
+      this.dimensions.set(dimensions);
       this.links.set(links);
     } catch (error) {
-      this.error.set(errorMessage(error, 'Erro ao carregar dimensões'));
+      if (requestId === this.versionRequestId)
+        this.error.set(errorMessage(error, 'Erro ao carregar a versão'));
     } finally {
-      this.loading.set(false);
+      if (requestId === this.versionRequestId) this.loading.set(false);
     }
   }
 
@@ -120,122 +216,240 @@ export class DimensionsComponent {
     return this.plans().filter((item) => linked.has(item.id));
   }
 
+  async openDetail(item: Dimension): Promise<void> {
+    const requestId = ++this.historyRequestId;
+    this.selectedDimension.set(item);
+    this.histories.set({});
+    const indicators = this.linkedIndicators(item.id);
+    if (!indicators.length) return;
+    this.historyLoading.set(true);
+    try {
+      const histories = await this.indicatorService.fetchHistories(indicators);
+      if (requestId === this.historyRequestId) this.histories.set(histories);
+    } catch (error) {
+      if (requestId === this.historyRequestId)
+        this.toast.error(errorMessage(error, 'Erro ao carregar histórico dos indicadores'));
+    } finally {
+      if (requestId === this.historyRequestId) this.historyLoading.set(false);
+    }
+  }
+
+  closeDetail(): void {
+    ++this.historyRequestId;
+    this.selectedDimension.set(null);
+    this.historyLoading.set(false);
+  }
+
   openCreate(): void {
+    if (!this.canManage()) return;
     this.editing.set(null);
+    this.selectedIndicatorIds.set(new Set());
+    this.selectedPlanIds.set(new Set());
+    this.indicatorSearch.set('');
+    this.planSearch.set('');
     this.form.reset({
       name: '',
       description: '',
+      objective: '',
+      classification_key: 'processos_internos',
       color_key: 'blue',
-      order_index: this.dimensions().length,
     });
     this.formOpen.set(true);
   }
 
   openEdit(item: Dimension): void {
+    if (!this.canManage() || item.version_id !== this.selectedVersionId()) return;
     this.editing.set(item);
+    this.selectedIndicatorIds.set(new Set(this.linkedIndicators(item.id).map((entry) => entry.id)));
+    this.selectedPlanIds.set(new Set(this.linkedPlans(item.id).map((entry) => entry.id)));
+    this.indicatorSearch.set('');
+    this.planSearch.set('');
     this.form.reset({
       name: item.name,
       description: item.description ?? '',
+      objective: item.objective ?? '',
+      classification_key: item.classification_key,
       color_key: item.color_key,
-      order_index: item.order_index,
     });
     this.formOpen.set(true);
   }
 
+  toggleIndicator(id: string, checked: boolean): void {
+    this.selectedIndicatorIds.update((items) => {
+      const next = new Set(items);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  togglePlan(id: string, checked: boolean): void {
+    this.selectedPlanIds.update((items) => {
+      const next = new Set(items);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   async saveDimension(): Promise<void> {
-    if (this.form.invalid) return;
+    const versionId = this.selectedVersionId();
+    if (!this.canManage() || !versionId || this.form.invalid || this.saving()) return;
     const value = this.form.getRawValue();
-    const payload = toDimensionPayload(value);
-    const current = this.editing();
-    const saved = current
-      ? await this.dimensionService.updateDimension(current.id, payload)
-      : await this.dimensionService.createDimension(payload);
-    this.dimensions.update((items) =>
-      current ? items.map((item) => (item.id === saved.id ? saved : item)) : [...items, saved],
-    );
-    this.toast.success('Dimensão salva');
-    this.formOpen.set(false);
+    if (!value.name.trim()) {
+      this.form.controls.name.setErrors({ required: true });
+      return;
+    }
+    this.saving.set(true);
+    try {
+      await this.dimensionService.saveWithLinks({
+        id: this.editing()?.id ?? null,
+        versionId,
+        name: value.name.trim(),
+        description: value.description,
+        objective: value.objective,
+        classificationKey: value.classification_key,
+        colorKey: value.color_key,
+        orderIndex:
+          this.editing()?.order_index ??
+          Math.max(-1, ...this.dimensions().map((item) => item.order_index)) + 1,
+        indicatorIds: [...this.selectedIndicatorIds()],
+        planIds: [...this.selectedPlanIds()],
+      });
+      this.formOpen.set(false);
+      await this.selectVersion(versionId);
+      this.toast.success('Dimensão salva');
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Erro ao salvar dimensão'));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   async deleteDimension(item: Dimension): Promise<void> {
-    if (!confirm('Excluir esta dimensão?')) return;
-    await this.dimensionService.deleteDimension(item.id);
-    this.dimensions.update((items) => items.filter((current) => current.id !== item.id));
-    this.links.update((items) => items.filter((link) => link.dimension_id !== item.id));
-    this.toast.success('Dimensão excluída');
-  }
-
-  openLink(dimension: Dimension, type: DimensionItemType): void {
-    this.linkDimension.set(dimension);
-    this.linkType.set(type);
-    this.linkOpen.set(true);
-  }
-
-  async linkItem(item: Indicator | ActionPlan): Promise<void> {
-    const dimension = this.linkDimension();
-    if (!dimension) return;
-    const processId = this.itemProcessId(item);
-    if (!processId) {
-      this.toast.error('Não foi possível identificar o processo vinculado.');
-      return;
+    if (!this.canManage() || item.version_id !== this.selectedVersionId()) return;
+    if (!confirm(`Excluir a dimensão ${item.code} desta versão?`)) return;
+    try {
+      await this.dimensionService.deleteDimension(item.id);
+      this.dimensions.update((items) => items.filter((entry) => entry.id !== item.id));
+      this.links.update((items) => items.filter((link) => link.dimension_id !== item.id));
+      this.toast.success('Dimensão excluída');
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Erro ao excluir dimensão'));
     }
-    await this.dimensionService.createDimensionLink({
-      dimension_id: dimension.id,
-      item_type: this.linkType(),
-      item_id: item.id,
-      process_id: processId,
-    });
-    this.links.update((items) => [
-      ...items,
-      {
-        id: `local-${Date.now()}`,
-        dimension_id: dimension.id,
-        item_type: this.linkType(),
-        item_id: item.id,
-        process_id: processId,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-    this.toast.success('Item vinculado');
   }
 
-  async unlinkItem(dimensionId: string, type: DimensionItemType, itemId: string): Promise<void> {
-    await this.dimensionService.deleteDimensionLink(dimensionId, type, itemId);
-    this.links.update((items) =>
-      items.filter(
-        (item) =>
-          item.dimension_id !== dimensionId || item.item_type !== type || item.item_id !== itemId,
-      ),
-    );
-    this.toast.success('Vínculo removido');
+  openNewVersion(): void {
+    if (!this.auth.isAdmin()) return;
+    this.versionLabel.setValue(`Planejamento ${new Date().getFullYear()}`);
+    this.versionError.set(null);
+    this.versionOpen.set(true);
   }
 
-  processName(id: string): string {
-    return this.processes().find((item) => item.id === id)?.title ?? '—';
+  async createVersion(): Promise<void> {
+    if (!this.auth.isAdmin() || this.versionSaving() || !this.versionLabel.value.trim()) return;
+    this.versionSaving.set(true);
+    this.versionError.set(null);
+    try {
+      const version = await this.dimensionService.createVersion(this.versionLabel.value.trim());
+      const versions = await this.dimensionService.fetchVersions();
+      if (!versions.some((item) => item.id === version.id)) {
+        throw new Error(
+          'A versão foi criada, mas não apareceu na consulta. Atualize a tela e tente novamente.',
+        );
+      }
+      this.versions.set(versions);
+      this.versionOpen.set(false);
+      await this.selectVersion(version.id);
+      this.toast.success(`Versão ${version.version_number} criada`);
+    } catch (error) {
+      const message = errorMessage(error, 'Erro ao criar versão');
+      this.versionError.set(message);
+      this.toast.error(message);
+    } finally {
+      this.versionSaving.set(false);
+    }
   }
 
-  colorBg(color: string): string {
-    return (
-      (
-        {
-          blue: 'bg-blue-50',
-          green: 'bg-emerald-50',
-          orange: 'bg-orange-50',
-          amber: 'bg-amber-50',
-          rose: 'bg-rose-50',
-          violet: 'bg-violet-50',
-        } as Record<string, string>
-      )[color] ?? 'bg-slate-50'
-    );
+  classificationLabel(key: DimensionClassification): string {
+    return CLASSIFICATIONS.find((item) => item.key === key)?.label ?? 'Processos Internos';
   }
 
-  colorText(color: string): string {
-    return this.colorBg(color).replace('bg-', 'text-');
+  classificationIcon(key: DimensionClassification): string {
+    return CLASSIFICATIONS.find((item) => item.key === key)?.icon ?? 'Workflow';
+  }
+
+  colorBg(key: string): string {
+    return COLORS[key]?.bg ?? COLORS['blue'].bg;
+  }
+
+  colorText(key: string): string {
+    return COLORS[key]?.text ?? COLORS['blue'].text;
+  }
+
+  colorLine(key: string): string {
+    return COLORS[key]?.line ?? COLORS['blue'].line;
+  }
+
+  processName(id: string | null): string {
+    return this.processes().find((item) => item.id === id)?.title ?? 'Processo indisponível';
+  }
+
+  private normalizeSearch(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR')
+      .trim();
   }
 
   itemProcessId(item: Indicator | ActionPlan): string | null {
     return 'process_id' in item
       ? item.process_id
       : (this.tickets().find((ticket) => ticket.id === item.ticket_id)?.process_id ?? null);
+  }
+
+  history(id: string): IndicatorHistoryEntry[] {
+    return [...(this.histories()[id] ?? [])].sort(
+      (a, b) => a.period.localeCompare(b.period) || a.created_at.localeCompare(b.created_at),
+    );
+  }
+
+  chartPoints(id: string, field: 'value' | 'goal'): string {
+    const entries = this.history(id).slice(-12);
+    if (!entries.length) return '';
+    const values = entries.flatMap((item) => [item.value, item.goal]);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    return entries
+      .map((item, index) => {
+        const x = entries.length === 1 ? 160 : 16 + (index * 288) / (entries.length - 1);
+        const y = 94 - ((item[field] - min) / range) * 78;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  }
+
+  formatValue(value: number, unit: IndicatorUnitType): string {
+    return formatIndicatorValue(value, unit);
+  }
+
+  planStatusLabel(status: ActionPlanStatus): string {
+    return {
+      pendente: 'Pendente',
+      andamento: 'Em andamento',
+      atrasado: 'Atrasado',
+      concluido: 'Concluído',
+    }[status];
+  }
+
+  completedPlans(id: string): number {
+    return this.linkedPlans(id).filter((item) => item.status === 'concluido').length;
+  }
+
+  planCompletionPercent(id: string): number {
+    const total = this.linkedPlans(id).length;
+    return total ? (this.completedPlans(id) / total) * 100 : 0;
   }
 }

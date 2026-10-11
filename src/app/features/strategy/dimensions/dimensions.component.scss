@@ -3,3 +3,56 @@
 .ui-form-label textarea {
   @apply mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm;
 }
+
+.version-select {
+  @apply min-w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700;
+}
+
+.dimension-main {
+  @apply flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-slate-50;
+}
+
+.history-chart {
+  width: 100%;
+  height: 150px;
+}
+
+.history-values {
+  @apply flex max-h-28 flex-wrap gap-x-4 gap-y-1 overflow-y-auto text-xs text-slate-500;
+}
+
+.link-picker {
+  @apply min-w-0 rounded-xl border border-slate-200 p-3;
+
+  legend {
+    @apply px-1 text-sm font-semibold text-slate-700;
+  }
+}
+
+.link-picker-list {
+  @apply max-h-48 space-y-1 overflow-y-auto;
+}
+
+.link-picker-searchable .link-picker-list {
+  height: 12rem;
+}
+
+.link-picker-search {
+  @apply mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm;
+}
+
+.link-picker-item {
+  @apply flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-slate-50;
+
+  input {
+    @apply mt-1;
+  }
+
+  strong {
+    @apply block text-xs font-medium text-slate-700;
+  }
+
+  small {
+    @apply block text-xs text-slate-400;
+  }
+}

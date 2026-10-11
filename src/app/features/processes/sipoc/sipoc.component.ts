@@ -3,6 +3,7 @@ import { errorMessage } from '@shared/utils/error.utils';
 import { COLUMNS, LABELS } from './sipoc.constants';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
+import { formatIndicatorValue } from '@features/indicators/data-access/indicator-unit.utils';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { SlaService } from '@features/processes/data-access/sla.service';
@@ -17,6 +18,7 @@ import { AuthService } from '@core/services/auth.service';
 import type {
   NodeType,
   Indicator,
+  IndicatorUnitType,
   Risk,
   GEDDocument,
   SLA,
@@ -64,6 +66,10 @@ export class SipocComponent {
   readonly columns = COLUMNS;
   readonly LABELS = LABELS;
   readonly methodology = METHODOLOGIES['sipoc'];
+
+  formatIndicatorValue(value: number, unit: IndicatorUnitType): string {
+    return formatIndicatorValue(value, unit);
+  }
   readonly processes = signal<Process[]>([]);
   readonly categories = signal<ValueChainCategory[]>([]);
   readonly allNodes = signal<SipocNode[]>([]);

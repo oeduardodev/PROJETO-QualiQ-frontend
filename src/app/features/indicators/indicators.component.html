@@ -101,7 +101,7 @@
               <label class="ui-form-label"
                 >Período<input type="date" [formControl]="periodControl(indicator.id)" /></label
               ><label class="ui-form-label"
-                >Valor ({{ indicator.unit }})<input
+                >Valor ({{ unitLabel(indicator.unit) }})<input
                   type="number"
                   [formControl]="valueControl(indicator.id)" /></label
               ><button
@@ -117,7 +117,7 @@
                 @for (entry of history(indicator.id).slice(-6).reverse(); track entry.id) {
                   <span class="rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500"
                     >{{ entry.period }}:
-                    <strong>{{ entry.value }}{{ indicator.unit }}</strong></span
+                    <strong>{{ formatValue(entry.value, indicator.unit) }}</strong></span
                   >
                 }
               </div>
@@ -315,7 +315,11 @@
       </select></label
     ><label class="ui-form-label">Meta<input type="number" formControlName="goal_value" /></label
     ><label class="ui-form-label"
-      >Unidade<input formControlName="unit" placeholder="%, un, R$..." /></label
+      >Unidade<select formControlName="unit">
+        @for (unit of unitOptions; track unit.value) {
+          <option [value]="unit.value">{{ unit.label }}</option>
+        }
+      </select></label
     ><label class="ui-form-label"
       >Valor atual<input type="number" formControlName="current_value" /></label
     ><label class="ui-form-label"

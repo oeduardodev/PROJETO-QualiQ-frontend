@@ -1,13 +1,40 @@
 import { inject, Injectable } from '@angular/core';
 import { DimensionRepository } from './dimension.repository';
-import type { Dimension, DimensionItemType, DimensionLink } from '@core/models/database';
+import type {
+  Dimension,
+  DimensionItemType,
+  DimensionLink,
+  DimensionVersion,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class DimensionService {
   private readonly repository = inject(DimensionRepository);
 
-  fetchDimensions(): Promise<Dimension[]> {
-    return this.repository.fetchDimensions();
+  fetchVersions(): Promise<DimensionVersion[]> {
+    return this.repository.fetchVersions();
+  }
+
+  createVersion(label: string): Promise<DimensionVersion> {
+    return this.repository.createVersion(label);
+  }
+
+  saveWithLinks(input: Parameters<DimensionRepository['saveWithLinks']>[0]): Promise<Dimension> {
+    return this.repository.saveWithLinks(input);
+  }
+
+  fetchDimensions(versionId?: string): Promise<Dimension[]> {
+    return this.repository.fetchDimensions(versionId);
+  }
+
+  async fetchCurrentData(): Promise<{ dimensions: Dimension[]; links: DimensionLink[] }> {
+    const versionId = (await this.fetchVersions())[0]?.id;
+    if (!versionId) return { dimensions: [], links: [] };
+    const [dimensions, links] = await Promise.all([
+      this.fetchDimensions(versionId),
+      this.fetchAllDimensionLinks(versionId),
+    ]);
+    return { dimensions, links };
   }
 
   createDimension(
@@ -31,8 +58,8 @@ export class DimensionService {
     return this.repository.fetchDimensionLinks(dimensionId);
   }
 
-  fetchAllDimensionLinks(): Promise<DimensionLink[]> {
-    return this.repository.fetchAllDimensionLinks();
+  fetchAllDimensionLinks(versionId?: string): Promise<DimensionLink[]> {
+    return this.repository.fetchAllDimensionLinks(versionId);
   }
 
   createDimensionLink(input: {

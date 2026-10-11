@@ -306,8 +306,9 @@
               <div class="matrix-summary-item">
                 <strong>{{ indicator.title }}</strong>
                 <small
-                  >Resultado: {{ indicator.current_value }} {{ indicator.unit }} · Meta:
-                  {{ indicator.goal_value }} {{ indicator.unit }}</small
+                  >Resultado:
+                  {{ formatIndicatorValue(indicator.current_value, indicator.unit) }} · Meta:
+                  {{ formatIndicatorValue(indicator.goal_value, indicator.unit) }}</small
                 >
               </div>
             } @empty {

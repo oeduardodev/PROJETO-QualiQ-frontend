@@ -91,7 +91,9 @@ function buildUserPrompt(req: AnalysisRequest): string {
   const tickets = req.tickets;
 
   const gap = ind.current_value - ind.goal_value;
-  const lowerIsBetter = ind.unit !== '%';
+  const lowerIsBetter = ind.unit !== 'percentual';
+  const unitLabel =
+    ind.unit === 'percentual' ? '%' : ind.unit === 'monetario' ? 'R$' : 'un';
   const direction = lowerIsBetter ? 'acima' : 'abaixo';
   const gapDescription =
     ind.goal_value === 0
@@ -100,8 +102,8 @@ function buildUserPrompt(req: AnalysisRequest): string {
 
   let prompt = `## CENÁRIO\n\n`;
   prompt += `**Indicador:** ${ind.title}\n`;
-  prompt += `**Valor Atual:** ${ind.current_value} ${ind.unit}\n`;
-  prompt += `**Meta:** ${ind.goal_value} ${ind.unit}\n`;
+  prompt += `**Valor Atual:** ${ind.current_value} ${unitLabel}\n`;
+  prompt += `**Meta:** ${ind.goal_value} ${unitLabel}\n`;
   prompt += `**Desvio:** ${gapDescription}\n`;
   prompt += `**Status:** ${ind.status}\n`;
   prompt += `**Frequência de medição:** ${ind.frequency}\n\n`;

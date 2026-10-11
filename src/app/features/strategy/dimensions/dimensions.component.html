@@ -1,187 +1,490 @@
-@if (loading()) {
-  <div class="ui-page-loading">
-    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
-  </div>
-} @else if (error()) {
-  <div class="ui-page-error">
-    <p class="text-sm text-slate-500">{{ error() }}</p>
-    <button class="mt-3 text-sm underline" (click)="loadDimensions()">Tentar novamente</button>
-  </div>
-} @else {
-  <div class="space-y-6">
-    <div class="ui-page-header">
-      <div>
-        <h2 class="ui-page-title">Dimensões Estratégicas</h2>
-        <p class="ui-page-subtitle">
-          {{ dimensions().length }} dimensões com indicadores e planos vinculados
-        </p>
-      </div>
-      <div class="flex gap-2">
-        <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
-          <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
-        ><button class="ui-button-primary" (click)="openCreate()">
-          <span appIcon="Plus" class="h-4 w-4"></span>Nova Dimensão
-        </button>
-      </div>
+<div class="space-y-6">
+  <div class="ui-page-header">
+    <div>
+      <h2 class="ui-page-title">Dimensões Estratégicas</h2>
+      <p class="ui-page-subtitle">
+        @if (!loading() && !error()) {
+          {{ dimensions().length }} dimensões ·
+        }
+        {{ selectedVersion()?.label || 'Planejamento' }}
+      </p>
     </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
+        <span appIcon="Info" class="h-4 w-4"></span> Metodologia
+      </button>
+      @if (auth.isAdmin() && !loading() && !error()) {
+        <button class="ui-button-secondary" (click)="openNewVersion()">
+          <span appIcon="GitBranch" class="h-4 w-4"></span> Nova versão
+        </button>
+      }
+      @if (canManage()) {
+        <button class="ui-button-primary" (click)="openCreate()">
+          <span appIcon="Plus" class="h-4 w-4"></span> Nova Dimensão
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (versions().length) {
+    <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <label for="dimension-version" class="text-sm font-medium text-slate-700"
+        >Versão do planejamento</label
+      >
+      <select id="dimension-version" class="version-select" [formControl]="versionSelection">
+        @for (version of orderedVersions(); track version.id) {
+          <option [value]="version.id">
+            v{{ version.version_number }} · {{ version.label
+            }}{{ version.id === currentVersion()?.id ? ' · Atual' : '' }}
+          </option>
+        }
+      </select>
+      @if (selectedVersion() && selectedVersionId() !== currentVersion()?.id) {
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+          Versão anterior · somente leitura
+        </span>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="ui-page-loading">
+      <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+    </div>
+  } @else if (error()) {
+    <div class="ui-page-error">
+      <p class="text-sm text-slate-500">{{ error() }}</p>
+      <button class="mt-3 text-sm underline" (click)="loadDimensions()">Tentar novamente</button>
+    </div>
+  } @else {
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
       @for (dimension of ordered(); track dimension.id) {
-        <article class="ui-table-panel">
-          <header class="flex items-start justify-between border-b border-slate-100 p-5">
-            <div class="flex gap-3">
+        <article class="ui-table-panel dimension-card">
+          <button
+            type="button"
+            class="dimension-main"
+            (click)="openDetail(dimension)"
+            [attr.aria-label]="'Ver detalhes da dimensão ' + dimension.name"
+          >
+            <span
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+              [class]="colorBg(dimension.color_key)"
+            >
               <span
-                class="flex h-10 w-10 items-center justify-center rounded-lg"
-                [class]="colorBg(dimension.color_key)"
-                ><span
-                  appIcon="Layers"
-                  class="h-5 w-5"
-                  [class]="colorText(dimension.color_key)"
-                ></span
+                [appIcon]="classificationIcon(dimension.classification_key)"
+                class="h-6 w-6"
+                [class]="colorText(dimension.color_key)"
               ></span>
-              <div>
-                <h3 class="font-semibold text-slate-800">{{ dimension.name }}</h3>
-                <p class="mt-1 text-xs text-slate-400">
-                  {{ dimension.description || 'Sem descrição' }}
-                </p>
-              </div>
+            </span>
+            <span class="min-w-0 flex-1 text-left">
+              <span
+                class="mb-1 block text-xs font-semibold uppercase tracking-wide"
+                [class]="colorText(dimension.color_key)"
+              >
+                {{ dimension.code }} · {{ classificationLabel(dimension.classification_key) }}
+              </span>
+              <strong class="block text-base text-slate-800">{{ dimension.name }}</strong>
+              <span class="mt-1 block truncate text-sm text-slate-500">
+                {{
+                  dimension.objective ||
+                    dimension.description ||
+                    'Clique para ver os indicadores e planos.'
+                }}
+              </span>
+            </span>
+            <span appIcon="ChevronRight" class="h-4 w-4 shrink-0 text-slate-400"></span>
+          </button>
+          <div
+            class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-5 py-3"
+          >
+            <div class="flex gap-4 text-xs text-slate-500">
+              <span>{{ linkedIndicators(dimension.id).length }} indicadores</span>
+              <span
+                >{{ completedPlans(dimension.id) }}/{{ linkedPlans(dimension.id).length }} planos
+                concluídos</span
+              >
             </div>
-            <div>
-              <button class="text-xs text-slate-500" (click)="openEdit(dimension)">Editar</button
-              ><button class="ml-2 text-xs text-rose-500" (click)="deleteDimension(dimension)">
-                Excluir
-              </button>
-            </div>
-          </header>
-          <div class="space-y-4 p-5">
-            <section>
-              <div class="mb-2 flex items-center justify-between">
-                <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Indicadores
-                </h4>
+            @if (canManage()) {
+              <div class="flex gap-3">
+                <button class="text-xs font-medium text-blue-600" (click)="openEdit(dimension)">
+                  Editar
+                </button>
                 <button
-                  class="text-xs font-medium text-blue-600"
-                  (click)="openLink(dimension, 'indicator')"
+                  class="text-xs font-medium text-rose-600"
+                  (click)="deleteDimension(dimension)"
                 >
-                  + Vincular
+                  Excluir
                 </button>
               </div>
-              <div class="space-y-2">
-                @for (item of linkedIndicators(dimension.id); track item.id) {
-                  <div class="flex items-center justify-between rounded-lg bg-slate-50 p-3">
-                    <span
-                      ><strong class="block text-sm text-slate-700">{{ item.title }}</strong
-                      ><small class="text-slate-400">{{
-                        processName(item.process_id)
-                      }}</small></span
-                    ><button
-                      class="text-xs text-rose-500"
-                      (click)="unlinkItem(dimension.id, 'indicator', item.id)"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                } @empty {
-                  <p
-                    class="rounded-lg border border-dashed border-slate-200 py-4 text-center text-xs text-slate-400"
-                  >
-                    Nenhum indicador vinculado.
-                  </p>
-                }
-              </div>
-            </section>
-            <section>
-              <div class="mb-2 flex items-center justify-between">
-                <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Planos de ação
-                </h4>
-                <button
-                  class="text-xs font-medium text-blue-600"
-                  (click)="openLink(dimension, 'action_plan')"
-                >
-                  + Vincular
-                </button>
-              </div>
-              <div class="space-y-2">
-                @for (item of linkedPlans(dimension.id); track item.id) {
-                  <div class="flex items-center justify-between rounded-lg bg-slate-50 p-3">
-                    <strong class="text-sm text-slate-700">{{ item.title }}</strong
-                    ><button
-                      class="text-xs text-rose-500"
-                      (click)="unlinkItem(dimension.id, 'action_plan', item.id)"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                } @empty {
-                  <p
-                    class="rounded-lg border border-dashed border-slate-200 py-4 text-center text-xs text-slate-400"
-                  >
-                    Nenhum plano vinculado.
-                  </p>
-                }
-              </div>
-            </section>
+            }
           </div>
         </article>
       } @empty {
         <p
           class="col-span-full rounded-xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-400"
         >
-          Nenhuma dimensão cadastrada.
+          Nenhuma dimensão cadastrada nesta versão.
         </p>
       }
     </div>
-  </div>
-}
+  }
+</div>
+
+<app-modal
+  [open]="!!selectedDimension()"
+  [title]="selectedDimension()?.name || 'Dimensão'"
+  width="max-w-4xl"
+  (closed)="closeDetail()"
+>
+  @if (selectedDimension(); as dimension) {
+    <div class="space-y-6">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">{{
+          dimension.code
+        }}</span>
+        <span
+          class="rounded-md px-2 py-1 text-xs font-semibold"
+          [class]="colorBg(dimension.color_key) + ' ' + colorText(dimension.color_key)"
+        >
+          {{ classificationLabel(dimension.classification_key) }}
+        </span>
+        <span class="text-xs text-slate-400"
+          >v{{ selectedVersion()?.version_number }} · {{ selectedVersion()?.label }}</span
+        >
+      </div>
+      @if (dimension.objective) {
+        <section>
+          <h3 class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Objetivo
+          </h3>
+          <p class="whitespace-pre-wrap text-sm text-slate-700">{{ dimension.objective }}</p>
+        </section>
+      }
+      @if (dimension.description) {
+        <section>
+          <h3 class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Descrição
+          </h3>
+          <p class="whitespace-pre-wrap text-sm text-slate-600">{{ dimension.description }}</p>
+        </section>
+      }
+      @if (selectedVersionId() !== currentVersion()?.id) {
+        <p class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+          A estrutura desta versão foi preservada. Os resultados dos indicadores e o status dos
+          planos refletem os dados atuais.
+        </p>
+      }
+
+      <section>
+        <h3 class="mb-3 text-sm font-semibold text-slate-800">
+          Indicadores ({{ linkedIndicators(dimension.id).length }})
+        </h3>
+        @if (historyLoading()) {
+          <p class="text-sm text-slate-400">Carregando histórico...</p>
+        }
+        <div class="space-y-4">
+          @for (indicator of linkedIndicators(dimension.id); track indicator.id) {
+            <div class="rounded-xl border border-slate-200 p-4">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h4 class="font-medium text-slate-800">{{ indicator.title }}</h4>
+                  <p class="text-xs text-slate-500">{{ processName(indicator.process_id) }}</p>
+                </div>
+                <div class="text-right text-xs text-slate-500">
+                  <strong class="block text-sm text-slate-800">{{
+                    formatValue(indicator.current_value, indicator.unit)
+                  }}</strong>
+                  Resultado atual · Meta atual:
+                  {{ formatValue(indicator.goal_value, indicator.unit) }}
+                </div>
+              </div>
+              @if (history(indicator.id).length) {
+                <div class="mt-4">
+                  <div class="mb-1 flex items-center justify-between text-xs text-slate-500">
+                    <span>Linha histórica · {{ history(indicator.id).length }} registros</span>
+                    <span>Últimos 12 períodos</span>
+                  </div>
+                  <svg
+                    viewBox="0 0 320 110"
+                    preserveAspectRatio="none"
+                    class="history-chart"
+                    role="img"
+                    [attr.aria-label]="'Histórico de resultados e metas de ' + indicator.title"
+                  >
+                    <path d="M16 94 H304" stroke="#e2e8f0" stroke-width="1" fill="none"></path>
+                    <polyline
+                      [attr.points]="chartPoints(indicator.id, 'goal')"
+                      fill="none"
+                      stroke="#94a3b8"
+                      stroke-width="2"
+                      stroke-dasharray="5 4"
+                      vector-effect="non-scaling-stroke"
+                    ></polyline>
+                    <polyline
+                      [attr.points]="chartPoints(indicator.id, 'value')"
+                      fill="none"
+                      [attr.stroke]="colorLine(dimension.color_key)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      vector-effect="non-scaling-stroke"
+                    ></polyline>
+                  </svg>
+                  <div class="flex justify-between text-xs text-slate-400">
+                    <span>{{ history(indicator.id)[0].period }}</span>
+                    <span>{{
+                      history(indicator.id)[history(indicator.id).length - 1].period
+                    }}</span>
+                  </div>
+                  <div class="mt-2 flex gap-4 text-xs text-slate-500">
+                    <span>— Resultado</span><span>┄ Meta</span>
+                  </div>
+                  <div class="history-values mt-3">
+                    @for (entry of history(indicator.id); track entry.id) {
+                      <span
+                        >{{ entry.period }}:
+                        <strong>{{ formatValue(entry.value, indicator.unit) }}</strong> / meta
+                        {{ formatValue(entry.goal, indicator.unit) }}</span
+                      >
+                    }
+                  </div>
+                </div>
+              } @else if (!historyLoading()) {
+                <p class="mt-3 text-xs text-slate-400">
+                  Ainda não há resultados históricos registrados.
+                </p>
+              }
+            </div>
+          } @empty {
+            <p
+              class="rounded-lg border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400"
+            >
+              Nenhum indicador vinculado.
+            </p>
+          }
+        </div>
+      </section>
+
+      <section>
+        <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <h3 class="text-sm font-semibold text-slate-800">
+            Planos de ação ({{ linkedPlans(dimension.id).length }})
+          </h3>
+          @if (linkedPlans(dimension.id).length) {
+            <span class="text-xs text-slate-500"
+              >{{ completedPlans(dimension.id) }} concluídos</span
+            >
+          }
+        </div>
+        @if (linkedPlans(dimension.id).length) {
+          <div
+            class="mb-4 h-2 overflow-hidden rounded-full bg-slate-100"
+            role="progressbar"
+            [attr.aria-valuenow]="planCompletionPercent(dimension.id)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="Percentual de planos concluídos"
+          >
+            <div
+              class="h-full rounded-full bg-emerald-500"
+              [style.width.%]="planCompletionPercent(dimension.id)"
+            ></div>
+          </div>
+        }
+        <div class="space-y-3">
+          @for (plan of linkedPlans(dimension.id); track plan.id) {
+            <div class="rounded-xl border border-slate-200 p-4">
+              <div class="flex flex-wrap justify-between gap-2">
+                <div>
+                  <h4 class="font-medium text-slate-800">{{ plan.title }}</h4>
+                  <p class="text-xs text-slate-500">{{ processName(itemProcessId(plan)) }}</p>
+                </div>
+                <span
+                  class="text-xs font-medium"
+                  [class.text-rose-600]="plan.status === 'atrasado'"
+                  [class.text-emerald-700]="plan.status === 'concluido'"
+                  >{{ planStatusLabel(plan.status) }}</span
+                >
+              </div>
+              @if (plan.when) {
+                <p class="mt-1 text-xs text-slate-500">Prazo: {{ plan.when }}</p>
+              }
+            </div>
+          } @empty {
+            <p
+              class="rounded-lg border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400"
+            >
+              Nenhum plano de ação vinculado.
+            </p>
+          }
+        </div>
+      </section>
+    </div>
+  }
+</app-modal>
+
 <app-modal
   [open]="formOpen()"
   [title]="editing() ? 'Editar Dimensão' : 'Nova Dimensão'"
-  width="max-w-md"
+  width="max-w-3xl"
   (closed)="formOpen.set(false)"
-  ><form [formGroup]="form" (ngSubmit)="saveDimension()" class="space-y-4">
-    <label class="ui-form-label">Nome *<input formControlName="name" /></label
-    ><label class="ui-form-label"
-      >Descrição<textarea rows="3" formControlName="description"></textarea></label
-    ><label class="ui-form-label"
-      >Cor<select formControlName="color_key">
-        <option value="blue">Azul</option>
-        <option value="green">Verde</option>
-        <option value="orange">Laranja</option>
-        <option value="amber">Âmbar</option>
-        <option value="rose">Rosa</option>
-        <option value="violet">Violeta</option>
-      </select></label
-    ><label class="ui-form-label">Ordem<input type="number" formControlName="order_index" /></label>
+>
+  <form [formGroup]="form" (ngSubmit)="saveDimension()" class="space-y-5">
+    @if (editing(); as item) {
+      <p class="text-xs text-slate-500">
+        Código permanente: <strong>{{ item.code }}</strong>
+      </p>
+    }
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="ui-form-label"
+        >Classificação *
+        <select formControlName="classification_key">
+          @for (classification of classifications; track classification.key) {
+            <option [value]="classification.key">{{ classification.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="ui-form-label"
+        >Cor
+        <select formControlName="color_key">
+          <option value="blue">Azul</option>
+          <option value="green">Verde</option>
+          <option value="orange">Laranja</option>
+          <option value="amber">Âmbar</option>
+          <option value="rose">Rosa</option>
+          <option value="violet">Violeta</option>
+        </select>
+      </label>
+    </div>
+    <label class="ui-form-label">Nome *<input formControlName="name" /></label>
+    <label class="ui-form-label"
+      >Objetivo específico<textarea rows="2" formControlName="objective"></textarea>
+    </label>
+    <label class="ui-form-label"
+      >Descrição<textarea rows="3" formControlName="description"></textarea>
+    </label>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <fieldset class="link-picker" [class.link-picker-searchable]="indicators().length > 3">
+        <legend>Indicadores</legend>
+        @if (indicators().length > 3) {
+          <label class="sr-only" for="dimension-indicator-search">Buscar indicadores</label>
+          <input
+            id="dimension-indicator-search"
+            type="search"
+            class="link-picker-search"
+            placeholder="Buscar indicadores"
+            [value]="indicatorSearch()"
+            (input)="indicatorSearch.set($any($event.target).value)"
+            (keydown.enter)="$event.preventDefault()"
+          />
+        }
+        <div class="link-picker-list">
+          @for (indicator of filteredIndicators(); track indicator.id) {
+            <label class="link-picker-item">
+              <input
+                type="checkbox"
+                [checked]="selectedIndicatorIds().has(indicator.id)"
+                [disabled]="!itemProcessId(indicator)"
+                (change)="toggleIndicator(indicator.id, $any($event.target).checked)"
+              />
+              <span
+                ><strong>{{ indicator.title }}</strong
+                ><small>{{ processName(indicator.process_id) }}</small></span
+              >
+            </label>
+          } @empty {
+            <p class="text-xs text-slate-400">
+              {{
+                indicators().length
+                  ? 'Nenhum indicador encontrado.'
+                  : 'Nenhum indicador cadastrado.'
+              }}
+            </p>
+          }
+        </div>
+      </fieldset>
+      <fieldset class="link-picker" [class.link-picker-searchable]="plans().length > 3">
+        <legend>Planos de ação</legend>
+        @if (plans().length > 3) {
+          <label class="sr-only" for="dimension-plan-search">Buscar planos de ação</label>
+          <input
+            id="dimension-plan-search"
+            type="search"
+            class="link-picker-search"
+            placeholder="Buscar planos de ação"
+            [value]="planSearch()"
+            (input)="planSearch.set($any($event.target).value)"
+            (keydown.enter)="$event.preventDefault()"
+          />
+        }
+        <div class="link-picker-list">
+          @for (plan of filteredPlans(); track plan.id) {
+            <label class="link-picker-item">
+              <input
+                type="checkbox"
+                [checked]="selectedPlanIds().has(plan.id)"
+                [disabled]="!itemProcessId(plan)"
+                (change)="togglePlan(plan.id, $any($event.target).checked)"
+              />
+              <span
+                ><strong>{{ plan.title }}</strong
+                ><small>{{ processName(itemProcessId(plan)) }}</small></span
+              >
+            </label>
+          } @empty {
+            <p class="text-xs text-slate-400">
+              {{ plans().length ? 'Nenhum plano encontrado.' : 'Nenhum plano cadastrado.' }}
+            </p>
+          }
+        </div>
+      </fieldset>
+    </div>
     <div class="flex justify-end gap-2">
       <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
-        Cancelar</button
-      ><button type="submit" class="ui-button-primary">Salvar</button>
-    </div>
-  </form></app-modal
->
-<app-modal
-  [open]="linkOpen()"
-  [title]="linkType() === 'indicator' ? 'Vincular Indicador' : 'Vincular Plano de Ação'"
-  width="max-w-xl"
-  (closed)="linkOpen.set(false)"
-  ><div class="space-y-2">
-    @for (item of availableItems(); track item.id) {
-      <button
-        class="flex w-full items-center justify-between rounded-lg border border-slate-200 p-3 text-left hover:bg-slate-50"
-        (click)="linkItem(item)"
-      >
-        <span
-          ><strong class="block text-sm text-slate-700">{{ item.title }}</strong>
-          @if (itemProcessId(item)) {
-            <small class="text-slate-400">{{ processName(itemProcessId(item)!) }}</small>
-          }</span
-        ><span appIcon="Plus" class="h-4 w-4 text-blue-600"></span>
+        Cancelar
       </button>
-    } @empty {
-      <p class="py-8 text-center text-sm text-slate-400">Todos os itens já estão vinculados.</p>
-    }
-  </div></app-modal
+      <button type="submit" class="ui-button-primary" [disabled]="saving() || form.invalid">
+        {{ saving() ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-modal
+  [open]="versionOpen()"
+  title="Nova versão do planejamento"
+  width="max-w-md"
+  (closed)="versionOpen.set(false)"
 >
+  <form (submit)="$event.preventDefault(); createVersion()" class="space-y-4">
+    <p class="text-sm text-slate-600">
+      A nova versão copiará as dimensões e vínculos atuais. A versão anterior ficará disponível para
+      consulta.
+    </p>
+    <label class="ui-form-label"
+      >Nome da versão *
+      <input [formControl]="versionLabel" placeholder="Ex.: Planejamento 2027" />
+    </label>
+    @if (versionError()) {
+      <p role="alert" class="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+        {{ versionError() }}
+      </p>
+    }
+    <div class="flex justify-end gap-2">
+      <button type="button" class="ui-button-secondary" (click)="versionOpen.set(false)">
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="ui-button-primary"
+        [disabled]="versionSaving() || versionLabel.invalid"
+      >
+        {{ versionSaving() ? 'Criando...' : 'Criar versão' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
 <app-methodology
   [open]="methodologyOpen()"
   [info]="methodology"

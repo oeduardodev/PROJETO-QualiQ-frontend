@@ -2,6 +2,11 @@ import { todayUtc } from '@shared/utils/date.utils';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { toIndicatorPayload } from './data-access/indicator.mapper';
+import {
+  formatIndicatorValue,
+  indicatorUnitSymbol,
+  INDICATOR_UNITS,
+} from './data-access/indicator-unit.utils';
 import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
@@ -16,6 +21,7 @@ import type {
   IndicatorFrequency,
   IndicatorHistoryEntry,
   IndicatorStatus,
+  IndicatorUnitType,
   Process,
   SipocNode,
   Ticket,
@@ -45,6 +51,7 @@ export class IndicatorsComponent {
   readonly mode = this.route.snapshot.data['mode'] as
     'panel' | 'feed' | 'analysis' | 'registration';
   readonly methodology = METHODOLOGIES['indicadores'];
+  readonly unitOptions = INDICATOR_UNITS;
   readonly indicators = signal<Indicator[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly nodes = signal<SipocNode[]>([]);
@@ -69,7 +76,7 @@ export class IndicatorsComponent {
     process_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     step_id: new FormControl('', { nonNullable: true }),
     goal_value: new FormControl(0, { nonNullable: true }),
-    unit: new FormControl('', { nonNullable: true }),
+    unit: new FormControl<IndicatorUnitType>('numero_absoluto', { nonNullable: true }),
     current_value: new FormControl(0, { nonNullable: true }),
     frequency: new FormControl<IndicatorFrequency>('mensal', { nonNullable: true }),
     status: new FormControl<IndicatorStatus>('no_alvo', { nonNullable: true }),
@@ -199,7 +206,7 @@ export class IndicatorsComponent {
       process_id: '',
       step_id: '',
       goal_value: 0,
-      unit: '',
+      unit: 'numero_absoluto',
       current_value: 0,
       frequency: 'mensal',
       status: 'no_alvo',
@@ -291,9 +298,12 @@ export class IndicatorsComponent {
     return this.processes().find((item) => item.id === id)?.title ?? '—';
   }
 
-  formatValue(value: number, unit: string): string {
-    const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
-    return unit === '%' ? `${formatted}%` : `${formatted} ${unit}`;
+  formatValue(value: number, unit: IndicatorUnitType): string {
+    return formatIndicatorValue(value, unit);
+  }
+
+  unitLabel(unit: IndicatorUnitType): string {
+    return indicatorUnitSymbol(unit);
   }
 
   statusLabel(status: IndicatorStatus): string {

@@ -308,8 +308,8 @@
                   ><span class="text-xs text-slate-500">{{ indicator.status }}</span>
                 </div>
                 <p class="mt-1 text-xs text-slate-500">
-                  Atual: {{ indicator.current_value }} {{ indicator.unit }} · Meta:
-                  {{ indicator.goal_value }} {{ indicator.unit }} · {{ indicator.frequency }}
+                  Atual: {{ formatIndicatorValue(indicator.current_value, indicator.unit) }} · Meta:
+                  {{ formatIndicatorValue(indicator.goal_value, indicator.unit) }} · {{ indicator.frequency }}
                 </p>
                 @if (indicator.requires_critical_analysis) {
                   <p class="mt-1 text-xs text-amber-600">Exige análise crítica</p>

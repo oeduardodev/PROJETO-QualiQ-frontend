@@ -1,11 +1,16 @@
-import type { IndicatorFrequency, IndicatorStatus, Indicator } from '@core/models/database';
+import type {
+  IndicatorFrequency,
+  IndicatorStatus,
+  IndicatorUnitType,
+  Indicator,
+} from '@core/models/database';
 
 export interface IndicatorFormValue {
   title: string;
   process_id: string;
   step_id: string;
   goal_value: number;
-  unit: string;
+  unit: IndicatorUnitType;
   current_value: number;
   frequency: IndicatorFrequency;
   status: IndicatorStatus;
