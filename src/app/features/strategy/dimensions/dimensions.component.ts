@@ -30,9 +30,15 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 
 const CLASSIFICATIONS: { key: DimensionClassification; label: string; icon: string }[] = [
   { key: 'financeira', label: 'Financeira', icon: 'TrendingUp' },
-  { key: 'clientes', label: 'Clientes', icon: 'Users' },
-  { key: 'processos_internos', label: 'Processos Internos', icon: 'Workflow' },
-  { key: 'aprendizado_crescimento', label: 'Aprendizado e Crescimento', icon: 'BookOpen' },
+  { key: 'mercado_cliente', label: 'Mercado cliente', icon: 'Users' },
+  { key: 'processos_operacionais', label: 'Processos operacionais', icon: 'Workflow' },
+  { key: 'pessoas_cultura', label: 'Pessoas e cultura', icon: 'UserCheck' },
+  { key: 'qualidade_seguranca', label: 'Qualidade e segurança', icon: 'ShieldCheck' },
+  { key: 'compliance_regulatorio', label: 'Compliance regulatório', icon: 'LockKeyhole' },
+  { key: 'infraestrutura_tecnologia', label: 'Infraestrutura e tecnologia', icon: 'Cpu' },
+  { key: 'esg_sustentabilidade', label: 'ESG e sustentabilidade', icon: 'Activity' },
+  { key: 'inovacao_melhoria', label: 'Inovação e melhoria', icon: 'Sparkles' },
+  { key: 'estrategica_governanca', label: 'Estratégia e governança', icon: 'Target' },
 ];
 
 const COLORS: Record<string, { bg: string; text: string; line: string }> = {
@@ -94,7 +100,7 @@ export class DimensionsComponent {
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
     objective: new FormControl('', { nonNullable: true }),
-    classification_key: new FormControl<DimensionClassification>('processos_internos', {
+    classification_key: new FormControl<DimensionClassification>('processos_operacionais', {
       nonNullable: true,
       validators: Validators.required,
     }),
@@ -251,7 +257,7 @@ export class DimensionsComponent {
       name: '',
       description: '',
       objective: '',
-      classification_key: 'processos_internos',
+      classification_key: 'processos_operacionais',
       color_key: 'blue',
     });
     this.formOpen.set(true);
@@ -372,7 +378,7 @@ export class DimensionsComponent {
   }
 
   classificationLabel(key: DimensionClassification): string {
-    return CLASSIFICATIONS.find((item) => item.key === key)?.label ?? 'Processos Internos';
+    return CLASSIFICATIONS.find((item) => item.key === key)?.label ?? 'Processos operacionais';
   }
 
   classificationIcon(key: DimensionClassification): string {

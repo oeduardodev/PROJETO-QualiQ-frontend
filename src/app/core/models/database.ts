@@ -275,7 +275,16 @@ export interface IndicatorHistoryEntry {
 
 export type DimensionColor = 'blue' | 'green' | 'orange' | 'amber' | 'rose' | 'violet';
 export type DimensionClassification =
-  'financeira' | 'clientes' | 'processos_internos' | 'aprendizado_crescimento';
+  | 'financeira'
+  | 'mercado_cliente'
+  | 'processos_operacionais'
+  | 'pessoas_cultura'
+  | 'qualidade_seguranca'
+  | 'compliance_regulatorio'
+  | 'infraestrutura_tecnologia'
+  | 'esg_sustentabilidade'
+  | 'inovacao_melhoria'
+  | 'estrategica_governanca';
 
 export interface DimensionVersion {
   id: string;
