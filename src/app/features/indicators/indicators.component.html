@@ -26,7 +26,11 @@
           </button>
         }
         @if (mode === 'registration') {
-          <button class="ui-button-primary" (click)="openCreateIndicator()">
+          <button
+            class="ui-button-primary"
+            [disabled]="!activeStatusOptions().length"
+            (click)="openCreateIndicator()"
+          >
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Indicador
           </button>
         }
@@ -56,7 +60,8 @@
               </div>
               <span
                 class="rounded-full px-2 py-1 text-xs font-medium"
-                [class]="statusClass(indicator.status)"
+                [style.background-color]="statusBackground(indicator.status)"
+                [style.color]="statusForeground(indicator.status)"
                 >{{ statusLabel(indicator.status) }}</span
               >
             </div>
@@ -152,7 +157,8 @@
                   <td class="ui-table-cell">
                     <span
                       class="rounded-full px-2 py-1 text-xs"
-                      [class]="statusClass(indicator.status)"
+                      [style.background-color]="statusBackground(indicator.status)"
+                      [style.color]="statusForeground(indicator.status)"
                       >{{ statusLabel(indicator.status) }}</span
                     >
                   </td>
@@ -197,7 +203,8 @@
                   <strong class="text-sm text-slate-700">{{ indicator.title }}</strong
                   ><span
                     class="rounded-full px-2 py-1 text-[10px]"
-                    [class]="statusClass(indicator.status)"
+                    [style.background-color]="statusBackground(indicator.status)"
+                    [style.color]="statusForeground(indicator.status)"
                     >{{ statusLabel(indicator.status) }}</span
                   >
                 </div>
@@ -316,7 +323,7 @@
     ><label class="ui-form-label">Meta<input type="number" formControlName="goal_value" /></label
     ><label class="ui-form-label"
       >Unidade<select formControlName="unit">
-        @for (unit of unitOptions; track unit.value) {
+        @for (unit of unitOptions(); track unit.value) {
           <option [value]="unit.value">{{ unit.label }}</option>
         }
       </select></label
@@ -324,15 +331,15 @@
       >Valor atual<input type="number" formControlName="current_value" /></label
     ><label class="ui-form-label"
       >Frequência<select formControlName="frequency">
-        <option value="diario">Diário</option>
-        <option value="semanal">Semanal</option>
-        <option value="mensal">Mensal</option>
+        @for (frequency of frequencyOptions(); track frequency.value) {
+          <option [value]="frequency.value">{{ frequency.label }}</option>
+        }
       </select></label
     ><label class="ui-form-label"
       >Status<select formControlName="status">
-        <option value="no_alvo">No alvo</option>
-        <option value="atencao">Atenção</option>
-        <option value="critico">Crítico</option>
+        @for (status of formStatusOptions(); track status.key) {
+          <option [value]="status.key">{{ status.label }}</option>
+        }
       </select></label
     ><label class="mt-6 flex items-center gap-2 text-sm text-slate-600"
       ><input type="checkbox" formControlName="requires_critical_analysis" />Exige análise

@@ -1,7 +1,6 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
-import { STATUSES, TYPES } from './risks.constants';
 import { toRiskPayload } from './data-access/risk.mapper';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
@@ -16,8 +15,12 @@ import type {
   RiskContingencyPlan,
   RiskFactor,
   RiskPreventiveAction,
+  RiskPreventiveActionStatusOption,
+  RiskContingencyPlanStatusOption,
   RiskStatus,
+  RiskStatusOption,
   RiskType,
+  RiskTypeOption,
   SipocNode,
   Ticket,
 } from '@core/models/database';
@@ -42,8 +45,18 @@ export class RisksComponent {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly management = this.route.snapshot.data['mode'] === 'management';
-  readonly statuses = STATUSES;
-  readonly types = TYPES;
+  readonly statuses = signal<RiskStatusOption[]>([]);
+  readonly activeStatuses = computed(() => this.statuses().filter((option) => option.is_active));
+  readonly formStatuses = computed(() =>
+    this.statuses().filter((option) => option.is_active || option.key === this.editing()?.status),
+  );
+  readonly types = signal<RiskTypeOption[]>([]);
+  readonly preventiveActionStatuses = signal<RiskPreventiveActionStatusOption[]>([]);
+  readonly contingencyPlanStatuses = signal<RiskContingencyPlanStatusOption[]>([]);
+  readonly activeTypes = computed(() => this.types().filter((option) => option.is_active));
+  readonly formTypes = computed(() =>
+    this.types().filter((option) => option.is_active || option.key === this.editing()?.risk_type),
+  );
   readonly scoreAxis = [1, 2, 3, 4, 5];
   readonly probabilityAxis = [5, 4, 3, 2, 1];
   readonly methodology = METHODOLOGIES['riscos'];
@@ -76,9 +89,12 @@ export class RisksComponent {
     step_id: new FormControl('', { nonNullable: true }),
     probability: new FormControl(1, { nonNullable: true }),
     impact: new FormControl(1, { nonNullable: true }),
-    risk_type: new FormControl<RiskType>('Operacional', { nonNullable: true }),
+    risk_type: new FormControl<RiskType>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     barriers: new FormControl('', { nonNullable: true }),
-    status: new FormControl<RiskStatus>('identificado', { nonNullable: true }),
+    status: new FormControl<RiskStatus>('', { nonNullable: true, validators: Validators.required }),
     owner: new FormControl('', { nonNullable: true }),
   });
   readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
@@ -97,7 +113,12 @@ export class RisksComponent {
       label: 'Altos',
       value: this.risks().filter((risk) => risk.risk_score >= 10 && risk.risk_score < 20).length,
     },
-    { label: 'Tratados', value: this.risks().filter((risk) => risk.status === 'tratado').length },
+    {
+      label: 'Tratados',
+      value: this.risks().filter(
+        (risk) => this.statuses().find((status) => status.key === risk.status)?.is_treated,
+      ).length,
+    },
   ]);
   readonly selectedProcessId = toSignal(this.form.controls.process_id.valueChanges, {
     initialValue: this.form.controls.process_id.value,
@@ -125,15 +146,25 @@ export class RisksComponent {
 
   async loadRisks(): Promise<void> {
     this.loading.set(true);
+    this.error.set(null);
     try {
-      const [risks, processes, nodes] = await Promise.all([
-        this.riskService.fetchRisks(),
-        this.processService.fetchProcesses(),
-        this.processService.fetchSipocNodes(),
-      ]);
+      const [risks, processes, nodes, types, statuses, preventiveStatuses, contingencyStatuses] =
+        await Promise.all([
+          this.riskService.fetchRisks(),
+          this.processService.fetchProcesses(),
+          this.processService.fetchSipocNodes(),
+          this.riskService.fetchRiskTypes(),
+          this.riskService.fetchRiskStatuses(),
+          this.riskService.fetchPreventiveActionStatuses(),
+          this.riskService.fetchContingencyPlanStatuses(),
+        ]);
       this.risks.set(risks);
       this.processes.set(processes);
       this.nodes.set(nodes);
+      this.types.set(types);
+      this.statuses.set(statuses);
+      this.preventiveActionStatuses.set(preventiveStatuses);
+      this.contingencyPlanStatuses.set(contingencyStatuses);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar riscos'));
     } finally {
@@ -159,6 +190,7 @@ export class RisksComponent {
   }
 
   openCreateRisk(): void {
+    if (!this.activeTypes().length || !this.activeStatuses().length) return;
     this.editing.set(null);
     this.form.reset({
       title: '',
@@ -167,9 +199,9 @@ export class RisksComponent {
       step_id: '',
       probability: 1,
       impact: 1,
-      risk_type: 'Operacional',
+      risk_type: this.defaultRiskType(),
       barriers: '',
-      status: 'identificado',
+      status: this.defaultRiskStatus(),
       owner: '',
     });
     this.formError.set(null);
@@ -308,14 +340,21 @@ export class RisksComponent {
     if (kind === 'factor') return (item as RiskFactor).category || '';
     if (kind === 'action') {
       const action = item as RiskPreventiveAction;
-      return [action.responsible, action.status].filter(Boolean).join(' · ');
+      return [
+        action.responsible,
+        this.preventiveActionStatuses().find((option) => option.key === action.status)?.label ??
+          action.status,
+      ]
+        .filter(Boolean)
+        .join(' · ');
     }
     const plan = item as RiskContingencyPlan;
     return [
       plan.trigger && `Gatilho: ${plan.trigger}`,
       plan.responsible,
       plan.estimated_cost,
-      plan.status,
+      this.contingencyPlanStatuses().find((option) => option.key === plan.status)?.label ??
+        plan.status,
     ]
       .filter(Boolean)
       .join(' · ');
@@ -340,11 +379,26 @@ export class RisksComponent {
   }
 
   statusLabel(status: RiskStatus): string {
-    return {
-      identificado: 'Identificado',
-      em_analise: 'Em análise',
-      tratado: 'Tratado',
-      monitorado: 'Monitorado',
-    }[status];
+    return this.statuses().find((option) => option.key === status)?.label ?? status;
+  }
+
+  riskTypeLabel(value: RiskType): string {
+    return this.types().find((option) => option.key === value)?.label ?? value;
+  }
+
+  private defaultRiskStatus(): RiskStatus {
+    return (
+      this.activeStatuses().find((option) => option.is_default)?.key ??
+      this.activeStatuses()[0]?.key ??
+      ''
+    );
+  }
+
+  private defaultRiskType(): RiskType {
+    return (
+      this.activeTypes().find((option) => option.is_default)?.key ??
+      this.activeTypes()[0]?.key ??
+      ''
+    );
   }
 }

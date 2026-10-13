@@ -12,8 +12,12 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import type {
   ActionPlan,
   ActionPlanStatus,
+  ActionPlanStatusOption,
   Dimension,
   DimensionClassification,
+  DimensionClassificationOption,
+  DimensionColor,
+  DimensionColorOption,
   DimensionLink,
   DimensionVersion,
   Indicator,
@@ -27,28 +31,6 @@ import { MethodologyComponent } from '@shared/components/methodology/methodology
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
-
-const CLASSIFICATIONS: { key: DimensionClassification; label: string; icon: string }[] = [
-  { key: 'financeira', label: 'Financeira', icon: 'TrendingUp' },
-  { key: 'mercado_cliente', label: 'Mercado cliente', icon: 'Users' },
-  { key: 'processos_operacionais', label: 'Processos operacionais', icon: 'Workflow' },
-  { key: 'pessoas_cultura', label: 'Pessoas e cultura', icon: 'UserCheck' },
-  { key: 'qualidade_seguranca', label: 'Qualidade e segurança', icon: 'ShieldCheck' },
-  { key: 'compliance_regulatorio', label: 'Compliance regulatório', icon: 'LockKeyhole' },
-  { key: 'infraestrutura_tecnologia', label: 'Infraestrutura e tecnologia', icon: 'Cpu' },
-  { key: 'esg_sustentabilidade', label: 'ESG e sustentabilidade', icon: 'Activity' },
-  { key: 'inovacao_melhoria', label: 'Inovação e melhoria', icon: 'Sparkles' },
-  { key: 'estrategica_governanca', label: 'Estratégia e governança', icon: 'Target' },
-];
-
-const COLORS: Record<string, { bg: string; text: string; line: string }> = {
-  blue: { bg: 'bg-blue-50', text: 'text-blue-700', line: '#2563eb' },
-  green: { bg: 'bg-emerald-50', text: 'text-emerald-700', line: '#059669' },
-  orange: { bg: 'bg-orange-50', text: 'text-orange-700', line: '#ea580c' },
-  amber: { bg: 'bg-amber-50', text: 'text-amber-700', line: '#d97706' },
-  rose: { bg: 'bg-rose-50', text: 'text-rose-700', line: '#e11d48' },
-  violet: { bg: 'bg-violet-50', text: 'text-violet-700', line: '#7c3aed' },
-};
 
 @Component({
   selector: 'app-dimensions',
@@ -66,7 +48,19 @@ export class DimensionsComponent {
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['dimensoes'];
-  readonly classifications = CLASSIFICATIONS;
+  readonly classifications = signal<DimensionClassificationOption[]>([]);
+  readonly colors = signal<DimensionColorOption[]>([]);
+  readonly activeColors = computed(() => this.colors().filter((option) => option.is_active));
+  readonly formColors = computed(() =>
+    this.colors().filter((option) => option.is_active || option.key === this.editing()?.color_key),
+  );
+  readonly formClassifications = computed(() => {
+    const editingKey = this.editing()?.classification_key;
+    return this.classifications().filter(
+      (classification) =>
+        classification.is_active || classification.classification_key === editingKey,
+    );
+  });
   readonly versions = signal<DimensionVersion[]>([]);
   readonly selectedVersionId = signal<string | null>(null);
   readonly versionSelection = new FormControl('', { nonNullable: true });
@@ -74,6 +68,7 @@ export class DimensionsComponent {
   readonly links = signal<DimensionLink[]>([]);
   readonly indicators = signal<Indicator[]>([]);
   readonly plans = signal<ActionPlan[]>([]);
+  readonly planStatuses = signal<ActionPlanStatusOption[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly tickets = signal<Ticket[]>([]);
   readonly histories = signal<Record<string, IndicatorHistoryEntry[]>>({});
@@ -100,11 +95,14 @@ export class DimensionsComponent {
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
     objective: new FormControl('', { nonNullable: true }),
-    classification_key: new FormControl<DimensionClassification>('processos_operacionais', {
+    classification_key: new FormControl<DimensionClassification>('', {
       nonNullable: true,
       validators: Validators.required,
     }),
-    color_key: new FormControl('blue', { nonNullable: true }),
+    color_key: new FormControl<DimensionColor>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
   });
   readonly filteredIndicators = computed(() => {
     const term = this.normalizeSearch(this.indicatorSearch());
@@ -154,19 +152,34 @@ export class DimensionsComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [versions, indicators, plans, processes, tickets] = await Promise.all([
+      const [
+        versions,
+        indicators,
+        plans,
+        processes,
+        tickets,
+        classifications,
+        planStatuses,
+        colors,
+      ] = await Promise.all([
         this.dimensionService.fetchVersions(),
         this.indicatorService.fetchIndicators(),
         this.actionPlanService.fetchActionPlans(),
         this.processService.fetchProcesses(),
         this.ticketService.fetchTickets(),
+        this.dimensionService.fetchClassifications(),
+        this.actionPlanService.fetchStatuses(),
+        this.dimensionService.fetchColors(),
       ]);
       if (requestId !== this.versionRequestId) return;
       this.versions.set(versions);
       this.indicators.set(indicators);
       this.plans.set(plans);
+      this.planStatuses.set(planStatuses);
       this.processes.set(processes);
       this.tickets.set(tickets);
+      this.classifications.set(classifications);
+      this.colors.set(colors);
       const selectedId = versions.some((item) => item.id === this.selectedVersionId())
         ? this.selectedVersionId()
         : this.currentVersion()?.id;
@@ -247,7 +260,7 @@ export class DimensionsComponent {
   }
 
   openCreate(): void {
-    if (!this.canManage()) return;
+    if (!this.canManage() || !this.activeColors().length) return;
     this.editing.set(null);
     this.selectedIndicatorIds.set(new Set());
     this.selectedPlanIds.set(new Set());
@@ -257,8 +270,8 @@ export class DimensionsComponent {
       name: '',
       description: '',
       objective: '',
-      classification_key: 'processos_operacionais',
-      color_key: 'blue',
+      classification_key: this.defaultClassificationKey(),
+      color_key: this.defaultColor(),
     });
     this.formOpen.set(true);
   }
@@ -378,23 +391,42 @@ export class DimensionsComponent {
   }
 
   classificationLabel(key: DimensionClassification): string {
-    return CLASSIFICATIONS.find((item) => item.key === key)?.label ?? 'Processos operacionais';
+    return this.classifications().find((item) => item.classification_key === key)?.label ?? key;
   }
 
   classificationIcon(key: DimensionClassification): string {
-    return CLASSIFICATIONS.find((item) => item.key === key)?.icon ?? 'Workflow';
+    return (
+      this.classifications().find((item) => item.classification_key === key)?.icon ?? 'Workflow'
+    );
   }
 
-  colorBg(key: string): string {
-    return COLORS[key]?.bg ?? COLORS['blue'].bg;
+  private defaultClassificationKey(): DimensionClassification {
+    return (
+      this.classifications().find((item) => item.is_active && item.is_default)
+        ?.classification_key ??
+      this.classifications().find((item) => item.is_active)?.classification_key ??
+      ''
+    );
   }
 
-  colorText(key: string): string {
-    return COLORS[key]?.text ?? COLORS['blue'].text;
+  private defaultColor(): DimensionColor {
+    return (
+      this.activeColors().find((option) => option.is_default)?.key ??
+      this.activeColors()[0]?.key ??
+      ''
+    );
   }
 
-  colorLine(key: string): string {
-    return COLORS[key]?.line ?? COLORS['blue'].line;
+  colorBackground(key: DimensionColor): string {
+    return this.colors().find((option) => option.key === key)?.background_color ?? '#f1f5f9';
+  }
+
+  colorForeground(key: DimensionColor): string {
+    return this.colors().find((option) => option.key === key)?.foreground_color ?? '#475569';
+  }
+
+  colorLine(key: DimensionColor): string {
+    return this.colors().find((option) => option.key === key)?.line_color ?? '#64748b';
   }
 
   processName(id: string | null): string {
@@ -442,16 +474,19 @@ export class DimensionsComponent {
   }
 
   planStatusLabel(status: ActionPlanStatus): string {
-    return {
-      pendente: 'Pendente',
-      andamento: 'Em andamento',
-      atrasado: 'Atrasado',
-      concluido: 'Concluído',
-    }[status];
+    return this.planStatuses().find((option) => option.key === status)?.label ?? status;
+  }
+
+  planStatusColor(status: ActionPlanStatus): string {
+    return (
+      this.planStatuses().find((option) => option.key === status)?.header_foreground ?? '#475569'
+    );
   }
 
   completedPlans(id: string): number {
-    return this.linkedPlans(id).filter((item) => item.status === 'concluido').length;
+    return this.linkedPlans(id).filter(
+      (item) => this.planStatuses().find((option) => option.key === item.status)?.is_terminal,
+    ).length;
   }
 
   planCompletionPercent(id: string): number {

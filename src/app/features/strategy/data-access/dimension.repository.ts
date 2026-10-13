@@ -3,6 +3,8 @@ import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type {
   Dimension,
+  DimensionClassificationOption,
+  DimensionColorOption,
   DimensionItemType,
   DimensionLink,
   DimensionVersion,
@@ -11,6 +13,26 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class DimensionRepository {
   private readonly client = inject(SupabaseService).client;
+
+  async fetchColors(): Promise<DimensionColorOption[]> {
+    const { data, error } = await this.client
+      .from('dimension_colors')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchClassifications(): Promise<DimensionClassificationOption[]> {
+    const { data, error } = await this.client
+      .from('dimension_classifications')
+      .select('*')
+      .order('order_index')
+      .order('classification_key');
+    if (error) throw error;
+    return data;
+  }
 
   fetchVersions(): Promise<DimensionVersion[]> {
     return fetchAllPages((from, to) =>

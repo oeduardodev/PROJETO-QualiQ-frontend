@@ -1,6 +1,5 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
-import { COLUMNS } from './helpdesk.constants';
 import { toHelpdeskTicketPayload } from './data-access/helpdesk-ticket.mapper';
 import { HelpdeskService } from '@features/helpdesk/data-access/helpdesk.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
@@ -9,8 +8,11 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type {
   HelpdeskCategory,
+  HelpdeskCategoryOption,
   HelpdeskPriority,
+  HelpdeskPriorityOption,
   HelpdeskStatus,
+  HelpdeskStatusOption,
   HelpdeskTicket,
   Process,
 } from '@core/models/database';
@@ -34,8 +36,30 @@ export class HelpdeskComponent {
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['helpdesk'];
-  readonly columns = COLUMNS;
+  readonly columns = signal<HelpdeskStatusOption[]>([]);
+  readonly activeStatuses = computed(() => this.columns().filter((option) => option.is_active));
+  readonly formStatuses = computed(() =>
+    this.columns().filter((option) => option.is_active || option.key === this.editing()?.status),
+  );
   readonly tickets = signal<HelpdeskTicket[]>([]);
+  readonly categories = signal<HelpdeskCategoryOption[]>([]);
+  readonly priorities = signal<HelpdeskPriorityOption[]>([]);
+  readonly activeCategories = computed(() =>
+    this.categories().filter((option) => option.is_active),
+  );
+  readonly activePriorities = computed(() =>
+    this.priorities().filter((option) => option.is_active),
+  );
+  readonly formCategories = computed(() =>
+    this.categories().filter(
+      (option) => option.is_active || option.key === this.editing()?.category,
+    ),
+  );
+  readonly formPriorities = computed(() =>
+    this.priorities().filter(
+      (option) => option.is_active || option.key === this.editing()?.priority,
+    ),
+  );
   readonly processes = signal<Process[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -51,9 +75,18 @@ export class HelpdeskComponent {
   readonly form = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
-    category: new FormControl<HelpdeskCategory>('ti', { nonNullable: true }),
-    status: new FormControl<HelpdeskStatus>('aberto', { nonNullable: true }),
-    priority: new FormControl<HelpdeskPriority>('media', { nonNullable: true }),
+    category: new FormControl<HelpdeskCategory>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
+    status: new FormControl<HelpdeskStatus>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
+    priority: new FormControl<HelpdeskPriority>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     requester_name: new FormControl('', { nonNullable: true }),
     assigned_to: new FormControl('', { nonNullable: true }),
     process_id: new FormControl('', { nonNullable: true }),
@@ -79,13 +112,20 @@ export class HelpdeskComponent {
 
   async loadTickets(): Promise<void> {
     this.loading.set(true);
+    this.error.set(null);
     try {
-      const [tickets, processes] = await Promise.all([
+      const [tickets, processes, categories, priorities, statuses] = await Promise.all([
         this.helpdeskService.fetchHelpdeskTickets(),
         this.processService.fetchProcesses(),
+        this.helpdeskService.fetchCategories(),
+        this.helpdeskService.fetchPriorities(),
+        this.helpdeskService.fetchStatuses(),
       ]);
       this.tickets.set(tickets);
       this.processes.set(processes);
+      this.categories.set(categories);
+      this.priorities.set(priorities);
+      this.columns.set(statuses);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar helpdesk'));
     } finally {
@@ -97,16 +137,27 @@ export class HelpdeskComponent {
     return this.filtered().filter((ticket) => ticket.status === status);
   }
 
+  canAdvance(status: HelpdeskStatus): boolean {
+    const next = this.columns().find((option) => option.key === status)?.next_status_key;
+    return !!next && this.activeStatuses().some((option) => option.key === next);
+  }
+
   openCreateTicket(): void {
+    if (
+      !this.activeCategories().length ||
+      !this.activePriorities().length ||
+      !this.activeStatuses().length
+    )
+      return;
     this.editing.set(null);
     this.readOnly.set(false);
     this.form.enable();
     this.form.reset({
       title: '',
       description: '',
-      category: 'ti',
-      status: 'aberto',
-      priority: 'media',
+      category: this.defaultCategory(),
+      status: this.defaultStatus(),
+      priority: this.defaultPriority(),
       requester_name: '',
       assigned_to: '',
       process_id: '',
@@ -184,20 +235,42 @@ export class HelpdeskComponent {
   }
 
   categoryLabel(value: HelpdeskCategory): string {
-    return { ti: 'TI', manutencao: 'Manutenção', almoxarifado: 'Almoxarifado' }[value];
+    return this.categories().find((option) => option.key === value)?.label ?? value;
   }
 
   priorityLabel(value: HelpdeskPriority): string {
-    return { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente' }[value];
+    return this.priorities().find((option) => option.key === value)?.label ?? value;
   }
 
-  priorityClass(value: HelpdeskPriority): string {
-    return value === 'urgente'
-      ? 'bg-rose-100 text-rose-700'
-      : value === 'alta'
-        ? 'bg-orange-100 text-orange-700'
-        : value === 'media'
-          ? 'bg-amber-100 text-amber-700'
-          : 'bg-slate-100 text-slate-600';
+  priorityBackground(value: HelpdeskPriority): string {
+    return this.priorities().find((option) => option.key === value)?.badge_background ?? '#f1f5f9';
+  }
+
+  priorityForeground(value: HelpdeskPriority): string {
+    return this.priorities().find((option) => option.key === value)?.badge_foreground ?? '#475569';
+  }
+
+  private defaultCategory(): HelpdeskCategory {
+    return (
+      this.activeCategories().find((option) => option.is_default)?.key ??
+      this.activeCategories()[0]?.key ??
+      ''
+    );
+  }
+
+  private defaultPriority(): HelpdeskPriority {
+    return (
+      this.activePriorities().find((option) => option.is_default)?.key ??
+      this.activePriorities()[0]?.key ??
+      ''
+    );
+  }
+
+  private defaultStatus(): HelpdeskStatus {
+    return (
+      this.activeStatuses().find((option) => option.is_initial)?.key ??
+      this.activeStatuses()[0]?.key ??
+      ''
+    );
   }
 }

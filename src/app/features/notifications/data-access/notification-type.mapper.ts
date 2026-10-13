@@ -1,6 +1,5 @@
 import type {
   NotificationSeverity,
-  AnalysisTool,
   NotificationClassification,
   NotificationType,
 } from '@core/models/database';
@@ -27,6 +26,6 @@ export function toNotificationTypePayload(
     sla_id: value.sla_id || null,
     risk_id: value.risk_id || null,
     requires_root_cause: classification?.requires_root_cause ?? false,
-    analysis_tool: classification?.analysis_tool ?? ('Nenhuma' as AnalysisTool),
+    analysis_tool: classification?.analysis_tool,
   };
 }

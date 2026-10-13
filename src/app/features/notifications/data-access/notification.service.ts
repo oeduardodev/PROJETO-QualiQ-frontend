@@ -1,10 +1,23 @@
 import { inject, Injectable } from '@angular/core';
 import { NotificationRepository } from './notification.repository';
-import type { NotificationClassification, NotificationType } from '@core/models/database';
+import type {
+  AnalysisToolOption,
+  NotificationClassification,
+  NotificationSeverityOption,
+  NotificationType,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly repository = inject(NotificationRepository);
+
+  fetchAnalysisTools(): Promise<AnalysisToolOption[]> {
+    return this.repository.fetchAnalysisTools();
+  }
+
+  fetchNotificationSeverities(): Promise<NotificationSeverityOption[]> {
+    return this.repository.fetchNotificationSeverities();
+  }
 
   fetchNotificationClassifications(): Promise<NotificationClassification[]> {
     return this.repository.fetchNotificationClassifications();

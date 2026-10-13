@@ -1,11 +1,36 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
-import type { NotificationClassification, NotificationType } from '@core/models/database';
+import type {
+  AnalysisToolOption,
+  NotificationClassification,
+  NotificationSeverityOption,
+  NotificationType,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationRepository {
   private readonly client = inject(SupabaseService).client;
+
+  async fetchAnalysisTools(): Promise<AnalysisToolOption[]> {
+    const { data, error } = await this.client
+      .from('analysis_tools')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchNotificationSeverities(): Promise<NotificationSeverityOption[]> {
+    const { data, error } = await this.client
+      .from('notification_severities')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
 
   fetchNotificationClassifications(): Promise<NotificationClassification[]> {
     return fetchAllPages((from, to) =>

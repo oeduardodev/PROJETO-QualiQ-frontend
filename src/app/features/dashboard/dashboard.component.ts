@@ -75,18 +75,30 @@ export class DashboardComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [processes, tickets, indicators] = await Promise.all([
-        this.processService.fetchProcesses(),
-        this.ticketService.fetchTickets(),
-        this.indicatorService.fetchIndicators(),
-      ]);
+      const [processes, tickets, indicators, ticketStatuses, indicatorStatuses] = await Promise.all(
+        [
+          this.processService.fetchProcesses(),
+          this.ticketService.fetchTickets(),
+          this.indicatorService.fetchIndicators(),
+          this.ticketService.fetchStatuses(),
+          this.indicatorService.fetchStatusOptions(),
+        ],
+      );
       this.processes.set(processes);
       this.recentTickets.set(tickets.slice(0, 5));
       this.totals.set({
         processes: processes.length,
-        open: tickets.filter((t) => t.status !== 'concluido').length,
-        critical: indicators.filter((i) => i.status === 'critico').length,
-        target: indicators.filter((i) => i.status === 'no_alvo').length,
+        open: tickets.filter(
+          (t) => !ticketStatuses.find((status) => status.key === t.status)?.is_terminal,
+        ).length,
+        critical: indicators.filter(
+          (indicator) =>
+            indicatorStatuses.find((status) => status.key === indicator.status)?.is_critical,
+        ).length,
+        target: indicators.filter(
+          (indicator) =>
+            indicatorStatuses.find((status) => status.key === indicator.status)?.is_target,
+        ).length,
       });
     } catch (error) {
       this.error.set(errorMessage(error, 'Erro ao carregar o painel'));

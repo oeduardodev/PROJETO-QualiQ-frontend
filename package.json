@@ -10,6 +10,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "typecheck": "ng build --configuration development",
+    "db:types": "node scripts/generate-database-types.mjs",
     "format": "prettier --write \"src/**/*.{ts,html,scss,css}\" \"scripts/**/*.mjs\" \"README.md\" \"angular.json\" \"eslint.config.js\" \"package.json\" \"tsconfig*.json\" \"tailwind.config.js\" \".postcssrc.json\"",
     "lint": "npm run format && ng lint --fix",
     "lint:check": "prettier --check \"src/**/*.{ts,html,scss,css}\" \"scripts/**/*.mjs\" \"README.md\" \"angular.json\" \"eslint.config.js\" \"package.json\" \"tsconfig*.json\" \"tailwind.config.js\" \".postcssrc.json\" && ng lint"
@@ -40,6 +41,7 @@
     "jsdom": "^30.0.0",
     "postcss": "^8.5.28",
     "prettier": "^3.8.1",
+    "supabase": "^2.120.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.69.0",

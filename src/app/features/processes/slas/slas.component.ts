@@ -1,6 +1,5 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
-import { STATUS } from './slas.constants';
 import { toSlaPayload } from '../data-access/sla.mapper';
 import { SlaService } from '@features/processes/data-access/sla.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
@@ -8,7 +7,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
-import type { Process, SLA, SipocNode, SlaStatus } from '@core/models/database';
+import type { Process, SLA, SipocNode, SlaStatus, SlaStatusOption } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
@@ -27,7 +26,11 @@ export class SlasComponent {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly management = this.route.snapshot.data['mode'] === 'management';
-  readonly statuses = STATUS;
+  readonly statuses = signal<SlaStatusOption[]>([]);
+  readonly activeStatuses = computed(() => this.statuses().filter((option) => option.is_active));
+  readonly formStatuses = computed(() =>
+    this.statuses().filter((option) => option.is_active || option.key === this.editing()?.status),
+  );
   readonly slas = signal<SLA[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly nodes = signal<SipocNode[]>([]);
@@ -48,7 +51,7 @@ export class SlasComponent {
     sipoc_input_id: new FormControl('', { nonNullable: true }),
     lead_time_hours: new FormControl(0, { nonNullable: true }),
     quality_criteria: new FormControl('', { nonNullable: true }),
-    status: new FormControl<SlaStatus>('Ativo', { nonNullable: true }),
+    status: new FormControl<SlaStatus>('', { nonNullable: true, validators: Validators.required }),
   });
   readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
   readonly inputs = computed(() => this.nodes().filter((node) => node.node_type === 'I'));
@@ -60,25 +63,13 @@ export class SlasComponent {
     ),
   );
   readonly summary = computed(() => [
-    { label: 'Total de SLAs', value: this.slas().length, icon: 'Gauge', color: 'text-blue-600' },
-    {
-      label: 'Ativos',
-      value: this.slas().filter((s) => s.status === 'Ativo').length,
+    { label: 'Total de SLAs', value: this.slas().length, icon: 'Gauge', color: '#2563eb' },
+    ...this.statuses().map((status) => ({
+      label: status.label,
+      value: this.slas().filter((sla) => sla.status === status.key).length,
       icon: 'CircleCheck',
-      color: 'text-emerald-600',
-    },
-    {
-      label: 'Em revisão',
-      value: this.slas().filter((s) => s.status === 'Em Revisão').length,
-      icon: 'Clock3',
-      color: 'text-amber-600',
-    },
-    {
-      label: 'Inativos',
-      value: this.slas().filter((s) => s.status === 'Inativo').length,
-      icon: 'CircleMinus',
-      color: 'text-slate-500',
-    },
+      color: status.badge_foreground,
+    })),
   ]);
 
   constructor() {
@@ -93,15 +84,18 @@ export class SlasComponent {
 
   async loadSlas(): Promise<void> {
     this.loading.set(true);
+    this.error.set(null);
     try {
-      const [slas, processes, nodes] = await Promise.all([
+      const [slas, processes, nodes, statuses] = await Promise.all([
         this.slaService.fetchSlas(),
         this.processService.fetchProcesses(),
         this.processService.fetchSipocNodes(),
+        this.slaService.fetchStatuses(),
       ]);
       this.slas.set(slas);
       this.processes.set(processes);
       this.nodes.set(nodes);
+      this.statuses.set(statuses);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar SLAs'));
     } finally {
@@ -110,6 +104,7 @@ export class SlasComponent {
   }
 
   openCreateSla(): void {
+    if (!this.activeStatuses().length) return;
     this.editing.set(null);
     this.form.reset({
       title: '',
@@ -118,7 +113,7 @@ export class SlasComponent {
       sipoc_input_id: '',
       lead_time_hours: 0,
       quality_criteria: '',
-      status: 'Ativo',
+      status: this.defaultStatus(),
     });
     this.formOpen.set(true);
   }
@@ -177,11 +172,23 @@ export class SlasComponent {
     return this.processes().find((process) => process.id === id)?.title ?? '—';
   }
 
-  statusClass(status: SlaStatus): string {
-    return status === 'Ativo'
-      ? 'bg-emerald-50 text-emerald-700'
-      : status === 'Em Revisão'
-        ? 'bg-amber-50 text-amber-700'
-        : 'bg-slate-100 text-slate-600';
+  statusLabel(status: SlaStatus): string {
+    return this.statuses().find((option) => option.key === status)?.label ?? status;
+  }
+
+  statusBackground(status: SlaStatus): string {
+    return this.statuses().find((option) => option.key === status)?.badge_background ?? '#f1f5f9';
+  }
+
+  statusForeground(status: SlaStatus): string {
+    return this.statuses().find((option) => option.key === status)?.badge_foreground ?? '#475569';
+  }
+
+  private defaultStatus(): SlaStatus {
+    return (
+      this.activeStatuses().find((option) => option.is_default)?.key ??
+      this.activeStatuses()[0]?.key ??
+      ''
+    );
   }
 }

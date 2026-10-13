@@ -1,16 +1,21 @@
 import { inject, Injectable } from '@angular/core';
 import { TicketRepository } from './ticket.repository';
-import { nextWorkflowStatus } from '@shared/utils/workflow.utils';
-import { TICKET_STATUS_SEQUENCE } from './ticket-workflow.constants';
-import type { Ticket } from '@core/models/database';
+import type { Ticket, TicketStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class TicketService {
   private readonly repository = inject(TicketRepository);
 
-  advance(ticket: Ticket): Promise<Ticket> {
-    const status = nextWorkflowStatus(ticket.status, TICKET_STATUS_SEQUENCE);
-    return this.repository.updateTicket(ticket.id, { status });
+  fetchStatuses(): Promise<TicketStatusOption[]> {
+    return this.repository.fetchStatuses();
+  }
+
+  async advance(ticket: Ticket): Promise<Ticket> {
+    const statuses = await this.fetchStatuses();
+    const next = statuses.find((option) => option.key === ticket.status)?.next_status_key;
+    if (!next || !statuses.some((option) => option.key === next && option.is_active))
+      throw new Error('Próxima etapa não configurada ou inativa no Supabase.');
+    return this.repository.updateTicket(ticket.id, { status: next });
   }
 
   fetchTickets(): Promise<Ticket[]> {

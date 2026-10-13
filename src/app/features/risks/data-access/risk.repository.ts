@@ -3,14 +3,58 @@ import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type {
   Risk,
+  RiskTypeOption,
+  RiskStatusOption,
   RiskFactor,
   RiskPreventiveAction,
   RiskContingencyPlan,
+  RiskPreventiveActionStatusOption,
+  RiskContingencyPlanStatusOption,
 } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class RiskRepository {
   private readonly client = inject(SupabaseService).client;
+
+  async fetchRiskStatuses(): Promise<RiskStatusOption[]> {
+    const { data, error } = await this.client
+      .from('risk_statuses')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchPreventiveActionStatuses(): Promise<RiskPreventiveActionStatusOption[]> {
+    const { data, error } = await this.client
+      .from('risk_preventive_action_statuses')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchContingencyPlanStatuses(): Promise<RiskContingencyPlanStatusOption[]> {
+    const { data, error } = await this.client
+      .from('risk_contingency_plan_statuses')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchRiskTypes(): Promise<RiskTypeOption[]> {
+    const { data, error } = await this.client
+      .from('risk_types')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
 
   fetchRisks(): Promise<Risk[]> {
     return fetchAllPages((from, to) =>

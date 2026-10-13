@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { DimensionRepository } from './dimension.repository';
 import type {
   Dimension,
+  DimensionClassificationOption,
+  DimensionColorOption,
   DimensionItemType,
   DimensionLink,
   DimensionVersion,
@@ -10,6 +12,14 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class DimensionService {
   private readonly repository = inject(DimensionRepository);
+
+  fetchColors(): Promise<DimensionColorOption[]> {
+    return this.repository.fetchColors();
+  }
+
+  fetchClassifications(): Promise<DimensionClassificationOption[]> {
+    return this.repository.fetchClassifications();
+  }
 
   fetchVersions(): Promise<DimensionVersion[]> {
     return this.repository.fetchVersions();

@@ -2,6 +2,11 @@
   <div class="ui-page-loading">
     <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
   </div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p class="text-sm text-slate-500">{{ error() }}</p>
+    <button class="mt-3 text-sm underline" (click)="loadActionPlans()">Tentar novamente</button>
+  </div>
 } @else {
   <div class="space-y-6">
     <div class="ui-page-header">
@@ -12,23 +17,33 @@
       <div class="flex gap-2">
         <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
           <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
-        ><button class="ui-button-primary" (click)="openCreateActionPlan()">
+        ><button
+          class="ui-button-primary"
+          [disabled]="!activeStatuses().length"
+          (click)="openCreateActionPlan()"
+        >
           <span appIcon="Plus" class="h-4 w-4"></span>Novo Plano
         </button>
       </div>
     </div>
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
-      @for (column of columns; track column.value) {
+      @for (column of columns(); track column.key) {
         <section>
-          <header class="ui-kanban-column-header" [class]="column.bg + ' ' + column.border">
-            <strong class="text-sm" [class]="column.color">{{ column.label }}</strong
-            ><span class="ml-auto text-xs text-slate-400">{{ byStatus(column.value).length }}</span>
+          <header
+            class="ui-kanban-column-header"
+            [style.background-color]="column.header_background"
+            [style.border-color]="column.header_border"
+          >
+            <strong class="text-sm" [style.color]="column.header_foreground">{{
+              column.label
+            }}</strong
+            ><span class="ml-auto text-xs text-slate-400">{{ byStatus(column.key).length }}</span>
           </header>
           <div
             class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
-            [class]="column.border"
+            [style.border-color]="column.header_border"
           >
-            @for (plan of byStatus(column.value); track plan.id) {
+            @for (plan of byStatus(column.key); track plan.id) {
               <article class="ui-kanban-card">
                 <button class="block w-full text-left" (click)="openEditActionPlan(plan)">
                   <strong class="text-sm text-slate-700">{{ plan.title }}</strong>
@@ -49,7 +64,7 @@
                   </div>
                 </button>
                 <div class="ui-kanban-card-footer">
-                  @if (plan.status !== 'concluido') {
+                  @if (canAdvance(plan.status)) {
                     <button
                       class="text-[11px] font-medium text-blue-600"
                       (click)="advanceActionPlan(plan)"
@@ -102,8 +117,8 @@
     ><label class="ui-form-label">Quanto? (How much)<input formControlName="how_much" /></label
     ><label class="ui-form-label"
       >Status<select formControlName="status">
-        @for (column of columns; track column.value) {
-          <option [value]="column.value">{{ column.label }}</option>
+        @for (column of formStatuses(); track column.key) {
+          <option [value]="column.key">{{ column.label }}</option>
         }
       </select></label
     >

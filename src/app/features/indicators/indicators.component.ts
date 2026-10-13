@@ -2,11 +2,7 @@ import { todayUtc } from '@shared/utils/date.utils';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { toIndicatorPayload } from './data-access/indicator.mapper';
-import {
-  formatIndicatorValue,
-  indicatorUnitSymbol,
-  INDICATOR_UNITS,
-} from './data-access/indicator-unit.utils';
+import { formatIndicatorValue, indicatorUnitSymbol } from './data-access/indicator-unit.utils';
 import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
@@ -19,8 +15,11 @@ import type { IndicatorAnalysis } from './data-access/indicator-analysis.model';
 import type {
   Indicator,
   IndicatorFrequency,
+  IndicatorFrequencyOption,
   IndicatorHistoryEntry,
   IndicatorStatus,
+  IndicatorStatusOption,
+  IndicatorUnitOption,
   IndicatorUnitType,
   Process,
   SipocNode,
@@ -51,7 +50,17 @@ export class IndicatorsComponent {
   readonly mode = this.route.snapshot.data['mode'] as
     'panel' | 'feed' | 'analysis' | 'registration';
   readonly methodology = METHODOLOGIES['indicadores'];
-  readonly unitOptions = INDICATOR_UNITS;
+  readonly unitOptions = signal<IndicatorUnitOption[]>([]);
+  readonly frequencyOptions = signal<IndicatorFrequencyOption[]>([]);
+  readonly statusOptions = signal<IndicatorStatusOption[]>([]);
+  readonly activeStatusOptions = computed(() =>
+    this.statusOptions().filter((option) => option.is_active),
+  );
+  readonly formStatusOptions = computed(() =>
+    this.statusOptions().filter(
+      (option) => option.is_active || option.key === this.editing()?.status,
+    ),
+  );
   readonly indicators = signal<Indicator[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly nodes = signal<SipocNode[]>([]);
@@ -79,17 +88,24 @@ export class IndicatorsComponent {
     unit: new FormControl<IndicatorUnitType>('numero_absoluto', { nonNullable: true }),
     current_value: new FormControl(0, { nonNullable: true }),
     frequency: new FormControl<IndicatorFrequency>('mensal', { nonNullable: true }),
-    status: new FormControl<IndicatorStatus>('no_alvo', { nonNullable: true }),
+    status: new FormControl<IndicatorStatus>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     requires_critical_analysis: new FormControl(false, { nonNullable: true }),
   });
   readonly problemIndicators = computed(() =>
-    this.indicators().filter((indicator) => indicator.status !== 'no_alvo'),
+    this.indicators().filter(
+      (indicator) =>
+        this.statusOptions().find((option) => option.key === indicator.status)?.is_problem,
+    ),
   );
   readonly summary = computed(() => [
     { label: 'Total', value: this.indicators().length },
-    { label: 'No alvo', value: this.indicators().filter((i) => i.status === 'no_alvo').length },
-    { label: 'Atenção', value: this.indicators().filter((i) => i.status === 'atencao').length },
-    { label: 'Críticos', value: this.indicators().filter((i) => i.status === 'critico').length },
+    ...this.statusOptions().map((status) => ({
+      label: status.label,
+      value: this.indicators().filter((indicator) => indicator.status === status.key).length,
+    })),
   ]);
   readonly selectedProcessId = toSignal(this.form.controls.process_id.valueChanges, {
     initialValue: this.form.controls.process_id.value,
@@ -122,16 +138,23 @@ export class IndicatorsComponent {
   async loadIndicators(): Promise<void> {
     this.loading.set(true);
     try {
-      const [indicators, processes, nodes, tickets] = await Promise.all([
-        this.indicatorService.fetchIndicators(),
-        this.processService.fetchProcesses(),
-        this.processService.fetchSipocNodes(),
-        this.ticketService.fetchTickets(),
-      ]);
+      const [indicators, processes, nodes, tickets, unitOptions, frequencyOptions, statusOptions] =
+        await Promise.all([
+          this.indicatorService.fetchIndicators(),
+          this.processService.fetchProcesses(),
+          this.processService.fetchSipocNodes(),
+          this.ticketService.fetchTickets(),
+          this.indicatorService.fetchUnitOptions(),
+          this.indicatorService.fetchFrequencyOptions(),
+          this.indicatorService.fetchStatusOptions(),
+        ]);
       this.indicators.set(indicators);
       this.processes.set(processes);
       this.nodes.set(nodes);
       this.tickets.set(tickets);
+      this.unitOptions.set(unitOptions);
+      this.frequencyOptions.set(frequencyOptions);
+      this.statusOptions.set(statusOptions);
       this.histories.set(await this.indicatorService.fetchHistories(indicators));
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar indicadores'));
@@ -200,6 +223,7 @@ export class IndicatorsComponent {
   }
 
   openCreateIndicator(): void {
+    if (!this.activeStatusOptions().length) return;
     this.editing.set(null);
     this.form.reset({
       title: '',
@@ -209,7 +233,7 @@ export class IndicatorsComponent {
       unit: 'numero_absoluto',
       current_value: 0,
       frequency: 'mensal',
-      status: 'no_alvo',
+      status: this.defaultStatus(),
       requires_critical_analysis: false,
     });
     this.formOpen.set(true);
@@ -307,18 +331,30 @@ export class IndicatorsComponent {
   }
 
   statusLabel(status: IndicatorStatus): string {
-    return { no_alvo: 'No Alvo', atencao: 'Atenção', critico: 'Crítico' }[status];
+    return this.statusOptions().find((option) => option.key === status)?.label ?? status;
   }
 
-  statusClass(status: IndicatorStatus): string {
-    return status === 'no_alvo'
-      ? 'bg-emerald-50 text-emerald-700'
-      : status === 'atencao'
-        ? 'bg-amber-50 text-amber-700'
-        : 'bg-rose-50 text-rose-700';
+  statusBackground(status: IndicatorStatus): string {
+    return (
+      this.statusOptions().find((option) => option.key === status)?.badge_background ?? '#f1f5f9'
+    );
+  }
+
+  statusForeground(status: IndicatorStatus): string {
+    return (
+      this.statusOptions().find((option) => option.key === status)?.badge_foreground ?? '#475569'
+    );
+  }
+
+  private defaultStatus(): IndicatorStatus {
+    return (
+      this.activeStatusOptions().find((option) => option.is_default)?.key ??
+      this.activeStatusOptions()[0]?.key ??
+      ''
+    );
   }
 
   frequencyLabel(value: IndicatorFrequency): string {
-    return { diario: 'Diário', semanal: 'Semanal', mensal: 'Mensal' }[value];
+    return this.frequencyOptions().find((option) => option.value === value)?.label ?? value;
   }
 }

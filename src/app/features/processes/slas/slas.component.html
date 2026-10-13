@@ -23,6 +23,7 @@
       @if (management) {
         <button
           class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
+          [disabled]="!activeStatuses().length"
           (click)="openCreateSla()"
         >
           <span appIcon="Plus" class="h-4 w-4"></span>Novo SLA
@@ -40,7 +41,7 @@
                 </p>
                 <p class="mt-1 text-2xl font-bold text-slate-800">{{ item.value }}</p>
               </div>
-              <span [appIcon]="item.icon" class="h-6 w-6" [class]="item.color"></span>
+              <span [appIcon]="item.icon" class="h-6 w-6" [style.color]="item.color"></span>
             </div>
           </article>
         }
@@ -60,8 +61,8 @@
         class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
       >
         <option value="all">Todos os status</option>
-        @for (item of statuses; track item) {
-          <option [value]="item">{{ item }}</option>
+        @for (item of statuses(); track item.key) {
+          <option [value]="item.key">{{ item.label }}</option>
         }
       </select>
     </div>
@@ -111,8 +112,9 @@
                 <td class="px-4 py-3">
                   <span
                     class="rounded-full px-2 py-1 text-xs font-medium"
-                    [class]="statusClass(sla.status)"
-                    >{{ sla.status }}</span
+                    [style.background-color]="statusBackground(sla.status)"
+                    [style.color]="statusForeground(sla.status)"
+                    >{{ statusLabel(sla.status) }}</span
                   >
                 </td>
                 @if (management) {
@@ -187,8 +189,8 @@
       ></textarea></label
     ><label class="ui-form-label"
       >Status<select formControlName="status" class="ui-form-control bg-white">
-        @for (item of statuses; track item) {
-          <option [value]="item">{{ item }}</option>
+        @for (item of formStatuses(); track item.key) {
+          <option [value]="item.key">{{ item.label }}</option>
         }
       </select></label
     >

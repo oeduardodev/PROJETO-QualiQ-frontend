@@ -2,13 +2,23 @@ import { inject, Injectable } from '@angular/core';
 import { IndicatorRepository } from './indicator.repository';
 import { IndicatorAnalysisRepository } from './indicator-analysis.repository';
 import type { IndicatorAnalysis } from './indicator-analysis.model';
-import type { Process, Ticket } from '@core/models/database';
+import type {
+  IndicatorFrequencyOption,
+  IndicatorStatusOption,
+  IndicatorUnitOption,
+  Process,
+  Ticket,
+} from '@core/models/database';
 import type { Indicator, IndicatorHistoryEntry } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class IndicatorService {
   private readonly analysisRepository = inject(IndicatorAnalysisRepository);
   private readonly repository = inject(IndicatorRepository);
+
+  fetchStatusOptions(): Promise<IndicatorStatusOption[]> {
+    return this.repository.fetchStatusOptions();
+  }
 
   recordValue(indicator: Indicator, period: string, value: number): Promise<Indicator> {
     return this.repository.recordValue(indicator.id, period, value);
@@ -35,6 +45,14 @@ export class IndicatorService {
 
   fetchIndicators(): Promise<Indicator[]> {
     return this.repository.fetchIndicators();
+  }
+
+  fetchUnitOptions(): Promise<IndicatorUnitOption[]> {
+    return this.repository.fetchUnitOptions();
+  }
+
+  fetchFrequencyOptions(): Promise<IndicatorFrequencyOption[]> {
+    return this.repository.fetchFrequencyOptions();
   }
 
   createIndicator(

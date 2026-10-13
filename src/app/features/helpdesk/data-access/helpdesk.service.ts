@@ -1,16 +1,34 @@
 import { inject, Injectable } from '@angular/core';
 import { HelpdeskRepository } from './helpdesk.repository';
-import { nextWorkflowStatus } from '@shared/utils/workflow.utils';
-import { HELPDESK_STATUS_SEQUENCE } from './helpdesk-workflow.constants';
-import type { HelpdeskTicket } from '@core/models/database';
+import type {
+  HelpdeskCategoryOption,
+  HelpdeskPriorityOption,
+  HelpdeskStatusOption,
+  HelpdeskTicket,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class HelpdeskService {
   private readonly repository = inject(HelpdeskRepository);
 
-  advance(ticket: HelpdeskTicket): Promise<HelpdeskTicket> {
-    const status = nextWorkflowStatus(ticket.status, HELPDESK_STATUS_SEQUENCE);
-    return this.repository.updateHelpdeskTicket(ticket.id, { status });
+  fetchStatuses(): Promise<HelpdeskStatusOption[]> {
+    return this.repository.fetchStatuses();
+  }
+
+  fetchCategories(): Promise<HelpdeskCategoryOption[]> {
+    return this.repository.fetchCategories();
+  }
+
+  fetchPriorities(): Promise<HelpdeskPriorityOption[]> {
+    return this.repository.fetchPriorities();
+  }
+
+  async advance(ticket: HelpdeskTicket): Promise<HelpdeskTicket> {
+    const statuses = await this.fetchStatuses();
+    const next = statuses.find((option) => option.key === ticket.status)?.next_status_key;
+    if (!next || !statuses.some((option) => option.key === next && option.is_active))
+      throw new Error('Próxima etapa não configurada ou inativa no Supabase.');
+    return this.repository.updateHelpdeskTicket(ticket.id, { status: next });
   }
 
   fetchHelpdeskTickets(): Promise<HelpdeskTicket[]> {

@@ -1,10 +1,37 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
-import type { Indicator, IndicatorHistoryEntry } from '@core/models/database';
+import type {
+  Indicator,
+  IndicatorFrequencyOption,
+  IndicatorHistoryEntry,
+  IndicatorStatusOption,
+  IndicatorUnitOption,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class IndicatorRepository {
+  async fetchStatusOptions(): Promise<IndicatorStatusOption[]> {
+    const { data, error } = await this.client
+      .from('indicator_statuses')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+  async fetchUnitOptions(): Promise<IndicatorUnitOption[]> {
+    const { data, error } = await this.client.rpc('get_indicator_unit_options');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchFrequencyOptions(): Promise<IndicatorFrequencyOption[]> {
+    const { data, error } = await this.client.rpc('get_indicator_frequency_options');
+    if (error) throw error;
+    return data;
+  }
+
   async recordValue(id: string, period: string, value: number): Promise<Indicator> {
     const { data, error } = await this.client
       .rpc('record_indicator_value', {

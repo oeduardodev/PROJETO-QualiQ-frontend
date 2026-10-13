@@ -1,11 +1,21 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
-import type { SLA } from '@core/models/database';
+import type { SLA, SlaStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaRepository {
   private readonly client = inject(SupabaseService).client;
+
+  async fetchStatuses(): Promise<SlaStatusOption[]> {
+    const { data, error } = await this.client
+      .from('sla_statuses')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
 
   fetchSlas(): Promise<SLA[]> {
     return fetchAllPages((from, to) =>

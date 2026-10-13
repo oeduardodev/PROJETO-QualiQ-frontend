@@ -38,6 +38,43 @@ public/env.js
 
 Por segurança e para evitar configurações específicas de ambiente no repositório, tanto o arquivo `.env` quanto o `public/env.js` gerado não são versionados.
 
+## Opções configuráveis no Supabase
+
+As opções dos formulários são consultadas no banco ao abrir a tela. Para alterar nomes, ordem ou disponibilidade, edite as tabelas de referência no Supabase e recarregue a página:
+
+| Área           | Tabela                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| Notificações   | `ticket_statuses`, `notification_severities`, `analysis_tools`                                     |
+| Helpdesk       | `helpdesk_statuses`, `helpdesk_categories`, `helpdesk_priorities`                                  |
+| Planos de ação | `action_plan_statuses`                                                                             |
+| Riscos         | `risk_types`, `risk_statuses`, `risk_preventive_action_statuses`, `risk_contingency_plan_statuses` |
+| SLAs           | `sla_statuses`                                                                                     |
+| Dimensões      | `dimension_classifications`, `dimension_colors`                                                    |
+| Indicadores    | `indicator_statuses`                                                                               |
+
+Nas tabelas de etapas (`ticket_statuses`, `helpdesk_statuses` e `action_plan_statuses`), `key` é o valor persistido, `label` é o texto exibido, `order_index` controla a ordem das colunas e `next_status_key` define o destino do botão **Avançar**. Marque uma etapa inicial com `is_initial = true` e uma final com `is_terminal = true`. Há apenas uma etapa inicial por fluxo. Uma etapa inativa continua visível para registros antigos, mas não aparece nas opções para novos registros.
+
+Exemplo para inserir uma etapa entre **Em Análise** e **Plano de Ação**:
+
+```sql
+INSERT INTO public.ticket_statuses
+  (key, label, order_index, next_status_key)
+VALUES
+  ('validacao', 'Validação', 25, 'plano');
+
+UPDATE public.ticket_statuses
+SET next_status_key = 'validacao'
+WHERE key = 'analise';
+```
+
+Em `analysis_tools`, `requires_completion` exige a confirmação da análise antes de concluir a notificação. `render_kind` escolhe o formulário de causa: `ishikawa`, `five_whys`, `none` ou o formulário genérico (confirmação de análise). Novas chaves podem reutilizar um desses renderizadores.
+
+`form_field_types` registra os tipos aceitos nos esquemas JSON dos campos de notificação. A interface interpreta esses tipos ao exibir os campos.
+
+Em `indicator_statuses`, `min_goal_ratio` é o limite mínimo em relação à meta; deixe `NULL` na etapa de fallback. O registro de valores consulta esses limites diretamente no banco. As opções de unidade e frequência vêm, respectivamente, das funções `get_indicator_unit_options()` e `get_indicator_frequency_options()` sobre os ENUMs do PostgreSQL.
+
+Após alterar o esquema, execute `npm run db:types` para atualizar os tipos gerados em `database.generated.ts`.
+
 ## Execução
 
 Instale as dependências:
@@ -139,6 +176,20 @@ As migrações do banco de dados e as **Edge Functions** existentes permanecem e
 ```text
 supabase/
 ```
+
+## Tipos do Supabase
+
+O arquivo `src/app/core/models/database.generated.ts` é gerado a partir do esquema `public` do Supabase. Após alterar o banco, autentique a CLI com `npx supabase login` (ou configure `SUPABASE_ACCESS_TOKEN`) e execute:
+
+```bash
+npm run db:types
+```
+
+As opções de unidade e frequência dos indicadores são carregadas pelo aplicativo diretamente do banco. Seus tipos em `database.ts` usam os enums do arquivo gerado. `Database` representa o esquema gerado; `AppDatabase` mantém os contratos usados pelos repositórios atuais.
+
+No helpdesk, as categorias e prioridades vêm das tabelas `public.helpdesk_categories` e `public.helpdesk_priorities`. Para incluir uma opção, adicione uma linha no Supabase com `key`, `label` e `order_index`; em prioridades, também é possível definir `badge_background` e `badge_foreground` como cores hexadecimais. Apenas linhas com `is_active = true` aparecem em novos chamados. `is_default` escolhe a opção inicial do formulário, e somente uma linha por tabela pode ser padrão. Após recarregar a página, a nova opção aparece sem alteração no frontend. O fluxo de status continua definido na aplicação.
+
+As severidades de notificações vêm de `public.notification_severities` e são compartilhadas por chamados, tipos e classificações. A tabela usa os mesmos campos de ordenação, ativação, padrão e cores das prioridades do helpdesk. Os status das notificações continuam vinculados à sequência do fluxo na aplicação.
 
 ## Organização das features
 

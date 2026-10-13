@@ -2,6 +2,8 @@
   <div class="ui-page-loading">
     <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
   </div>
+} @else if (error()) {
+  <div class="ui-empty-state" role="alert">{{ error() }}</div>
 } @else {
   <div class="space-y-6">
     <div class="ui-page-header">
@@ -12,7 +14,13 @@
       <div class="flex gap-2">
         <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
           <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
-        ><button class="ui-button-primary" (click)="openCreateTicket()">
+        ><button
+          class="ui-button-primary"
+          [disabled]="
+            !activeCategories().length || !activePriorities().length || !activeStatuses().length
+          "
+          (click)="openCreateTicket()"
+        >
           <span appIcon="Plus" class="h-4 w-4"></span>Novo Chamado
         </button>
       </div>
@@ -27,32 +35,39 @@
         class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
       >
         <option value="all">Todas as categorias</option>
-        <option value="ti">TI</option>
-        <option value="manutencao">Manutenção</option>
-        <option value="almoxarifado">Almoxarifado</option>
+        @for (option of categories(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
+        }
       </select>
     </div>
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
-      @for (column of columns; track column.value) {
+      @for (column of columns(); track column.key) {
         <section>
-          <header class="ui-kanban-column-header" [class]="column.bg + ' ' + column.border">
-            <strong class="text-sm" [class]="column.color">{{ column.label }}</strong
+          <header
+            class="ui-kanban-column-header"
+            [style.background-color]="column.header_background"
+            [style.border-color]="column.header_border"
+          >
+            <strong class="text-sm" [style.color]="column.header_foreground">{{
+              column.label
+            }}</strong
             ><span class="ml-auto text-xs text-slate-400">{{
-              ticketsByStatus(column.value).length
+              ticketsByStatus(column.key).length
             }}</span>
           </header>
           <div
             class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
-            [class]="column.border"
+            [style.border-color]="column.header_border"
           >
-            @for (ticket of ticketsByStatus(column.value); track ticket.id) {
+            @for (ticket of ticketsByStatus(column.key); track ticket.id) {
               <article class="ui-kanban-card">
                 <button class="block w-full text-left" (click)="openEditTicket(ticket)">
                   <div class="flex items-start justify-between gap-2">
                     <strong class="text-sm text-slate-700">{{ ticket.title }}</strong
                     ><span
                       class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-                      [class]="priorityClass(ticket.priority)"
+                      [style.background-color]="priorityBackground(ticket.priority)"
+                      [style.color]="priorityForeground(ticket.priority)"
                       >{{ priorityLabel(ticket.priority) }}</span
                     >
                   </div>
@@ -65,7 +80,7 @@
                   </div>
                 </button>
                 <div class="ui-kanban-card-footer">
-                  @if (canManage(ticket) && ticket.status !== 'fechado') {
+                  @if (canManage(ticket) && canAdvance(ticket.status)) {
                     <button
                       class="text-[11px] font-medium text-blue-600"
                       (click)="advanceTicket(ticket)"
@@ -101,21 +116,20 @@
       >Descrição<textarea rows="4" formControlName="description"></textarea></label
     ><label class="ui-form-label"
       >Categoria<select formControlName="category">
-        <option value="ti">TI</option>
-        <option value="manutencao">Manutenção</option>
-        <option value="almoxarifado">Almoxarifado</option>
+        @for (option of formCategories(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
+        }
       </select></label
     ><label class="ui-form-label"
       >Prioridade<select formControlName="priority">
-        <option value="baixa">Baixa</option>
-        <option value="media">Média</option>
-        <option value="alta">Alta</option>
-        <option value="urgente">Urgente</option>
+        @for (option of formPriorities(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
+        }
       </select></label
     ><label class="ui-form-label"
       >Status<select formControlName="status">
-        @for (column of columns; track column.value) {
-          <option [value]="column.value">{{ column.label }}</option>
+        @for (column of formStatuses(); track column.key) {
+          <option [value]="column.key">{{ column.label }}</option>
         }
       </select></label
     ><label class="ui-form-label"

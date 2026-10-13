@@ -18,14 +18,26 @@
         @if (mode === 'panel') {
           <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
             <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
-          ><button class="ui-button-primary" (click)="openTicket()">
+          ><button
+            class="ui-button-primary"
+            [disabled]="!activeSeverities().length || !activeStatuses().length"
+            (click)="openTicket()"
+          >
             <span appIcon="Plus" class="h-4 w-4"></span>Nova Notificação
           </button>
         }
         @if (mode === 'settings') {
-          <button class="ui-button-primary" (click)="openClassification()">
+          <button
+            class="ui-button-primary"
+            [disabled]="!activeSeverities().length || !activeAnalysisTools().length"
+            (click)="openClassification()"
+          >
             <span appIcon="Plus" class="h-4 w-4"></span>Classificação</button
-          ><button class="ui-button-primary" (click)="openType()">
+          ><button
+            class="ui-button-primary"
+            [disabled]="!activeSeverities().length"
+            (click)="openType()"
+          >
             <span appIcon="Plus" class="h-4 w-4"></span>Tipo
           </button>
         }
@@ -69,8 +81,8 @@
             </select></label
           ><label class="ui-form-label"
             >Severidade<select formControlName="severity">
-              @for (severity of severities; track severity) {
-                <option [value]="severity">{{ severityLabel(severity) }}</option>
+              @for (option of activeSeverities(); track option.key) {
+                <option [value]="option.key">{{ option.label }}</option>
               }
             </select></label
           ><label class="ui-form-label"
@@ -99,7 +111,11 @@
             </label>
           }
           <div class="sm:col-span-2 flex justify-end">
-            <button type="submit" [disabled]="saving()" class="ui-button-primary">
+            <button
+              type="submit"
+              [disabled]="saving() || !activeSeverities().length || !activeStatuses().length"
+              class="ui-button-primary"
+            >
               <span
                 [appIcon]="saving() ? 'LoaderCircle' : 'Send'"
                 class="h-4 w-4"
@@ -113,36 +129,43 @@
     }
     @if (mode === 'panel') {
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        @for (column of ticketColumns; track column.value) {
+        @for (column of ticketColumns(); track column.key) {
           <article class="rounded-xl border border-slate-200 bg-white p-4">
             <span class="text-xs font-semibold uppercase text-slate-400">{{ column.label }}</span
             ><strong class="mt-1 block text-2xl text-slate-800">{{
-              ticketsByStatus(column.value).length
+              ticketsByStatus(column.key).length
             }}</strong>
           </article>
         }
       </div>
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        @for (column of ticketColumns; track column.value) {
+        @for (column of ticketColumns(); track column.key) {
           <section>
-            <header class="ui-kanban-column-header" [class]="column.bg + ' ' + column.border">
-              <strong class="text-sm" [class]="column.color">{{ column.label }}</strong
+            <header
+              class="ui-kanban-column-header"
+              [style.background-color]="column.header_background"
+              [style.border-color]="column.header_border"
+            >
+              <strong class="text-sm" [style.color]="column.header_foreground">{{
+                column.label
+              }}</strong
               ><span class="ml-auto text-xs text-slate-400">{{
-                ticketsByStatus(column.value).length
+                ticketsByStatus(column.key).length
               }}</span>
             </header>
             <div
               class="min-h-64 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
-              [class]="column.border"
+              [style.border-color]="column.header_border"
             >
-              @for (ticket of ticketsByStatus(column.value); track ticket.id) {
+              @for (ticket of ticketsByStatus(column.key); track ticket.id) {
                 <article class="ui-kanban-card">
                   <button class="w-full text-left" (click)="openTicket(ticket)">
                     <div class="flex items-start justify-between gap-2">
                       <strong class="text-sm text-slate-700">{{ ticket.title }}</strong
                       ><span
                         class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-                        [class]="severityClass(ticket.severity)"
+                        [style.background-color]="severityBackground(ticket.severity)"
+                        [style.color]="severityForeground(ticket.severity)"
                         >{{ severityLabel(ticket.severity) }}</span
                       >
                     </div>
@@ -151,7 +174,7 @@
                     }}</span>
                   </button>
                   <div class="ui-kanban-card-footer">
-                    @if (ticket.status !== 'concluido') {
+                    @if (canAdvance(ticket.status)) {
                       <button
                         class="text-[11px] font-medium text-blue-600"
                         (click)="advanceTicket(ticket)"
@@ -185,7 +208,8 @@
                   <div>
                     <strong class="text-sm text-slate-700">{{ classification.name }}</strong>
                     <p class="mt-1 text-xs text-slate-400">
-                      {{ classification.code || 'Sem código' }} · {{ classification.analysis_tool }}
+                      {{ classification.code || 'Sem código' }} ·
+                      {{ analysisToolLabel(classification.analysis_tool) }}
                     </p>
                   </div>
                   <div>
@@ -280,14 +304,14 @@
       </select></label
     ><label class="ui-form-label"
       >Severidade<select formControlName="severity">
-        @for (severity of severities; track severity) {
-          <option [value]="severity">{{ severityLabel(severity) }}</option>
+        @for (option of ticketSeverityOptions(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
         }
       </select></label
     ><label class="ui-form-label"
       >Status<select formControlName="status">
-        @for (column of ticketColumns; track column.value) {
-          <option [value]="column.value">{{ column.label }}</option>
+        @for (column of formStatuses(); track column.key) {
+          <option [value]="column.key">{{ column.label }}</option>
         }
       </select></label
     ><label class="ui-form-label"
@@ -315,7 +339,7 @@
           Classificação: {{ ticket.classification_flag || '—' }} · Tipo:
           {{ ticket.incident_type || '—' }}
         </p>
-        <p class="mt-1">Ferramenta de análise: {{ analysisTool() }}</p>
+        <p class="mt-1">Ferramenta de análise: {{ analysisToolLabel(analysisTool()) }}</p>
         @if (ticket.free_description && ticket.free_description !== ticket.description) {
           <p class="mt-1">Descrição livre: {{ ticket.free_description }}</p>
         }
@@ -336,12 +360,12 @@
         }
       </label>
     }
-    @if (editingTicket() && analysisTool() !== 'Nenhuma') {
+    @if (editingTicket() && analysisRequiresCompletion()) {
       <section class="space-y-3 border-t border-slate-100 pt-4 sm:col-span-2">
         <h3 class="text-sm font-semibold text-slate-700">
-          Análise de causa raiz · {{ analysisTool() }}
+          Análise de causa raiz · {{ analysisToolLabel(analysisTool()) }}
         </h3>
-        @if (analysisTool() === 'Ishikawa') {
+        @if (analysisRenderKind() === 'ishikawa') {
           @for (field of ishikawaFields; track field.key) {
             <label class="ui-form-label"
               >{{ field.label
@@ -351,7 +375,7 @@
                 (input)="updateIshikawa(field.key, ishikawaInput.value)"
             /></label>
           }
-        } @else if (analysisTool() === '5 Porquês') {
+        } @else if (analysisRenderKind() === 'five_whys') {
           @for (answer of fiveWhys(); track $index) {
             <label class="ui-form-label"
               >{{ $index + 1 }}º porquê<input
@@ -365,7 +389,7 @@
           ><input type="checkbox" formControlName="analysis_completed" />Análise concluída</label
         >
         @if (
-          ticketForm.controls.status.value === 'concluido' &&
+          isTerminal(ticketForm.controls.status.value) &&
           !ticketForm.controls.analysis_completed.value
         ) {
           <p class="rounded-lg bg-rose-50 p-2 text-xs text-rose-600">
@@ -433,17 +457,17 @@
     ><label class="ui-form-label">Código<input formControlName="code" /></label
     ><label class="ui-form-label"
       >Severidade padrão<select formControlName="default_severity">
-        @for (severity of severities; track severity) {
-          <option [value]="severity">{{ severityLabel(severity) }}</option>
+        @for (option of classificationSeverityOptions(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
         }
       </select></label
     ><label class="ui-form-label"
       >SLA (horas)<input type="number" formControlName="sla_hours" /></label
     ><label class="ui-form-label"
       >Ferramenta de análise<select formControlName="analysis_tool">
-        <option value="Ishikawa">Ishikawa</option>
-        <option value="5 Porquês">5 Porquês</option>
-        <option value="Nenhuma">Nenhuma</option>
+        @for (option of formAnalysisTools(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
+        }
       </select></label
     ><label class="col-span-2 flex items-center gap-2 text-sm text-slate-600"
       ><input type="checkbox" formControlName="requires_root_cause" />Exige análise de causa
@@ -475,8 +499,8 @@
       >SLA (horas)<input type="number" formControlName="sla_hours" /></label
     ><label class="ui-form-label"
       >Severidade<select formControlName="default_severity">
-        @for (severity of severities; track severity) {
-          <option [value]="severity">{{ severityLabel(severity) }}</option>
+        @for (option of typeSeverityOptions(); track option.key) {
+          <option [value]="option.key">{{ option.label }}</option>
         }
       </select></label
     ><label class="ui-form-label"

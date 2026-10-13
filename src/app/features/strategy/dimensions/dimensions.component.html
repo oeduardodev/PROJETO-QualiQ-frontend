@@ -19,7 +19,11 @@
         </button>
       }
       @if (canManage()) {
-        <button class="ui-button-primary" (click)="openCreate()">
+        <button
+          class="ui-button-primary"
+          [disabled]="!activeColors().length"
+          (click)="openCreate()"
+        >
           <span appIcon="Plus" class="h-4 w-4"></span> Nova Dimensão
         </button>
       }
@@ -68,18 +72,18 @@
           >
             <span
               class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-              [class]="colorBg(dimension.color_key)"
+              [style.background-color]="colorBackground(dimension.color_key)"
             >
               <span
                 [appIcon]="classificationIcon(dimension.classification_key)"
                 class="h-6 w-6"
-                [class]="colorText(dimension.color_key)"
+                [style.color]="colorForeground(dimension.color_key)"
               ></span>
             </span>
             <span class="min-w-0 flex-1 text-left">
               <span
                 class="mb-1 block text-xs font-semibold uppercase tracking-wide"
-                [class]="colorText(dimension.color_key)"
+                [style.color]="colorForeground(dimension.color_key)"
               >
                 {{ dimension.code }} · {{ classificationLabel(dimension.classification_key) }}
               </span>
@@ -144,7 +148,8 @@
         }}</span>
         <span
           class="rounded-md px-2 py-1 text-xs font-semibold"
-          [class]="colorBg(dimension.color_key) + ' ' + colorText(dimension.color_key)"
+          [style.background-color]="colorBackground(dimension.color_key)"
+          [style.color]="colorForeground(dimension.color_key)"
         >
           {{ classificationLabel(dimension.classification_key) }}
         </span>
@@ -299,12 +304,9 @@
                   <h4 class="font-medium text-slate-800">{{ plan.title }}</h4>
                   <p class="text-xs text-slate-500">{{ processName(itemProcessId(plan)) }}</p>
                 </div>
-                <span
-                  class="text-xs font-medium"
-                  [class.text-rose-600]="plan.status === 'atrasado'"
-                  [class.text-emerald-700]="plan.status === 'concluido'"
-                  >{{ planStatusLabel(plan.status) }}</span
-                >
+                <span class="text-xs font-medium" [style.color]="planStatusColor(plan.status)">{{
+                  planStatusLabel(plan.status)
+                }}</span>
               </div>
               @if (plan.when) {
                 <p class="mt-1 text-xs text-slate-500">Prazo: {{ plan.when }}</p>
@@ -339,20 +341,17 @@
       <label class="ui-form-label"
         >Classificação *
         <select formControlName="classification_key">
-          @for (classification of classifications; track classification.key) {
-            <option [value]="classification.key">{{ classification.label }}</option>
+          @for (classification of formClassifications(); track classification.classification_key) {
+            <option [value]="classification.classification_key">{{ classification.label }}</option>
           }
         </select>
       </label>
       <label class="ui-form-label"
         >Cor
         <select formControlName="color_key">
-          <option value="blue">Azul</option>
-          <option value="green">Verde</option>
-          <option value="orange">Laranja</option>
-          <option value="amber">Âmbar</option>
-          <option value="rose">Rosa</option>
-          <option value="violet">Violeta</option>
+          @for (color of formColors(); track color.key) {
+            <option [value]="color.key">{{ color.label }}</option>
+          }
         </select>
       </label>
     </div>

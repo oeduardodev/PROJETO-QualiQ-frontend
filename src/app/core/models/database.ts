@@ -1,5 +1,8 @@
-// Central type definitions for the QMS (Sistema de Gestão da Qualidade).
-// All tables support a `custom_fields` JSONB column for user-defined parametrization.
+import type { Database as GeneratedDatabase } from './database.generated';
+export type { Database } from './database.generated';
+
+// Application contracts for the QMS. Database is the generated schema; AppDatabase is the
+// compatibility contract used by existing repositories.
 
 // Write contracts remain partial to match the existing repository APIs and database defaults.
 interface TableDefinition<Row, Generated extends keyof Row = never> {
@@ -9,7 +12,7 @@ interface TableDefinition<Row, Generated extends keyof Row = never> {
   Relationships: [];
 }
 
-export interface Database {
+export interface AppDatabase {
   public: {
     Tables: {
       value_chain_categories: TableDefinition<ValueChainCategory>;
@@ -18,25 +21,41 @@ export interface Database {
       sipoc_node_associations: TableDefinition<SipocNodeAssociation>;
       sipoc_step_associations: TableDefinition<SipocStepAssociation>;
       tickets: TableDefinition<Ticket>;
+      ticket_statuses: TableDefinition<TicketStatusOption>;
       helpdesk_tickets: TableDefinition<HelpdeskTicket>;
+      helpdesk_statuses: TableDefinition<HelpdeskStatusOption>;
+      helpdesk_categories: TableDefinition<HelpdeskCategoryOption>;
+      helpdesk_priorities: TableDefinition<HelpdeskPriorityOption>;
       action_plans: TableDefinition<ActionPlan>;
+      action_plan_statuses: TableDefinition<ActionPlanStatusOption>;
       indicators: TableDefinition<Indicator>;
+      indicator_statuses: TableDefinition<IndicatorStatusOption>;
       indicator_history: TableDefinition<IndicatorHistoryEntry>;
       profiles: TableDefinition<Profile>;
       dimension_versions: TableDefinition<DimensionVersion>;
       dimensions: TableDefinition<Dimension>;
+      dimension_classifications: TableDefinition<DimensionClassificationOption>;
+      dimension_colors: TableDefinition<DimensionColorOption>;
       dimension_links: TableDefinition<DimensionLink>;
       risks: TableDefinition<Risk, 'risk_score' | 'risk_level'>;
+      risk_statuses: TableDefinition<RiskStatusOption>;
+      risk_types: TableDefinition<RiskTypeOption>;
       risk_factors: TableDefinition<RiskFactor>;
       risk_preventive_actions: TableDefinition<RiskPreventiveAction>;
+      risk_preventive_action_statuses: TableDefinition<RiskPreventiveActionStatusOption>;
       risk_contingency_plans: TableDefinition<RiskContingencyPlan>;
+      risk_contingency_plan_statuses: TableDefinition<RiskContingencyPlanStatusOption>;
       document_types: TableDefinition<DocumentType>;
       documents: TableDefinition<GEDDocument>;
       document_workflows: TableDefinition<DocumentWorkflow, 'changed_at'>;
       controlled_copies: TableDefinition<ControlledCopy>;
       slas: TableDefinition<SLA>;
+      sla_statuses: TableDefinition<SlaStatusOption>;
       notification_types: TableDefinition<NotificationType>;
       notification_classifications: TableDefinition<NotificationClassification>;
+      notification_severities: TableDefinition<NotificationSeverityOption>;
+      analysis_tools: TableDefinition<AnalysisToolOption>;
+      form_field_types: TableDefinition<FormFieldTypeOption>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -68,6 +87,14 @@ export interface Database {
           p_value: number;
         };
         Returns: Indicator;
+      };
+      get_indicator_unit_options: {
+        Args: never;
+        Returns: IndicatorUnitOption[];
+      };
+      get_indicator_frequency_options: {
+        Args: never;
+        Returns: IndicatorFrequencyOption[];
       };
       create_sipoc_node_with_steps: {
         Args: {
@@ -107,7 +134,7 @@ export interface Database {
         Returns: Dimension;
       };
     };
-    Enums: Record<string, never>;
+    Enums: GeneratedDatabase['public']['Enums'];
   };
 }
 
@@ -120,7 +147,7 @@ export interface ValueChainCategory {
   created_at: string;
 }
 
-export type NodeType = 'S' | 'I' | 'P' | 'O' | 'C';
+export type NodeType = GeneratedDatabase['public']['Tables']['sipoc_nodes']['Row']['node_type'];
 
 export interface Process {
   id: string;
@@ -163,9 +190,9 @@ export interface SipocStepAssociation {
   created_at: string;
 }
 
-export type TicketStatus = 'aberto' | 'analise' | 'plano' | 'concluido';
-export type TicketSeverity = 'baixa' | 'media' | 'alta' | 'critica';
-export type TicketClassification = 'incidente' | 'nao_conformidade' | 'melhoria' | 'reclamacao';
+export type TicketStatus = GeneratedDatabase['public']['Tables']['tickets']['Row']['status'];
+export type TicketStatusOption = GeneratedDatabase['public']['Tables']['ticket_statuses']['Row'];
+export type TicketSeverity = GeneratedDatabase['public']['Tables']['tickets']['Row']['severity'];
 
 export interface Ticket {
   id: string;
@@ -188,9 +215,19 @@ export interface Ticket {
   updated_at: string;
 }
 
-export type HelpdeskCategory = 'ti' | 'manutencao' | 'almoxarifado';
-export type HelpdeskStatus = 'aberto' | 'em_andamento' | 'resolvido' | 'fechado';
-export type HelpdeskPriority = 'baixa' | 'media' | 'alta' | 'urgente';
+export type HelpdeskCategory =
+  GeneratedDatabase['public']['Tables']['helpdesk_tickets']['Row']['category'];
+export type HelpdeskStatus =
+  GeneratedDatabase['public']['Tables']['helpdesk_tickets']['Row']['status'];
+export type HelpdeskStatusOption =
+  GeneratedDatabase['public']['Tables']['helpdesk_statuses']['Row'];
+export type HelpdeskPriority =
+  GeneratedDatabase['public']['Tables']['helpdesk_tickets']['Row']['priority'];
+
+export type HelpdeskCategoryOption =
+  GeneratedDatabase['public']['Tables']['helpdesk_categories']['Row'];
+export type HelpdeskPriorityOption =
+  GeneratedDatabase['public']['Tables']['helpdesk_priorities']['Row'];
 
 export interface HelpdeskTicket {
   id: string;
@@ -217,7 +254,10 @@ export interface IshikawaData {
   medida: string;
 }
 
-export type ActionPlanStatus = 'pendente' | 'andamento' | 'concluido' | 'atrasado';
+export type ActionPlanStatus =
+  GeneratedDatabase['public']['Tables']['action_plans']['Row']['status'];
+export type ActionPlanStatusOption =
+  GeneratedDatabase['public']['Tables']['action_plan_statuses']['Row'];
 
 export interface ActionPlan {
   id: string;
@@ -235,7 +275,7 @@ export interface ActionPlan {
   updated_at: string;
 }
 
-export type UserRole = 'Admin' | 'Gestor' | 'Operador' | 'admin' | 'gestor' | 'operador';
+export type UserRole = GeneratedDatabase['public']['Enums']['user_role'];
 
 export interface Profile {
   id: string;
@@ -245,9 +285,21 @@ export interface Profile {
   created_at: string;
 }
 
-export type IndicatorFrequency = 'diario' | 'semanal' | 'mensal';
-export type IndicatorStatus = 'no_alvo' | 'atencao' | 'critico';
-export type IndicatorUnitType = 'numero_absoluto' | 'percentual' | 'monetario';
+export type IndicatorFrequency = GeneratedDatabase['public']['Enums']['indicator_frequency_type'];
+
+export interface IndicatorFrequencyOption {
+  value: IndicatorFrequency;
+  label: string;
+}
+export type IndicatorStatus = GeneratedDatabase['public']['Tables']['indicators']['Row']['status'];
+export type IndicatorStatusOption =
+  GeneratedDatabase['public']['Tables']['indicator_statuses']['Row'];
+export type IndicatorUnitType = GeneratedDatabase['public']['Enums']['indicator_unit_type'];
+
+export interface IndicatorUnitOption {
+  value: IndicatorUnitType;
+  label: string;
+}
 
 export interface Indicator {
   id: string;
@@ -273,18 +325,21 @@ export interface IndicatorHistoryEntry {
   created_at: string;
 }
 
-export type DimensionColor = 'blue' | 'green' | 'orange' | 'amber' | 'rose' | 'violet';
+export type DimensionColor =
+  GeneratedDatabase['public']['Tables']['dimension_colors']['Row']['key'];
+export type DimensionColorOption = GeneratedDatabase['public']['Tables']['dimension_colors']['Row'];
 export type DimensionClassification =
-  | 'financeira'
-  | 'mercado_cliente'
-  | 'processos_operacionais'
-  | 'pessoas_cultura'
-  | 'qualidade_seguranca'
-  | 'compliance_regulatorio'
-  | 'infraestrutura_tecnologia'
-  | 'esg_sustentabilidade'
-  | 'inovacao_melhoria'
-  | 'estrategica_governanca';
+  GeneratedDatabase['public']['Tables']['dimension_classifications']['Row']['classification_key'];
+
+export interface DimensionClassificationOption {
+  classification_key: DimensionClassification;
+  label: string;
+  icon: string;
+  order_index: number;
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
+}
 
 export interface DimensionVersion {
   id: string;
@@ -310,12 +365,7 @@ export interface Dimension {
 }
 
 export type DimensionItemType =
-  | 'indicator'
-  | 'action_plan'
-  | 'swot_analysis'
-  | 'pestel_analysis'
-  | 'porter_five_forces_analysis'
-  | 'environmental_analysis';
+  GeneratedDatabase['public']['Tables']['dimension_links']['Row']['item_type'];
 
 export interface DimensionLink {
   id: string;
@@ -330,8 +380,8 @@ export interface DimensionLink {
 // =====================================================
 // Document Management (GED)
 // =====================================================
-export type DocumentStatus = 'rascunho' | 'em_revisao' | 'aprovado' | 'publicado' | 'obsoleto';
-export type CopyStatus = 'solicitada' | 'entregue' | 'recolhida';
+export type DocumentStatus = GeneratedDatabase['public']['Enums']['document_status'];
+export type CopyStatus = GeneratedDatabase['public']['Enums']['copy_status'];
 
 export interface DocumentType {
   id: string;
@@ -378,9 +428,13 @@ export interface ControlledCopy {
   created_at: string;
 }
 
-export type RiskStatus = 'identificado' | 'em_analise' | 'tratado' | 'monitorado';
-export type RiskLevel = 'baixo' | 'moderado' | 'alto' | 'critico';
-export type RiskType = 'Operacional' | 'Estratégico' | 'Financeiro' | 'Compliance';
+export type RiskStatus = GeneratedDatabase['public']['Tables']['risks']['Row']['status'];
+export type RiskStatusOption = GeneratedDatabase['public']['Tables']['risk_statuses']['Row'];
+export type RiskLevel = NonNullable<
+  GeneratedDatabase['public']['Tables']['risks']['Row']['risk_level']
+>;
+export type RiskType = GeneratedDatabase['public']['Tables']['risks']['Row']['risk_type'];
+export type RiskTypeOption = GeneratedDatabase['public']['Tables']['risk_types']['Row'];
 
 export interface Risk {
   id: string;
@@ -409,7 +463,10 @@ export interface RiskFactor {
   created_at: string;
 }
 
-export type PreventiveActionStatus = 'pendente' | 'em_andamento' | 'concluida';
+export type PreventiveActionStatus =
+  GeneratedDatabase['public']['Tables']['risk_preventive_actions']['Row']['status'];
+export type RiskPreventiveActionStatusOption =
+  GeneratedDatabase['public']['Tables']['risk_preventive_action_statuses']['Row'];
 
 export interface RiskPreventiveAction {
   id: string;
@@ -421,7 +478,10 @@ export interface RiskPreventiveAction {
   created_at: string;
 }
 
-export type ContingencyPlanStatus = 'ativo' | 'inativo';
+export type ContingencyPlanStatus =
+  GeneratedDatabase['public']['Tables']['risk_contingency_plans']['Row']['status'];
+export type RiskContingencyPlanStatusOption =
+  GeneratedDatabase['public']['Tables']['risk_contingency_plan_statuses']['Row'];
 
 export interface RiskContingencyPlan {
   id: string;
@@ -437,7 +497,8 @@ export interface RiskContingencyPlan {
 // =====================================================
 // SLAs — inter-process service level agreements
 // =====================================================
-export type SlaStatus = 'Ativo' | 'Em Revisão' | 'Inativo';
+export type SlaStatus = GeneratedDatabase['public']['Tables']['slas']['Row']['status'];
+export type SlaStatusOption = GeneratedDatabase['public']['Tables']['sla_statuses']['Row'];
 
 export interface SLA {
   id: string;
@@ -456,8 +517,11 @@ export interface SLA {
 // =====================================================
 // Notification Types — configurable incident/notif types
 // =====================================================
-export type NotificationSeverity = 'baixa' | 'media' | 'alta' | 'critica';
-export type AnalysisTool = 'Ishikawa' | '5 Porquês' | 'Nenhuma';
+export type NotificationSeverity = TicketSeverity;
+export type NotificationSeverityOption =
+  GeneratedDatabase['public']['Tables']['notification_severities']['Row'];
+export type AnalysisTool = GeneratedDatabase['public']['Tables']['analysis_tools']['Row']['key'];
+export type AnalysisToolOption = GeneratedDatabase['public']['Tables']['analysis_tools']['Row'];
 
 // =====================================================
 // Notification Classifications — form template + treatment rules
@@ -499,7 +563,8 @@ export interface NotificationType {
   updated_at: string;
 }
 
-export type FormFieldType = 'text' | 'number' | 'date' | 'select';
+export type FormFieldType = GeneratedDatabase['public']['Tables']['form_field_types']['Row']['key'];
+export type FormFieldTypeOption = GeneratedDatabase['public']['Tables']['form_field_types']['Row'];
 
 export interface FormFieldSchema {
   name: string;

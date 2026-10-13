@@ -32,6 +32,7 @@
         @if (canManage()) {
           <button
             class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
+            [disabled]="!activeTypes().length || !activeStatuses().length"
             (click)="openCreateRisk()"
           >
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Risco
@@ -155,7 +156,9 @@
                       (click)="openDetail(risk)"
                     >
                       {{ risk.title }}</button
-                    ><span class="block text-xs text-slate-400">{{ risk.risk_type }}</span>
+                    ><span class="block text-xs text-slate-400">{{
+                      riskTypeLabel(risk.risk_type)
+                    }}</span>
                   </td>
                   <td class="px-4 py-3 text-sm text-slate-500">
                     {{ processName(risk.process_id) }}
@@ -247,14 +250,14 @@
         class="ui-form-control" /></label
     ><label class="ui-form-label-inline"
       >Tipo<select formControlName="risk_type" class="ui-form-control bg-white">
-        @for (type of types; track type) {
-          <option [value]="type">{{ type }}</option>
+        @for (type of formTypes(); track type.key) {
+          <option [value]="type.key">{{ type.label }}</option>
         }
       </select></label
     ><label class="ui-form-label-inline"
       >Status<select formControlName="status" class="ui-form-control bg-white">
-        @for (status of statuses; track status) {
-          <option [value]="status">{{ statusLabel(status) }}</option>
+        @for (status of formStatuses(); track status.key) {
+          <option [value]="status.key">{{ status.label }}</option>
         }
       </select></label
     ><label class="ui-form-label-inline"
@@ -318,7 +321,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <p class="text-xs text-slate-400">
-              Tipo: {{ selectedRisk()!.risk_type }} · Status:
+              Tipo: {{ riskTypeLabel(selectedRisk()!.risk_type) }} · Status:
               {{ statusLabel(selectedRisk()!.status) }}
             </p>
             <p class="mt-1 text-xs text-slate-400">

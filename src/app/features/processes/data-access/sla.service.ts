@@ -1,10 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { SlaRepository } from './sla.repository';
-import type { SLA } from '@core/models/database';
+import type { SLA, SlaStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaService {
   private readonly repository = inject(SlaRepository);
+
+  fetchStatuses(): Promise<SlaStatusOption[]> {
+    return this.repository.fetchStatuses();
+  }
 
   fetchSlas(): Promise<SLA[]> {
     return this.repository.fetchSlas();

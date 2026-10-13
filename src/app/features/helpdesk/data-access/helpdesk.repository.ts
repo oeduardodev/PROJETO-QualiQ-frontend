@@ -1,11 +1,46 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
-import type { HelpdeskTicket } from '@core/models/database';
+import type {
+  HelpdeskCategoryOption,
+  HelpdeskPriorityOption,
+  HelpdeskStatusOption,
+  HelpdeskTicket,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class HelpdeskRepository {
   private readonly client = inject(SupabaseService).client;
+
+  async fetchStatuses(): Promise<HelpdeskStatusOption[]> {
+    const { data, error } = await this.client
+      .from('helpdesk_statuses')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchCategories(): Promise<HelpdeskCategoryOption[]> {
+    const { data, error } = await this.client
+      .from('helpdesk_categories')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
+
+  async fetchPriorities(): Promise<HelpdeskPriorityOption[]> {
+    const { data, error } = await this.client
+      .from('helpdesk_priorities')
+      .select('*')
+      .order('order_index')
+      .order('key');
+    if (error) throw error;
+    return data;
+  }
 
   fetchHelpdeskTickets(): Promise<HelpdeskTicket[]> {
     return fetchAllPages((from, to) =>

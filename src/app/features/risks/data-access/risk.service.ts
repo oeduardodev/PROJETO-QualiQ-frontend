@@ -2,14 +2,34 @@ import { inject, Injectable } from '@angular/core';
 import { RiskRepository } from './risk.repository';
 import type {
   Risk,
+  RiskTypeOption,
+  RiskStatusOption,
   RiskFactor,
   RiskPreventiveAction,
   RiskContingencyPlan,
+  RiskPreventiveActionStatusOption,
+  RiskContingencyPlanStatusOption,
 } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class RiskService {
   private readonly repository = inject(RiskRepository);
+
+  fetchRiskStatuses(): Promise<RiskStatusOption[]> {
+    return this.repository.fetchRiskStatuses();
+  }
+
+  fetchPreventiveActionStatuses(): Promise<RiskPreventiveActionStatusOption[]> {
+    return this.repository.fetchPreventiveActionStatuses();
+  }
+
+  fetchContingencyPlanStatuses(): Promise<RiskContingencyPlanStatusOption[]> {
+    return this.repository.fetchContingencyPlanStatuses();
+  }
+
+  fetchRiskTypes(): Promise<RiskTypeOption[]> {
+    return this.repository.fetchRiskTypes();
+  }
 
   async fetchDetails(riskId: string): Promise<{
     factors: RiskFactor[];
@@ -32,23 +52,34 @@ export class RiskService {
     });
   }
 
-  addPreventiveAction(riskId: string, description: string): Promise<RiskPreventiveAction> {
+  async addPreventiveAction(riskId: string, description: string): Promise<RiskPreventiveAction> {
+    const options = (await this.fetchPreventiveActionStatuses()).filter(
+      (option) => option.is_active,
+    );
+    const status = options.find((option) => option.is_default)?.key ?? options[0]?.key;
+    if (!status) throw new Error('Nenhum status ativo de ação preventiva configurado no Supabase.');
     return this.repository.createPreventiveAction({
       risk_id: riskId,
       description: description.trim(),
       responsible: null,
-      status: 'pendente',
+      status,
     });
   }
 
-  addContingencyPlan(riskId: string, description: string): Promise<RiskContingencyPlan> {
+  async addContingencyPlan(riskId: string, description: string): Promise<RiskContingencyPlan> {
+    const options = (await this.fetchContingencyPlanStatuses()).filter(
+      (option) => option.is_active,
+    );
+    const status = options.find((option) => option.is_default)?.key ?? options[0]?.key;
+    if (!status)
+      throw new Error('Nenhum status ativo de plano de contingência configurado no Supabase.');
     return this.repository.createContingencyPlan({
       risk_id: riskId,
       description: description.trim(),
       trigger: null,
       responsible: null,
       estimated_cost: null,
-      status: 'ativo',
+      status,
     });
   }
 

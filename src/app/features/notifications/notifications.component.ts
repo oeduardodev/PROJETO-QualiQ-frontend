@@ -1,5 +1,4 @@
 import { errorMessage } from '@shared/utils/error.utils';
-import { TICKET_COLUMNS, SEVERITIES } from './notifications.constants';
 import { toNotificationTypePayload } from './data-access/notification-type.mapper';
 import { toNotificationClassificationPayload } from './data-access/notification-classification.mapper';
 import { toNotificationTicketPayload } from './data-access/notification-ticket.mapper';
@@ -16,11 +15,13 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService } from '@core/services/auth.service';
 import type {
   AnalysisTool,
+  AnalysisToolOption,
   ActionPlan,
   IshikawaData,
   FormFieldSchema,
   NotificationClassification,
   NotificationSeverity,
+  NotificationSeverityOption,
   NotificationType,
   Process,
   Risk,
@@ -29,6 +30,7 @@ import type {
   Ticket,
   TicketSeverity,
   TicketStatus,
+  TicketStatusOption,
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
@@ -62,8 +64,28 @@ export class NotificationsComponent {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly mode = this.route.snapshot.data['mode'] as 'realize' | 'panel' | 'settings';
-  readonly ticketColumns = TICKET_COLUMNS;
-  readonly severities = SEVERITIES;
+  readonly ticketColumns = signal<TicketStatusOption[]>([]);
+  readonly activeStatuses = computed(() =>
+    this.ticketColumns().filter((option) => option.is_active),
+  );
+  readonly formStatuses = computed(() =>
+    this.ticketColumns().filter(
+      (option) => option.is_active || option.key === this.editingTicket()?.status,
+    ),
+  );
+  readonly severities = signal<NotificationSeverityOption[]>([]);
+  readonly analysisTools = signal<AnalysisToolOption[]>([]);
+  readonly activeAnalysisTools = computed(() =>
+    this.analysisTools().filter((option) => option.is_active),
+  );
+  readonly formAnalysisTools = computed(() =>
+    this.analysisTools().filter(
+      (option) => option.is_active || option.key === this.editingClassification()?.analysis_tool,
+    ),
+  );
+  readonly activeSeverities = computed(() =>
+    this.severities().filter((option) => option.is_active),
+  );
   readonly methodology = METHODOLOGIES['tickets'];
   readonly tickets = signal<Ticket[]>([]);
   readonly processes = signal<Process[]>([]);
@@ -108,8 +130,14 @@ export class NotificationsComponent {
     description: new FormControl('', { nonNullable: true }),
     process_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     step_id: new FormControl('', { nonNullable: true }),
-    status: new FormControl<TicketStatus>('aberto', { nonNullable: true }),
-    severity: new FormControl<TicketSeverity>('media', { nonNullable: true }),
+    status: new FormControl<TicketStatus>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
+    severity: new FormControl<TicketSeverity>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     incident_datetime: new FormControl('', { nonNullable: true }),
     risk_id: new FormControl('', { nonNullable: true }),
     sla_id: new FormControl('', { nonNullable: true }),
@@ -122,9 +150,15 @@ export class NotificationsComponent {
   readonly classificationForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
     code: new FormControl('', { nonNullable: true }),
-    default_severity: new FormControl<NotificationSeverity>('media', { nonNullable: true }),
+    default_severity: new FormControl<NotificationSeverity>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     sla_hours: new FormControl<number | null>(null),
-    analysis_tool: new FormControl<AnalysisTool>('Nenhuma', { nonNullable: true }),
+    analysis_tool: new FormControl<AnalysisTool>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     requires_root_cause: new FormControl(false, { nonNullable: true }),
     active: new FormControl(true, { nonNullable: true }),
   });
@@ -132,13 +166,34 @@ export class NotificationsComponent {
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
     code: new FormControl('', { nonNullable: true }),
     classification_id: new FormControl('', { nonNullable: true }),
-    default_severity: new FormControl<NotificationSeverity>('media', { nonNullable: true }),
+    default_severity: new FormControl<NotificationSeverity>('', {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
     sla_hours: new FormControl<number | null>(null),
     sla_id: new FormControl('', { nonNullable: true }),
     risk_id: new FormControl('', { nonNullable: true }),
     active: new FormControl(true, { nonNullable: true }),
   });
   readonly activeTypes = computed(() => this.types().filter((type) => type.active));
+  readonly selectedSeverity = toSignal(this.ticketForm.controls.severity.valueChanges, {
+    initialValue: this.ticketForm.controls.severity.value,
+  });
+  readonly ticketSeverityOptions = computed(() =>
+    this.severities().filter(
+      (option) => option.is_active || option.key === this.selectedSeverity(),
+    ),
+  );
+  readonly classificationSeverityOptions = computed(() =>
+    this.severities().filter(
+      (option) => option.is_active || option.key === this.editingClassification()?.default_severity,
+    ),
+  );
+  readonly typeSeverityOptions = computed(() =>
+    this.severities().filter(
+      (option) => option.is_active || option.key === this.editingType()?.default_severity,
+    ),
+  );
   readonly selectedProcessId = toSignal(this.ticketForm.controls.process_id.valueChanges, {
     initialValue: this.ticketForm.controls.process_id.value,
   });
@@ -170,8 +225,20 @@ export class NotificationsComponent {
 
   async loadNotifications(): Promise<void> {
     this.loading.set(true);
+    this.error.set(null);
     try {
-      const [tickets, processes, nodes, types, classifications, risks, slas] = await Promise.all([
+      const [
+        tickets,
+        processes,
+        nodes,
+        types,
+        classifications,
+        risks,
+        slas,
+        severities,
+        statuses,
+        analysisTools,
+      ] = await Promise.all([
         this.ticketService.fetchTickets(),
         this.processService.fetchProcesses(),
         this.processService.fetchSipocNodes(),
@@ -179,6 +246,9 @@ export class NotificationsComponent {
         this.notificationService.fetchNotificationClassifications(),
         this.riskService.fetchRisks(),
         this.slaService.fetchSlas(),
+        this.notificationService.fetchNotificationSeverities(),
+        this.ticketService.fetchStatuses(),
+        this.notificationService.fetchAnalysisTools(),
       ]);
       this.tickets.set(tickets);
       this.processes.set(processes);
@@ -187,6 +257,13 @@ export class NotificationsComponent {
       this.classifications.set(classifications);
       this.risks.set(risks);
       this.slas.set(slas);
+      this.severities.set(severities);
+      this.ticketColumns.set(statuses);
+      this.analysisTools.set(analysisTools);
+      if (!this.ticketForm.controls.status.value)
+        this.ticketForm.controls.status.setValue(this.defaultStatus());
+      if (this.mode === 'realize' && !this.ticketForm.controls.severity.value)
+        this.ticketForm.controls.severity.setValue(this.defaultSeverity());
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar notificações'));
     } finally {
@@ -198,6 +275,15 @@ export class NotificationsComponent {
     return this.tickets().filter((ticket) => ticket.status === status);
   }
 
+  isTerminal(status: TicketStatus): boolean {
+    return this.ticketColumns().find((option) => option.key === status)?.is_terminal ?? false;
+  }
+
+  canAdvance(status: TicketStatus): boolean {
+    const next = this.ticketColumns().find((option) => option.key === status)?.next_status_key;
+    return !!next && this.activeStatuses().some((option) => option.key === next);
+  }
+
   processName(id: string): string {
     return this.processes().find((item) => item.id === id)?.title ?? '—';
   }
@@ -207,6 +293,7 @@ export class NotificationsComponent {
   }
 
   openTicket(ticket?: Ticket): void {
+    if (!ticket && (!this.activeSeverities().length || !this.activeStatuses().length)) return;
     this.editingTicket.set(ticket ?? null);
     this.linkedPlans.set([]);
     if (ticket) void this.loadLinkedPlans(ticket.id);
@@ -257,8 +344,8 @@ export class NotificationsComponent {
             description: '',
             process_id: '',
             step_id: '',
-            status: 'aberto',
-            severity: 'media',
+            status: this.defaultStatus(),
+            severity: this.defaultSeverity(),
             incident_datetime: '',
             risk_id: '',
             sla_id: '',
@@ -285,7 +372,25 @@ export class NotificationsComponent {
     this.dynamicVersion();
     return (
       this.types().find((type) => type.id === this.ticketForm.controls.notification_type_id.value)
-        ?.analysis_tool ?? 'Nenhuma'
+        ?.analysis_tool ?? this.defaultAnalysisTool()
+    );
+  }
+
+  analysisToolLabel(value: AnalysisTool): string {
+    return this.analysisTools().find((option) => option.key === value)?.label ?? value;
+  }
+
+  analysisRenderKind(): string {
+    return (
+      this.analysisTools().find((option) => option.key === this.analysisTool())?.render_kind ??
+      'none'
+    );
+  }
+
+  analysisRequiresCompletion(): boolean {
+    return (
+      this.analysisTools().find((option) => option.key === this.analysisTool())
+        ?.requires_completion ?? false
     );
   }
 
@@ -307,8 +412,11 @@ export class NotificationsComponent {
     this.saving.set(true);
     try {
       const value = this.ticketForm.getRawValue();
-      const tool = this.analysisTool();
-      if (value.status === 'concluido' && tool !== 'Nenhuma' && !value.analysis_completed) {
+      if (
+        this.isTerminal(value.status) &&
+        this.analysisRequiresCompletion() &&
+        !value.analysis_completed
+      ) {
         this.toast.error('Conclua a análise de causa antes de finalizar a notificação.');
         return;
       }
@@ -329,9 +437,9 @@ export class NotificationsComponent {
         current?.notification_type_id === value.notification_type_id
           ? { ...current.custom_fields, ...customFields }
           : customFields;
-      if (this.editingTicket() && tool === 'Ishikawa')
+      if (this.editingTicket() && this.analysisRenderKind() === 'ishikawa')
         preservedFields['ishikawa'] = this.ishikawa();
-      if (this.editingTicket() && tool === '5 Porquês')
+      if (this.editingTicket() && this.analysisRenderKind() === 'five_whys')
         preservedFields['five_whys'] = this.fiveWhys();
       const { analysis_completed, ...ticketValue } = value;
       const payload = toNotificationTicketPayload(
@@ -356,8 +464,8 @@ export class NotificationsComponent {
           description: '',
           process_id: '',
           step_id: '',
-          status: 'aberto',
-          severity: 'media',
+          status: this.defaultStatus(),
+          severity: this.defaultSeverity(),
           incident_datetime: '',
           risk_id: '',
           sla_id: '',
@@ -372,9 +480,13 @@ export class NotificationsComponent {
   }
 
   async advanceTicket(ticket: Ticket): Promise<void> {
-    const saved = await this.ticketService.advance(ticket);
-    this.tickets.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-    this.toast.success('Status atualizado');
+    try {
+      const saved = await this.ticketService.advance(ticket);
+      this.tickets.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      this.toast.success('Status atualizado');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao atualizar status'));
+    }
   }
 
   async removeTicket(ticket: Ticket): Promise<void> {
@@ -392,7 +504,9 @@ export class NotificationsComponent {
       return;
     }
     this.ticketForm.patchValue({
-      severity: type.default_severity,
+      severity: this.activeSeverities().some((option) => option.key === type.default_severity)
+        ? type.default_severity
+        : this.defaultSeverity(),
       risk_id: type.risk_id ?? '',
       sla_id: type.sla_id ?? '',
     });
@@ -437,6 +551,7 @@ export class NotificationsComponent {
   }
 
   openClassification(item?: NotificationClassification): void {
+    if (!item && (!this.activeSeverities().length || !this.activeAnalysisTools().length)) return;
     this.editingClassification.set(item ?? null);
     this.classificationForm.reset(
       item
@@ -452,9 +567,9 @@ export class NotificationsComponent {
         : {
             name: '',
             code: '',
-            default_severity: 'media',
+            default_severity: this.defaultSeverity(),
             sla_hours: null,
-            analysis_tool: 'Nenhuma',
+            analysis_tool: this.defaultAnalysisTool(),
             requires_root_cause: false,
             active: true,
           },
@@ -485,6 +600,7 @@ export class NotificationsComponent {
   }
 
   openType(item?: NotificationType): void {
+    if (!item && !this.activeSeverities().length) return;
     this.editingType.set(item ?? null);
     this.typeForm.reset(
       item
@@ -502,7 +618,7 @@ export class NotificationsComponent {
             name: '',
             code: '',
             classification_id: '',
-            default_severity: 'media',
+            default_severity: this.defaultSeverity(),
             sla_hours: null,
             sla_id: '',
             risk_id: '',
@@ -538,16 +654,38 @@ export class NotificationsComponent {
   }
 
   severityLabel(value: TicketSeverity): string {
-    return { baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica' }[value];
+    return this.severities().find((option) => option.key === value)?.label ?? value;
   }
 
-  severityClass(value: TicketSeverity): string {
-    return value === 'critica'
-      ? 'bg-rose-100 text-rose-700'
-      : value === 'alta'
-        ? 'bg-orange-100 text-orange-700'
-        : value === 'media'
-          ? 'bg-amber-100 text-amber-700'
-          : 'bg-slate-100 text-slate-600';
+  severityBackground(value: TicketSeverity): string {
+    return this.severities().find((option) => option.key === value)?.badge_background ?? '#f1f5f9';
+  }
+
+  severityForeground(value: TicketSeverity): string {
+    return this.severities().find((option) => option.key === value)?.badge_foreground ?? '#475569';
+  }
+
+  private defaultSeverity(): TicketSeverity {
+    return (
+      this.activeSeverities().find((option) => option.is_default)?.key ??
+      this.activeSeverities()[0]?.key ??
+      ''
+    );
+  }
+
+  private defaultAnalysisTool(): AnalysisTool {
+    return (
+      this.activeAnalysisTools().find((option) => option.is_default)?.key ??
+      this.activeAnalysisTools()[0]?.key ??
+      ''
+    );
+  }
+
+  private defaultStatus(): TicketStatus {
+    return (
+      this.activeStatuses().find((option) => option.is_initial)?.key ??
+      this.activeStatuses()[0]?.key ??
+      ''
+    );
   }
 }
