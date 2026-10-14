@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { IndicatorRepository } from './indicator.repository';
+import { IndicatorRepository, type SaveIndicatorDefinitionInput } from './indicator.repository';
 import { IndicatorAnalysisRepository } from './indicator-analysis.repository';
 import type { IndicatorAnalysis } from './indicator-analysis.model';
 import type { IndicatorObservationContext } from './indicator-analysis.model';
@@ -8,7 +8,11 @@ import type {
   IndicatorStatusOption,
   IndicatorUnitOption,
 } from '@core/models/database';
-import type { Indicator, IndicatorHistoryEntry } from '@core/models/database';
+import type {
+  Indicator,
+  IndicatorDefinitionHistory,
+  IndicatorHistoryEntry,
+} from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class IndicatorService {
@@ -55,29 +59,20 @@ export class IndicatorService {
     return this.repository.fetchIndicators();
   }
 
+  saveDefinition(input: SaveIndicatorDefinitionInput): Promise<Indicator> {
+    return this.repository.saveDefinition(input);
+  }
+
+  fetchDefinitionHistory(indicatorId: string): Promise<IndicatorDefinitionHistory[]> {
+    return this.repository.fetchDefinitionHistory(indicatorId);
+  }
+
   fetchUnitOptions(): Promise<IndicatorUnitOption[]> {
     return this.repository.fetchUnitOptions();
   }
 
   fetchFrequencyOptions(): Promise<IndicatorFrequencyOption[]> {
     return this.repository.fetchFrequencyOptions();
-  }
-
-  createIndicator(
-    input: Partial<Omit<Indicator, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<Indicator> {
-    return this.repository.createIndicator(input);
-  }
-
-  updateIndicator(
-    id: string,
-    patch: Partial<Omit<Indicator, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<Indicator> {
-    return this.repository.updateIndicator(id, patch);
-  }
-
-  deleteIndicator(id: string): Promise<void> {
-    return this.repository.deleteIndicator(id);
   }
 
   fetchIndicatorHistory(indicatorId: string): Promise<IndicatorHistoryEntry[]> {

@@ -29,6 +29,8 @@ describe('indicator observations', () => {
   it('handles goals where less is better and zero is the target', () => {
     expect(isOnTarget(3, 2, 'lower')).toBe(false);
     expect(isOnTarget(1, 2, 'lower')).toBe(true);
+    expect(isOnTarget(2.3, 2, 'lower', 0.5)).toBe(true);
+    expect(isOnTarget(9.7, 10, 'higher', 0.5)).toBe(true);
     expect(achievement(4, 2, 'lower')).toBe(50);
     expect(achievement(0, 0, 'lower')).toBe(100);
     expect(achievement(1, 2, 'lower')).toBe(200);

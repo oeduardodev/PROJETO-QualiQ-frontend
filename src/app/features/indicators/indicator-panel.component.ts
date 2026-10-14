@@ -131,6 +131,7 @@ export class IndicatorPanelComponent {
             indicator.current_value,
             indicator.goal_value,
             indicator.goal_direction,
+            indicator.acceptable_variation,
           ),
         };
         const historical: PanelRow[] = entries.map((entry) => ({
@@ -140,7 +141,12 @@ export class IndicatorPanelComponent {
           goal: entry.goal,
           period: entry.period,
           date: periodDate(entry),
-          onTarget: isOnTarget(entry.value, entry.goal, indicator.goal_direction),
+          onTarget: isOnTarget(
+            entry.value,
+            entry.goal,
+            indicator.goal_direction,
+            indicator.acceptable_variation,
+          ),
         }));
         const latest = entries.at(-1);
         return !latest ||
@@ -266,7 +272,7 @@ export class IndicatorPanelComponent {
         current.push({
           x: 40 + (monthIndex * 740) / Math.max(1, this.chartMonths().length - 1),
           y: 200 - (Math.min(rate, this.chartMaximum()) * 160) / this.chartMaximum(),
-          title: `${indicator.title} · ${displayPeriod(entry.period)} · ${formatIndicatorValue(entry.value, indicator.unit)} / meta ${formatIndicatorValue(entry.goal, indicator.unit)} · ${rate.toFixed(0)}% da meta`,
+          title: `${indicator.title} · ${displayPeriod(entry.period)} · ${formatIndicatorValue(entry.value, indicator.unit, indicator.decimal_places)} / meta ${formatIndicatorValue(entry.goal, indicator.unit, indicator.decimal_places)} · ${rate.toFixed(0)}% da meta`,
         });
       });
       if (current.length) segments.push(current);
@@ -341,7 +347,7 @@ export class IndicatorPanelComponent {
   }
 
   format(value: number, indicator: Indicator): string {
-    return formatIndicatorValue(value, indicator.unit);
+    return formatIndicatorValue(value, indicator.unit, indicator.decimal_places);
   }
 
   displayPeriod(value: string): string {

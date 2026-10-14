@@ -31,6 +31,7 @@ export interface AppDatabase {
       indicators: TableDefinition<Indicator>;
       indicator_statuses: TableDefinition<IndicatorStatusOption>;
       indicator_history: TableDefinition<IndicatorHistoryEntry>;
+      indicator_definition_history: TableDefinition<IndicatorDefinitionHistory>;
       indicator_result_analyses: TableDefinition<IndicatorResultAnalysis>;
       profiles: TableDefinition<Profile>;
       dimension_versions: TableDefinition<DimensionVersion>;
@@ -98,6 +99,33 @@ export interface AppDatabase {
           p_analysis: string | null;
         };
         Returns: { indicator: Indicator; history: IndicatorHistoryEntry };
+      };
+      save_indicator_definition: {
+        Args: {
+          p_id: string | null;
+          p_title: string;
+          p_objective: string;
+          p_process_id: string;
+          p_step_id: string | null;
+          p_frequency: IndicatorFrequency;
+          p_indicator_type: IndicatorClassification;
+          p_requires_critical_analysis: boolean;
+          p_goal_value: number;
+          p_acceptable_variation: number;
+          p_unit: IndicatorUnitType;
+          p_goal_direction: 'higher' | 'lower';
+          p_strategic: boolean;
+          p_dimension_id: string | null;
+          p_calculation_type: IndicatorCalculationType;
+          p_simple_formula: string;
+          p_result_source: string;
+          p_formula_expression: string;
+          p_formula_tokens: IndicatorFormulaToken[];
+          p_decimal_places: number;
+          p_obsolete: boolean;
+          p_justification: string | null;
+        };
+        Returns: Indicator;
       };
       indicator_result_actors: {
         Args: never;
@@ -323,6 +351,13 @@ export interface IndicatorUnitOption {
   label: string;
 }
 
+export type IndicatorClassification = 'estrutura' | 'processo' | 'resultado';
+export type IndicatorCalculationType = 'simple' | 'composite';
+export type IndicatorFormulaToken =
+  | { kind: 'indicator'; id: string }
+  | { kind: 'number'; value: number }
+  | { kind: 'operator'; value: '+' | '-' | '*' | '/' };
+
 export interface Indicator {
   id: string;
   code: string;
@@ -337,6 +372,17 @@ export interface Indicator {
   requires_critical_analysis: boolean;
   indicator_type: string;
   goal_direction: 'higher' | 'lower';
+  objective: string;
+  acceptable_variation: number;
+  strategic: boolean;
+  dimension_id: string | null;
+  decimal_places: number;
+  calculation_type: IndicatorCalculationType;
+  simple_formula: string;
+  result_source: string;
+  formula_expression: string;
+  formula_tokens: IndicatorFormulaToken[];
+  obsolete: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -351,6 +397,17 @@ export interface IndicatorHistoryEntry {
   created_at: string;
   created_by: string | null;
   late_justification: string | null;
+}
+
+export interface IndicatorDefinitionHistory {
+  id: string;
+  indicator_id: string;
+  action: 'created' | 'updated';
+  justification: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
 }
 
 export interface IndicatorResultAnalysis {

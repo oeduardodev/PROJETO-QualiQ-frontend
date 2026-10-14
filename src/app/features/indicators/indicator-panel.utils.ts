@@ -18,8 +18,11 @@ export function isOnTarget(
   value: number,
   goal: number,
   direction: Indicator['goal_direction'],
+  acceptableVariation = 0,
 ): boolean {
-  return direction === 'lower' ? value <= goal : value >= goal;
+  return direction === 'lower'
+    ? value <= goal + acceptableVariation
+    : value >= goal - acceptableVariation;
 }
 
 export function achievement(

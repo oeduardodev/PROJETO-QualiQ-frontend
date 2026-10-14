@@ -22,7 +22,7 @@
             <span appIcon="Info" class="h-4 w-4"></span>Metodologia
           </button>
         }
-        @if (mode === 'registration') {
+        @if (mode === 'registration' && auth.isAdmin()) {
           <button
             class="ui-button-primary"
             [disabled]="!activeStatusOptions().length"
@@ -49,7 +49,12 @@
           <article class="ui-card">
             <div class="flex items-start justify-between">
               <div>
-                <h3 class="font-semibold text-slate-800">{{ indicator.title }}</h3>
+                <h3 class="font-semibold text-slate-800">
+                  {{ indicator.title }}
+                  @if (indicator.obsolete) {
+                    <span class="ml-2 text-xs font-normal text-slate-500">Obsoleto</span>
+                  }
+                </h3>
                 <p class="mt-1 text-xs text-slate-400">
                   {{ processName(indicator.process_id) }} ·
                   {{ frequencyLabel(indicator.frequency) }}
@@ -66,13 +71,15 @@
               <div>
                 <span class="text-xs text-slate-400">Atual</span>
                 <p class="text-2xl font-bold text-slate-800">
-                  {{ formatValue(indicator.current_value, indicator.unit) }}
+                  {{
+                    formatValue(indicator.current_value, indicator.unit, indicator.decimal_places)
+                  }}
                 </p>
               </div>
               <div class="text-right">
                 <span class="text-xs text-slate-400">Meta</span>
                 <p class="text-lg font-semibold text-slate-600">
-                  {{ formatValue(indicator.goal_value, indicator.unit) }}
+                  {{ formatValue(indicator.goal_value, indicator.unit, indicator.decimal_places) }}
                 </p>
               </div>
             </div>
@@ -93,32 +100,53 @@
           <article class="ui-card">
             <div class="grid grid-cols-1 items-end gap-4 lg:grid-cols-[1fr_180px_160px_auto]">
               <div>
-                <h3 class="font-semibold text-slate-800">{{ indicator.title }}</h3>
+                <h3 class="font-semibold text-slate-800">
+                  {{ indicator.title }}
+                  @if (indicator.obsolete) {
+                    <span class="ml-2 text-xs font-normal text-slate-500">Obsoleto</span>
+                  }
+                </h3>
                 <p class="mt-1 text-xs text-slate-400">
                   {{ processName(indicator.process_id) }} · Atual:
-                  {{ formatValue(indicator.current_value, indicator.unit) }} · Meta:
-                  {{ formatValue(indicator.goal_value, indicator.unit) }} ·
+                  {{
+                    formatValue(indicator.current_value, indicator.unit, indicator.decimal_places)
+                  }}
+                  · Meta:
+                  {{ formatValue(indicator.goal_value, indicator.unit, indicator.decimal_places) }}
+                  ·
                   {{ frequencyLabel(indicator.frequency) }}
                 </p>
               </div>
-              <label class="ui-form-label"
-                >Data do resultado<input
-                  type="date"
-                  [max]="today"
-                  [formControl]="periodControl(indicator.id)" /></label
-              ><label class="ui-form-label"
-                >Valor ({{ unitLabel(indicator.unit) }})<input
-                  type="number"
-                  [formControl]="valueControl(indicator.id)" /></label
-              ><button
-                class="ui-button-primary"
-                [disabled]="savingId() === indicator.id || !canAnalyze(indicator)"
-                (click)="saveValue(indicator)"
-              >
-                <span appIcon="Save" class="h-4 w-4"></span>Salvar
-              </button>
+              @if (indicator.calculation_type === 'composite' || indicator.obsolete) {
+                <p class="self-center text-sm text-slate-500 lg:col-span-3">
+                  {{
+                    indicator.obsolete
+                      ? 'Indicador obsoleto · lançamentos encerrados.'
+                      : 'Resultado calculado automaticamente a partir dos indicadores da fórmula.'
+                  }}
+                </p>
+              } @else {
+                <label class="ui-form-label"
+                  >Data do resultado<input
+                    type="date"
+                    [max]="today"
+                    [formControl]="periodControl(indicator.id)" /></label
+                ><label class="ui-form-label"
+                  >Valor ({{ unitLabel(indicator.unit) }})<input
+                    type="number"
+                    [formControl]="valueControl(indicator.id)" /></label
+                ><button
+                  class="ui-button-primary"
+                  [disabled]="savingId() === indicator.id || !canAnalyze(indicator)"
+                  (click)="saveValue(indicator)"
+                >
+                  <span appIcon="Save" class="h-4 w-4"></span>Salvar
+                </button>
+              }
             </div>
-            @if (isLate(indicator)) {
+            @if (
+              indicator.calculation_type === 'simple' && !indicator.obsolete && isLate(indicator)
+            ) {
               <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p class="text-sm text-amber-900">
                   Prazo encerrado em {{ formatPeriod(dueDate(indicator)!) }}. Informe uma
@@ -130,15 +158,17 @@
                 </label>
               </div>
             }
-            <label class="ui-form-label mt-4 block">
-              Análise crítica
-              {{ indicator.requires_critical_analysis ? '(obrigatória)' : '(opcional)' }}
-              <textarea
-                rows="3"
-                [formControl]="analysisControl(indicator.id)"
-                placeholder="Descreva a leitura do resultado, sua evolução e as ações necessárias"
-              ></textarea>
-            </label>
+            @if (indicator.calculation_type === 'simple' && !indicator.obsolete) {
+              <label class="ui-form-label mt-4 block">
+                Análise crítica
+                {{ indicator.requires_critical_analysis ? '(obrigatória)' : '(opcional)' }}
+                <textarea
+                  rows="3"
+                  [formControl]="analysisControl(indicator.id)"
+                  placeholder="Descreva a leitura do resultado, sua evolução e as ações necessárias"
+                ></textarea>
+              </label>
+            }
             @if (history(indicator.id).length) {
               <div class="mt-5 border-t border-slate-100 pt-4">
                 <h4 class="text-sm font-semibold text-slate-700">Histórico das evoluções</h4>
@@ -148,10 +178,15 @@
                       <div>
                         <strong
                           >{{ formatPeriod(entry.period) }} ·
-                          {{ formatValue(entry.value, indicator.unit) }}</strong
+                          {{
+                            formatValue(entry.value, indicator.unit, indicator.decimal_places)
+                          }}</strong
                         >
                         <span class="ml-2 text-xs text-slate-500"
-                          >Meta: {{ formatValue(entry.goal, indicator.unit) }}</span
+                          >Meta:
+                          {{
+                            formatValue(entry.goal, indicator.unit, indicator.decimal_places)
+                          }}</span
                         >
                       </div>
                       <button
@@ -162,7 +197,12 @@
                       </button>
                     </div>
                     <p class="mt-1 text-xs text-slate-500">
-                      Registrado por {{ authorName(entry.created_by) }} em
+                      {{
+                        indicator.calculation_type === 'composite' && !entry.created_by
+                          ? 'Calculado automaticamente'
+                          : 'Registrado por ' + authorName(entry.created_by)
+                      }}
+                      em
                       {{ formatTimestamp(entry.created_at) }}
                     </p>
                     @if (entry.late_justification) {
@@ -276,10 +316,24 @@
                   <td class="ui-table-cell font-mono text-xs text-slate-500">
                     {{ indicator.code || '—' }}
                   </td>
-                  <td class="ui-table-cell font-medium text-slate-700">{{ indicator.title }}</td>
+                  <td class="ui-table-cell font-medium text-slate-700">
+                    {{ indicator.title }}
+                    @if (indicator.obsolete) {
+                      <span class="ml-2 rounded bg-slate-100 px-2 py-1 text-xs text-slate-500"
+                        >Obsoleto</span
+                      >
+                    }
+                    @if (indicator.calculation_type === 'composite') {
+                      <span class="ml-2 rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                        >Composto</span
+                      >
+                    }
+                  </td>
                   <td class="ui-table-cell">{{ processName(indicator.process_id) }}</td>
                   <td class="ui-table-cell">
-                    {{ formatValue(indicator.goal_value, indicator.unit) }}
+                    {{
+                      formatValue(indicator.goal_value, indicator.unit, indicator.decimal_places)
+                    }}
                   </td>
                   <td class="ui-table-cell">{{ frequencyLabel(indicator.frequency) }}</td>
                   <td class="ui-table-cell">
@@ -291,16 +345,53 @@
                     >
                   </td>
                   <td class="ui-table-cell text-right">
-                    <button class="text-xs text-slate-500" (click)="openEditIndicator(indicator)">
-                      Editar</button
-                    ><button
-                      class="ml-2 text-xs text-rose-500"
-                      (click)="deleteIndicator(indicator)"
+                    @if (auth.isAdmin()) {
+                      <button class="text-xs text-blue-700" (click)="openEditIndicator(indicator)">
+                        Editar
+                      </button>
+                    }
+                    <button
+                      class="ml-3 text-xs text-slate-500"
+                      (click)="toggleDefinitionHistory(indicator)"
                     >
-                      Excluir
+                      {{
+                        historyIndicatorId() === indicator.id ? 'Ocultar histórico' : 'Histórico'
+                      }}
                     </button>
                   </td>
                 </tr>
+                @if (historyIndicatorId() === indicator.id) {
+                  <tr>
+                    <td colspan="7" class="bg-slate-50 px-5 py-4">
+                      <h4 class="mb-2 text-sm font-semibold text-slate-700">Alterações da ficha</h4>
+                      @if (historyLoading()) {
+                        <p class="text-xs text-slate-500">Carregando...</p>
+                      } @else {
+                        <ol class="space-y-2">
+                          @for (entry of definitionHistory(); track entry.id) {
+                            <li class="text-xs text-slate-600">
+                              <strong>{{
+                                entry.action === 'created' ? 'Criação' : 'Alteração'
+                              }}</strong>
+                              · {{ formatTimestamp(entry.changed_at) }} ·
+                              {{ authorName(entry.changed_by) }}
+                              @if (entry.justification) {
+                                · {{ entry.justification }}
+                              }
+                            </li>
+                            @for (change of definitionChanges(entry); track change.label) {
+                              <li class="ml-4 text-xs text-slate-500">
+                                {{ change.label }}: {{ change.before }} → {{ change.after }}
+                              </li>
+                            }
+                          } @empty {
+                            <li class="text-xs text-slate-500">Sem registros de alteração.</li>
+                          }
+                        </ol>
+                      }
+                    </td>
+                  </tr>
+                }
               } @empty {
                 <tr>
                   <td colspan="7" class="ui-table-empty">Nenhum indicador.</td>
@@ -317,69 +408,149 @@
   [open]="formOpen()"
   [title]="editing() ? 'Editar Indicador' : 'Novo Indicador'"
   [subtitle]="editing() ? processName(editing()!.process_id) : ''"
-  width="max-w-lg"
+  width="max-w-2xl"
   (closed)="formOpen.set(false)"
   ><form
     [formGroup]="form"
     (ngSubmit)="saveIndicator()"
     class="grid grid-cols-1 gap-4 sm:grid-cols-2"
   >
-    <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
-    ><label class="ui-form-label"
+    <label class="ui-form-label sm:col-span-2"
+      >Nome do indicador *<input formControlName="title"
+    /></label>
+    <label class="ui-form-label sm:col-span-2"
+      >Objetivo *<textarea rows="2" formControlName="objective"></textarea>
+    </label>
+    <label class="ui-form-label"
       >Processo *<select formControlName="process_id" (change)="clearSelectedStep()">
         <option value="">Selecionar...</option>
         @for (process of processes(); track process.id) {
           <option [value]="process.id">{{ process.title }}</option>
         }
       </select></label
-    ><label class="ui-form-label"
-      >Etapa SIPOC<select formControlName="step_id">
+    >
+    <label class="ui-form-label"
+      >Etapa do processo<select formControlName="step_id">
         <option value="">—</option>
         @for (node of stepsForForm(); track node.id) {
           <option [value]="node.id">{{ node.title }}</option>
         }
       </select></label
-    ><label class="ui-form-label">Meta<input type="number" formControlName="goal_value" /></label
-    ><label class="ui-form-label"
-      >Unidade<select formControlName="unit">
-        @for (unit of unitOptions(); track unit.value) {
-          <option [value]="unit.value">{{ unit.label }}</option>
-        }
-      </select></label
     >
-    @if (!editing()) {
-      <label class="ui-form-label"
-        >Valor inicial<input type="number" formControlName="current_value"
-      /></label>
-    } @else {
-      <p class="self-end text-xs text-slate-500">
-        Para atualizar o valor, registre um resultado em Alimentação e Análise Crítica.
-      </p>
-    }
     <label class="ui-form-label"
-      >Frequência<select formControlName="frequency">
+      >Periodicidade<select formControlName="frequency">
         @for (frequency of frequencyOptions(); track frequency.value) {
           <option [value]="frequency.value">{{ frequency.label }}</option>
         }
       </select></label
     >
-    <p class="self-end text-xs text-slate-500">
-      O status é calculado pelo valor atual, meta e sentido da meta.
-    </p>
-    <label class="ui-form-label">Tipo de indicador<input formControlName="indicator_type" /></label
-    ><label class="ui-form-label"
+    <label class="ui-form-label"
+      >Classificação<select formControlName="indicator_type">
+        <option value="estrutura">Estrutura</option>
+        <option value="processo">Processo</option>
+        <option value="resultado">Resultado</option>
+      </select></label
+    >
+    <label class="ui-form-label"
+      >Meta *<input type="number" step="any" formControlName="goal_value"
+    /></label>
+    <label class="ui-form-label"
+      >Variação aceitável *<input
+        type="number"
+        min="0"
+        step="any"
+        formControlName="acceptable_variation"
+    /></label>
+    <label class="ui-form-label"
+      >Tipo de valor<select formControlName="unit">
+        @for (unit of unitOptions(); track unit.value) {
+          <option [value]="unit.value">{{ unit.label }}</option>
+        }
+      </select></label
+    >
+    <label class="ui-form-label"
+      >Casas decimais<input type="number" min="0" max="6" step="1" formControlName="decimal_places"
+    /></label>
+    <label class="ui-form-label"
       >Sentido da meta<select formControlName="goal_direction">
         <option value="higher">Maior é melhor</option>
         <option value="lower">Menor é melhor</option>
       </select></label
-    ><label class="mt-6 flex items-center gap-2 text-sm text-slate-600"
+    >
+    <label class="ui-form-label"
+      >Cálculo<select formControlName="calculation_type">
+        <option value="simple">Simples · resultado informado</option>
+        <option value="composite">Composto · cálculo automático</option>
+      </select></label
+    >
+    @if (calculationType() === 'simple') {
+      <label class="ui-form-label sm:col-span-2"
+        >Fórmula do indicador *<textarea rows="2" formControlName="simple_formula"></textarea>
+      </label>
+      <p class="self-end text-xs text-slate-500">
+        Na unidade escolhida; para percentual, use pontos percentuais.
+      </p>
+      <label class="ui-form-label sm:col-span-2"
+        >Fonte dos resultados *<textarea rows="2" formControlName="result_source"></textarea>
+      </label>
+    } @else {
+      <div class="sm:col-span-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+        Use os códigos entre chaves. Exemplo: (&#123;ABC.IND.001&#125; / &#123;ABC.IND.002&#125;) *
+        100. Os indicadores usados precisam ter resultado na mesma data.
+      </div>
+      <label class="ui-form-label sm:col-span-2"
+        >Adicionar indicador à fórmula
+        <select
+          #sourceIndicator
+          (change)="appendFormulaIndicator(sourceIndicator.value); sourceIndicator.value = ''"
+        >
+          <option value="">Selecionar...</option>
+          @for (item of availableFormulaIndicators(); track item.id) {
+            <option [value]="item.id">{{ item.code }} · {{ item.title }}</option>
+          }
+        </select>
+      </label>
+      <label class="ui-form-label sm:col-span-2"
+        >Fórmula composta *<textarea rows="3" formControlName="formula_expression"></textarea>
+      </label>
+    }
+    <label class="flex items-center gap-2 text-sm text-slate-600"
       ><input type="checkbox" formControlName="requires_critical_analysis" />Exige análise
       crítica</label
     >
+    <label class="flex items-center gap-2 text-sm text-slate-600"
+      ><input type="checkbox" formControlName="strategic" />Indicador estratégico</label
+    >
+    @if (strategic()) {
+      <label class="ui-form-label sm:col-span-2"
+        >Dimensão estratégica *<select formControlName="dimension_id">
+          <option value="">Selecionar...</option>
+          @for (dimension of dimensions(); track dimension.id) {
+            <option [value]="dimension.id">{{ dimension.code }} · {{ dimension.name }}</option>
+          }
+        </select></label
+      >
+      <a routerLink="/dimensoes" class="text-xs text-blue-700 sm:col-span-2"
+        >Abrir módulo de dimensões</a
+      >
+    }
+    @if (editing()) {
+      <label class="flex items-center gap-2 text-sm text-slate-600 sm:col-span-2"
+        ><input type="checkbox" formControlName="obsolete" />Marcar como obsoleto</label
+      >
+      <label class="ui-form-label sm:col-span-2"
+        >Justificativa da alteração *<textarea rows="2" formControlName="justification"></textarea>
+      </label>
+    }
+    @if (formError()) {
+      <p class="text-sm text-rose-600 sm:col-span-2" role="alert">{{ formError() }}</p>
+    }
     <div class="ui-form-actions">
       <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
         Cancelar</button
-      ><button type="submit" class="ui-button-primary">Salvar</button>
+      ><button type="submit" class="ui-button-primary" [disabled]="formSaving()">
+        {{ formSaving() ? 'Salvando...' : 'Salvar' }}
+      </button>
     </div>
   </form></app-side-drawer
 >

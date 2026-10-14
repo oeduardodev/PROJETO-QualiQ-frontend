@@ -3,11 +3,16 @@ import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type {
   Indicator,
+  IndicatorDefinitionHistory,
   IndicatorFrequencyOption,
   IndicatorHistoryEntry,
   IndicatorStatusOption,
   IndicatorUnitOption,
 } from '@core/models/database';
+import type { AppDatabase } from '@core/models/database';
+
+export type SaveIndicatorDefinitionInput =
+  AppDatabase['public']['Functions']['save_indicator_definition']['Args'];
 
 @Injectable({ providedIn: 'root' })
 export class IndicatorRepository {
@@ -70,31 +75,22 @@ export class IndicatorRepository {
     );
   }
 
-  async createIndicator(
-    input: Partial<Omit<Indicator, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<Indicator> {
-    const { data, error } = await this.client.from('indicators').insert(input).select('*').single();
+  async saveDefinition(input: SaveIndicatorDefinitionInput): Promise<Indicator> {
+    const { data, error } = await this.client.rpc('save_indicator_definition', input);
     if (error) throw error;
     return data;
   }
 
-  async updateIndicator(
-    id: string,
-    patch: Partial<Omit<Indicator, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<Indicator> {
-    const { data, error } = await this.client
-      .from('indicators')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async deleteIndicator(id: string): Promise<void> {
-    const { error } = await this.client.from('indicators').delete().eq('id', id);
-    if (error) throw error;
+  fetchDefinitionHistory(indicatorId: string): Promise<IndicatorDefinitionHistory[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('indicator_definition_history')
+        .select('*')
+        .eq('indicator_id', indicatorId)
+        .order('changed_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, to),
+    );
   }
 
   fetchIndicatorHistory(indicatorId: string): Promise<IndicatorHistoryEntry[]> {

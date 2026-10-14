@@ -157,7 +157,11 @@
                 "
               >
                 <td class="ui-table-cell">
-                  <strong class="block text-slate-800">{{ row.indicator.title }}</strong
+                  <strong class="block text-slate-800"
+                    >{{ row.indicator.title }}
+                    @if (row.indicator.obsolete) {
+                      <span class="ml-2 text-xs font-normal text-slate-500">Obsoleto</span>
+                    }</strong
                   ><span class="text-xs text-slate-500">{{ row.indicator.indicator_type }}</span>
                 </td>
                 <td class="ui-table-cell">

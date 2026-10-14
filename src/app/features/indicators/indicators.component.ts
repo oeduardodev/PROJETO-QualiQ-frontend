@@ -1,19 +1,23 @@
 import { toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
-import { toIndicatorPayload } from './data-access/indicator.mapper';
+import { compileIndicatorFormula, displayIndicatorFormula } from './indicator-formula.utils';
 import { formatIndicatorValue, indicatorUnitSymbol } from './data-access/indicator-unit.utils';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { IndicatorResultAnalysisRepository } from './data-access/indicator-result-analysis.repository';
 import { displayPeriod, isOnTarget, periodDate, sortedHistory } from './indicator-panel.utils';
 import { submissionDueDate, todayInSaoPaulo } from './indicator-deadline.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import { DimensionService } from '@features/strategy/data-access/dimension.service';
 import { TicketService } from '@features/notifications/data-access/ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
 import type {
   Indicator,
+  IndicatorCalculationType,
+  IndicatorClassification,
+  IndicatorDefinitionHistory,
   IndicatorFrequency,
   IndicatorFrequencyOption,
   IndicatorHistoryEntry,
@@ -22,6 +26,8 @@ import type {
   IndicatorStatusOption,
   IndicatorUnitOption,
   IndicatorUnitType,
+  Dimension,
+  DimensionLink,
   Process,
   SipocNode,
   Ticket,
@@ -35,7 +41,13 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 @Component({
   selector: 'app-indicators',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, MethodologyComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    IconDirective,
+    SideDrawerComponent,
+    MethodologyComponent,
+  ],
   templateUrl: './indicators.component.html',
   styleUrl: './indicators.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -44,6 +56,7 @@ export class IndicatorsComponent {
   private readonly indicatorService = inject(IndicatorService);
   private readonly resultAnalysisRepository = inject(IndicatorResultAnalysisRepository);
   private readonly processService = inject(ProcessService);
+  private readonly dimensionService = inject(DimensionService);
   private readonly ticketService = inject(TicketService);
   readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
@@ -65,6 +78,13 @@ export class IndicatorsComponent {
   readonly indicators = signal<Indicator[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly nodes = signal<SipocNode[]>([]);
+  readonly dimensions = signal<Dimension[]>([]);
+  readonly dimensionLinks = signal<DimensionLink[]>([]);
+  readonly definitionHistory = signal<IndicatorDefinitionHistory[]>([]);
+  readonly historyIndicatorId = signal<string | null>(null);
+  readonly historyLoading = signal(false);
+  readonly formSaving = signal(false);
+  readonly formError = signal<string | null>(null);
   readonly tickets = signal<Ticket[]>([]);
   readonly histories = signal<Record<string, IndicatorHistoryEntry[]>>({});
   readonly resultActors = signal<Record<string, string>>({});
@@ -87,19 +107,31 @@ export class IndicatorsComponent {
   private readonly valueControls = new Map<string, FormControl<number | null>>();
   readonly form = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    objective: new FormControl('', { nonNullable: true, validators: Validators.required }),
     process_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     step_id: new FormControl('', { nonNullable: true }),
-    goal_value: new FormControl(0, { nonNullable: true }),
-    unit: new FormControl<IndicatorUnitType>('numero_absoluto', { nonNullable: true }),
-    current_value: new FormControl(0, { nonNullable: true }),
-    frequency: new FormControl<IndicatorFrequency>('mensal', { nonNullable: true }),
-    status: new FormControl<IndicatorStatus>('', {
+    goal_value: new FormControl(0, { nonNullable: true, validators: Validators.required }),
+    acceptable_variation: new FormControl(0, {
       nonNullable: true,
-      validators: Validators.required,
+      validators: [Validators.required, Validators.min(0)],
     }),
+    unit: new FormControl<IndicatorUnitType>('numero_absoluto', { nonNullable: true }),
+    frequency: new FormControl<IndicatorFrequency>('mensal', { nonNullable: true }),
     requires_critical_analysis: new FormControl(false, { nonNullable: true }),
-    indicator_type: new FormControl('Não informado', { nonNullable: true }),
+    indicator_type: new FormControl<IndicatorClassification>('processo', { nonNullable: true }),
     goal_direction: new FormControl<'higher' | 'lower'>('higher', { nonNullable: true }),
+    strategic: new FormControl(false, { nonNullable: true }),
+    dimension_id: new FormControl('', { nonNullable: true }),
+    calculation_type: new FormControl<IndicatorCalculationType>('simple', { nonNullable: true }),
+    simple_formula: new FormControl('', { nonNullable: true }),
+    result_source: new FormControl('', { nonNullable: true }),
+    formula_expression: new FormControl('', { nonNullable: true }),
+    decimal_places: new FormControl(2, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0), Validators.max(6)],
+    }),
+    obsolete: new FormControl(false, { nonNullable: true }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly summary = computed(() => [
     { label: 'Total', value: this.indicators().length },
@@ -115,6 +147,15 @@ export class IndicatorsComponent {
     this.nodes().filter(
       (node) => node.node_type === 'P' && node.process_id === this.selectedProcessId(),
     ),
+  );
+  readonly calculationType = toSignal(this.form.controls.calculation_type.valueChanges, {
+    initialValue: this.form.controls.calculation_type.value,
+  });
+  readonly strategic = toSignal(this.form.controls.strategic.valueChanges, {
+    initialValue: this.form.controls.strategic.value,
+  });
+  readonly availableFormulaIndicators = computed(() =>
+    this.indicators().filter((item) => !item.obsolete && item.id !== this.editing()?.id),
   );
 
   get title(): string {
@@ -153,8 +194,13 @@ export class IndicatorsComponent {
       this.unitOptions.set(unitOptions);
       this.frequencyOptions.set(frequencyOptions);
       this.statusOptions.set(statusOptions);
+      if (this.mode === 'registration') {
+        const dimensionData = await this.dimensionService.fetchCurrentData();
+        this.dimensions.set(dimensionData.dimensions);
+        this.dimensionLinks.set(dimensionData.links);
+      }
       this.histories.set(await this.indicatorService.fetchHistories(indicators));
-      if (this.mode === 'feed')
+      if (this.mode === 'feed' || this.mode === 'registration')
         this.resultActors.set(await this.indicatorService.fetchResultActors());
       if (this.mode === 'feed')
         this.savedAnalyses.set(await this.resultAnalysisRepository.fetchAll());
@@ -230,6 +276,7 @@ export class IndicatorsComponent {
   }
 
   async saveValue(indicator: Indicator): Promise<void> {
+    if (indicator.calculation_type === 'composite' || indicator.obsolete) return;
     const value = this.valueControl(indicator.id).value;
     const period = this.periodControl(indicator.id).value;
     const justification = this.justificationControl(indicator.id).value.trim();
@@ -271,6 +318,7 @@ export class IndicatorsComponent {
       this.analysisControl(indicator.id).setValue('');
       this.selectedFeedEntry.set(saved.history.id);
       this.toast.success('Resultado registrado');
+      void this.loadIndicators();
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao registrar valor'));
     } finally {
@@ -387,7 +435,12 @@ export class IndicatorsComponent {
         { ...indicator, current_value: entry.value, goal_value: entry.goal },
         {
           period: entry.period,
-          on_target: isOnTarget(entry.value, entry.goal, indicator.goal_direction),
+          on_target: isOnTarget(
+            entry.value,
+            entry.goal,
+            indicator.goal_direction,
+            indicator.acceptable_variation,
+          ),
           history,
         },
       );
@@ -411,66 +464,210 @@ export class IndicatorsComponent {
   }
 
   openCreateIndicator(): void {
-    if (!this.activeStatusOptions().length) return;
+    if (!this.auth.isAdmin() || !this.activeStatusOptions().length) return;
     this.editing.set(null);
+    this.formError.set(null);
     this.form.reset({
       title: '',
+      objective: '',
       process_id: '',
       step_id: '',
       goal_value: 0,
+      acceptable_variation: 0,
       unit: 'numero_absoluto',
-      current_value: 0,
       frequency: 'mensal',
-      status: this.defaultStatus(),
       requires_critical_analysis: false,
-      indicator_type: 'Não informado',
+      indicator_type: 'processo',
       goal_direction: 'higher',
+      strategic: false,
+      dimension_id: '',
+      calculation_type: 'simple',
+      simple_formula: '',
+      result_source: '',
+      formula_expression: '',
+      decimal_places: 2,
+      obsolete: false,
+      justification: '',
     });
     this.formOpen.set(true);
   }
 
   openEditIndicator(indicator: Indicator): void {
+    if (!this.auth.isAdmin()) return;
     this.editing.set(indicator);
+    this.formError.set(null);
     this.form.reset({
       title: indicator.title,
+      objective: indicator.objective,
       process_id: indicator.process_id,
       step_id: indicator.step_id ?? '',
       goal_value: indicator.goal_value,
+      acceptable_variation: indicator.acceptable_variation,
       unit: indicator.unit,
-      current_value: indicator.current_value,
       frequency: indicator.frequency,
-      status: indicator.status,
       requires_critical_analysis: indicator.requires_critical_analysis,
-      indicator_type: indicator.indicator_type,
+      indicator_type: ['estrutura', 'processo', 'resultado'].includes(indicator.indicator_type)
+        ? (indicator.indicator_type as IndicatorClassification)
+        : 'processo',
       goal_direction: indicator.goal_direction,
+      strategic: indicator.strategic,
+      dimension_id:
+        this.dimensionLinks().find(
+          (link) => link.item_type === 'indicator' && link.item_id === indicator.id,
+        )?.dimension_id ?? '',
+      calculation_type: indicator.calculation_type,
+      simple_formula: indicator.simple_formula,
+      result_source: indicator.result_source,
+      formula_expression:
+        indicator.calculation_type === 'composite'
+          ? displayIndicatorFormula(indicator.formula_tokens, this.indicators()) ||
+            indicator.formula_expression
+          : '',
+      decimal_places: indicator.decimal_places,
+      obsolete: indicator.obsolete,
+      justification: '',
     });
     this.formOpen.set(true);
   }
 
   async saveIndicator(): Promise<void> {
-    if (this.form.invalid) return;
-    const value = this.form.getRawValue();
-    const payload = toIndicatorPayload(value);
-    const current = this.editing();
-    if (current) {
-      delete payload.current_value;
-      delete payload.status;
+    if (this.formSaving() || !this.auth.isAdmin()) return;
+    this.formError.set(null);
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.formError.set('Preencha os campos obrigatórios e confira os números.');
+      return;
     }
-    const saved = current
-      ? await this.indicatorService.updateIndicator(current.id, payload)
-      : await this.indicatorService.createIndicator(payload);
-    this.indicators.update((items) =>
-      current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
-    );
-    this.toast.success(current ? 'Indicador atualizado' : 'Indicador criado');
-    this.formOpen.set(false);
+    const value = this.form.getRawValue();
+    const current = this.editing();
+    if (current && !value.justification.trim()) {
+      this.formError.set('Informe a justificativa da alteração.');
+      return;
+    }
+    if (value.strategic && !value.dimension_id) {
+      this.formError.set('Selecione uma dimensão para o indicador estratégico.');
+      return;
+    }
+    if (
+      value.calculation_type === 'simple' &&
+      (!value.simple_formula.trim() || !value.result_source.trim())
+    ) {
+      this.formError.set('Informe a fórmula e a fonte dos resultados.');
+      return;
+    }
+    try {
+      const formulaTokens =
+        value.calculation_type === 'composite'
+          ? compileIndicatorFormula(value.formula_expression, this.indicators(), current?.id)
+          : [];
+      this.formSaving.set(true);
+      const saved = await this.indicatorService.saveDefinition({
+        p_id: current?.id ?? null,
+        p_title: value.title.trim(),
+        p_objective: value.objective.trim(),
+        p_process_id: value.process_id,
+        p_step_id: value.step_id || null,
+        p_frequency: value.frequency,
+        p_indicator_type: value.indicator_type,
+        p_requires_critical_analysis: value.requires_critical_analysis,
+        p_goal_value: value.goal_value,
+        p_acceptable_variation: value.acceptable_variation,
+        p_unit: value.unit,
+        p_goal_direction: value.goal_direction,
+        p_strategic: value.strategic,
+        p_dimension_id: value.strategic ? value.dimension_id : null,
+        p_calculation_type: value.calculation_type,
+        p_simple_formula: value.calculation_type === 'simple' ? value.simple_formula.trim() : '',
+        p_result_source: value.calculation_type === 'simple' ? value.result_source.trim() : '',
+        p_formula_expression:
+          value.calculation_type === 'composite' ? value.formula_expression.trim() : '',
+        p_formula_tokens: formulaTokens,
+        p_decimal_places: value.decimal_places,
+        p_obsolete: value.obsolete,
+        p_justification: current ? value.justification.trim() : null,
+      });
+      this.indicators.update((items) =>
+        current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
+      );
+      this.toast.success(current ? 'Indicador atualizado' : 'Indicador criado');
+      this.formOpen.set(false);
+      void this.loadIndicators();
+    } catch (error) {
+      this.formError.set(errorMessage(error, 'Erro ao salvar o indicador'));
+    } finally {
+      this.formSaving.set(false);
+    }
   }
 
-  async deleteIndicator(indicator: Indicator): Promise<void> {
-    if (!confirm('Excluir este indicador?')) return;
-    await this.indicatorService.deleteIndicator(indicator.id);
-    this.indicators.update((items) => items.filter((item) => item.id !== indicator.id));
-    this.toast.success('Indicador excluído');
+  appendFormulaIndicator(id: string): void {
+    const indicator = this.availableFormulaIndicators().find((item) => item.id === id);
+    if (!indicator) return;
+    const control = this.form.controls.formula_expression;
+    control.setValue(
+      `${control.value}${control.value && !control.value.endsWith(' ') ? ' ' : ''}{${indicator.code}}`,
+    );
+  }
+
+  async toggleDefinitionHistory(indicator: Indicator): Promise<void> {
+    if (this.historyIndicatorId() === indicator.id) {
+      this.historyIndicatorId.set(null);
+      return;
+    }
+    this.historyIndicatorId.set(indicator.id);
+    this.historyLoading.set(true);
+    try {
+      this.definitionHistory.set(await this.indicatorService.fetchDefinitionHistory(indicator.id));
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Erro ao carregar histórico da ficha'));
+    } finally {
+      this.historyLoading.set(false);
+    }
+  }
+
+  definitionChanges(
+    entry: IndicatorDefinitionHistory,
+  ): { label: string; before: string; after: string }[] {
+    if (!entry.before_data) return [];
+    const labels: Record<string, string> = {
+      code: 'Código',
+      title: 'Nome',
+      objective: 'Objetivo',
+      process_id: 'Processo',
+      step_id: 'Etapa',
+      frequency: 'Periodicidade',
+      indicator_type: 'Classificação',
+      requires_critical_analysis: 'Análise crítica',
+      goal_value: 'Meta',
+      acceptable_variation: 'Variação aceitável',
+      unit: 'Tipo de valor',
+      goal_direction: 'Sentido da meta',
+      strategic: 'Estratégico',
+      dimension_id: 'Dimensão',
+      calculation_type: 'Cálculo',
+      simple_formula: 'Fórmula simples',
+      result_source: 'Fonte dos resultados',
+      formula_expression: 'Fórmula composta',
+      decimal_places: 'Casas decimais',
+      obsolete: 'Obsoleto',
+    };
+    return Object.entries(labels)
+      .filter(([key]) => entry.before_data?.[key] !== entry.after_data[key])
+      .map(([key, label]) => ({
+        label,
+        before: this.definitionValue(key, entry.before_data?.[key]),
+        after: this.definitionValue(key, entry.after_data[key]),
+      }));
+  }
+
+  private definitionValue(key: string, value: unknown): string {
+    if (value == null || value === '') return '—';
+    if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+    if (key === 'process_id') return this.processName(String(value));
+    if (key === 'dimension_id')
+      return this.dimensions().find((item) => item.id === value)?.name ?? String(value);
+    if (key === 'step_id')
+      return this.nodes().find((item) => item.id === value)?.title ?? String(value);
+    return String(value);
   }
 
   processName(id: string): string {
@@ -484,8 +681,8 @@ export class IndicatorsComponent {
     return !!process && process.category_id === this.auth.profile()?.category_id;
   }
 
-  formatValue(value: number, unit: IndicatorUnitType): string {
-    return formatIndicatorValue(value, unit);
+  formatValue(value: number, unit: IndicatorUnitType, decimalPlaces?: number): string {
+    return formatIndicatorValue(value, unit, decimalPlaces);
   }
 
   unitLabel(unit: IndicatorUnitType): string {
@@ -505,14 +702,6 @@ export class IndicatorsComponent {
   statusForeground(status: IndicatorStatus): string {
     return (
       this.statusOptions().find((option) => option.key === status)?.badge_foreground ?? '#475569'
-    );
-  }
-
-  private defaultStatus(): IndicatorStatus {
-    return (
-      this.activeStatusOptions().find((option) => option.is_default)?.key ??
-      this.activeStatusOptions()[0]?.key ??
-      ''
     );
   }
 

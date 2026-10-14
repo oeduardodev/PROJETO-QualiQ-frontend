@@ -32,8 +32,17 @@ export function indicatorUnitSymbol(unit: IndicatorUnitType): string {
   return String(unit).replaceAll('_', ' ');
 }
 
-export function formatIndicatorValue(value: number, unit: IndicatorUnitType): string {
-  const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
+export function formatIndicatorValue(
+  value: number,
+  unit: IndicatorUnitType,
+  decimalPlaces?: number,
+): string {
+  const formatted =
+    decimalPlaces === undefined
+      ? value % 1 === 0
+        ? value.toFixed(0)
+        : value.toFixed(1)
+      : value.toFixed(decimalPlaces);
   switch (unit) {
     case 'percentual':
       return `${formatted}%`;
