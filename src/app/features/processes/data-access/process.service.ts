@@ -4,6 +4,7 @@ import type {
   ValueChainCategory,
   NodeType,
   Process,
+  ProcessHistory,
   SipocNode,
   SipocNodeAssociation,
   SipocStepAssociation,
@@ -75,12 +76,13 @@ export class ProcessService {
   updateProcess(
     id: string,
     patch: Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<Process> {
-    return this.repository.updateProcess(id, patch);
+    return this.repository.updateProcess(id, patch, justification);
   }
 
-  deleteProcess(id: string): Promise<void> {
-    return this.repository.deleteProcess(id);
+  fetchProcessHistory(id: string): Promise<ProcessHistory[]> {
+    return this.repository.fetchProcessHistory(id);
   }
 
   fetchCategories(): Promise<ValueChainCategory[]> {

@@ -1,4 +1,8 @@
-@if (loading()) {
+@if (!canManage()) {
+  <p class="py-24 text-center text-sm text-slate-500">
+    Você não tem permissão para acessar esta página.
+  </p>
+} @else if (loading()) {
   <div class="ui-page-loading">
     <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
   </div>
@@ -9,16 +13,14 @@
       Tentar novamente
     </button>
   </div>
-} @else if (!canManage()) {
-  <p class="py-24 text-center text-sm text-slate-500">
-    Você não tem permissão para acessar esta página.
-  </p>
 } @else {
   <div class="space-y-6">
     <div class="ui-page-header">
       <div>
         <h2 class="ui-page-title">Gerenciamento de Processos</h2>
-        <p class="ui-page-subtitle">{{ processes().length }} processos cadastrados</p>
+        <p class="ui-page-subtitle">
+          {{ processes().length }} processos cadastrados · {{ filtered().length }} exibidos
+        </p>
       </div>
       <button
         class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
@@ -44,6 +46,14 @@
         @for (category of categories(); track category.id) {
           <option [value]="category.id">{{ category.name }}</option>
         }
+      </select>
+      <select
+        [formControl]="statusFilter"
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+      >
+        <option value="active">Ativos</option>
+        <option value="obsolete">Obsoletos</option>
+        <option value="all">Todos</option>
       </select>
     </div>
     <div class="ui-table-panel">
@@ -86,7 +96,14 @@
                 <td class="px-4 py-3 font-mono text-xs text-slate-500">
                   {{ process.code || '—' }}
                 </td>
-                <td class="px-4 py-3 text-sm font-medium text-slate-700">{{ process.title }}</td>
+                <td class="px-4 py-3 text-sm font-medium text-slate-700">
+                  {{ process.title }}
+                  @if (process.obsolete) {
+                    <span class="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500"
+                      >Obsoleto</span
+                    >
+                  }
+                </td>
                 <td class="hidden px-4 py-3 md:table-cell">
                   <span class="inline-flex items-center gap-1.5 text-sm text-slate-600"
                     ><span
@@ -97,7 +114,7 @@
                   >
                 </td>
                 <td class="hidden px-4 py-3 text-sm text-slate-500 lg:table-cell">
-                  {{ process.owner || '—' }}
+                  {{ process.owner_id ? userName(process.owner_id) : process.owner || '—' }}
                 </td>
                 <td
                   class="hidden px-4 py-3 text-center text-sm font-semibold text-slate-700 sm:table-cell"
@@ -114,15 +131,60 @@
                     class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
                     (click)="openEditProcess(process)"
                   >
-                    Editar</button
-                  ><button
-                    class="ml-1 rounded-md px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50"
-                    (click)="deleteProcess(process)"
+                    Editar
+                  </button>
+                  <button class="ml-3 text-xs text-slate-500" (click)="toggleHistory(process)">
+                    {{ historyProcessId() === process.id ? 'Ocultar histórico' : 'Histórico' }}
+                  </button>
+                  <button
+                    class="ml-1 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                    [disabled]="saving()"
+                    (click)="setObsolete(process, !process.obsolete)"
                   >
-                    Excluir
+                    {{ process.obsolete ? 'Reativar' : 'Desativar' }}
                   </button>
                 </td>
               </tr>
+              @if (historyProcessId() === process.id) {
+                <tr>
+                  <td colspan="7" class="bg-slate-50 px-5 py-4">
+                    <h4 class="mb-2 text-sm font-semibold text-slate-700">
+                      Alterações do processo
+                    </h4>
+                    @if (historyLoading()) {
+                      <p class="text-xs text-slate-500">Carregando...</p>
+                    } @else if (historyError()) {
+                      <p class="text-xs text-rose-600">{{ historyError() }}</p>
+                    } @else {
+                      <ol class="space-y-2">
+                        @for (entry of history(); track entry.id) {
+                          <li class="text-xs text-slate-600">
+                            <strong>{{
+                              entry.action === 'created'
+                                ? 'Criação'
+                                : entry.action === 'baseline'
+                                  ? 'Estado inicial'
+                                  : 'Alteração'
+                            }}</strong>
+                            · {{ formatDate(entry.changed_at) }} ·
+                            {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
+                            @if (entry.justification) {
+                              · {{ entry.justification }}
+                            }
+                          </li>
+                          @for (change of historyChanges(entry); track change.label) {
+                            <li class="ml-4 text-xs text-slate-500">
+                              {{ change.label }}: {{ change.before }} → {{ change.after }}
+                            </li>
+                          }
+                        } @empty {
+                          <li class="text-xs text-slate-500">Sem registros de alteração.</li>
+                        }
+                      </ol>
+                    }
+                  </td>
+                </tr>
+              }
             } @empty {
               <tr>
                 <td colspan="7" class="ui-table-empty">Nenhum processo encontrado.</td>
@@ -134,10 +196,10 @@
     </div>
   </div>
 }
-<app-modal
+<app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar Processo' : 'Novo Processo'"
-  width="max-w-md"
+  width="max-w-2xl"
   (closed)="formOpen.set(false)"
 >
   <form [formGroup]="form" (ngSubmit)="saveProcess()" class="space-y-4">
@@ -151,6 +213,20 @@
         formControlName="title"
         class="ui-form-control outline-none focus:border-blue-400"
     /></label>
+    <label class="ui-form-label"
+      >Descrição *<textarea
+        formControlName="description"
+        rows="3"
+        class="ui-form-control outline-none focus:border-blue-400"
+      ></textarea>
+    </label>
+    <label class="ui-form-label"
+      >Missão / objetivo *<textarea
+        formControlName="objective"
+        rows="3"
+        class="ui-form-control outline-none focus:border-blue-400"
+      ></textarea>
+    </label>
     <label class="ui-form-label"
       >Código *<input
         formControlName="tag"
@@ -175,11 +251,44 @@
       </select></label
     >
     <label class="ui-form-label"
-      >Responsável<input
-        formControlName="owner"
-        placeholder="Ex: Operações"
-        class="ui-form-control outline-none focus:border-blue-400"
-    /></label>
+      >Responsável
+      <select formControlName="owner_id" class="ui-form-control bg-white">
+        <option value="">Sem responsável definido</option>
+        @for (user of users(); track user.id) {
+          <option [value]="user.id">{{ user.name }}</option>
+        }
+      </select>
+    </label>
+    <fieldset class="rounded-lg border border-slate-200 p-3">
+      <legend class="px-1 text-sm font-medium text-slate-700">Participantes</legend>
+      <div class="grid max-h-36 gap-2 overflow-y-auto sm:grid-cols-2">
+        @for (user of users(); track user.id) {
+          <label class="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              [checked]="form.controls.participant_ids.value.includes(user.id)"
+              (change)="toggleParticipant(user.id)"
+            />
+            {{ user.name }}
+          </label>
+        } @empty {
+          <p class="text-xs text-slate-500">Nenhum usuário disponível.</p>
+        }
+      </div>
+    </fieldset>
+    @if (editing()) {
+      <label class="flex items-center gap-2 text-sm text-slate-700"
+        ><input type="checkbox" formControlName="obsolete" /> Processo obsoleto</label
+      >
+      <label class="ui-form-label"
+        >Justificativa da alteração *
+        <textarea
+          formControlName="justification"
+          rows="2"
+          class="ui-form-control outline-none focus:border-blue-400"
+        ></textarea>
+      </label>
+    }
     <div class="grid grid-cols-3 gap-3">
       <label class="ui-form-label-inline"
         >Impacto (1-10)<input
@@ -225,4 +334,4 @@
       </button>
     </div>
   </form>
-</app-modal>
+</app-side-drawer>

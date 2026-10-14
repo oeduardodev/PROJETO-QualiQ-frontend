@@ -5,6 +5,7 @@ import type {
   ValueChainCategory,
   NodeType,
   Process,
+  ProcessHistory,
   SipocNode,
   SipocNodeAssociation,
   SipocStepAssociation,
@@ -31,7 +32,17 @@ export class ProcessRepository {
   async updateProcess(
     id: string,
     patch: Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<Process> {
+    if (justification) {
+      const { data, error } = await this.client.rpc('update_process_with_reason', {
+        p_id: id,
+        p_patch: patch,
+        p_justification: justification,
+      });
+      if (error) throw error;
+      return data;
+    }
     const { data, error } = await this.client
       .from('processes')
       .update(patch)
@@ -42,9 +53,16 @@ export class ProcessRepository {
     return data;
   }
 
-  async deleteProcess(id: string): Promise<void> {
-    const { error } = await this.client.from('processes').delete().eq('id', id);
-    if (error) throw error;
+  fetchProcessHistory(id: string): Promise<ProcessHistory[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('process_history')
+        .select('*')
+        .eq('process_id', id)
+        .order('changed_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 
   fetchCategories(): Promise<ValueChainCategory[]> {

@@ -24,12 +24,12 @@
           <span appIcon="Info" class="h-4 w-4"></span>Metodologia
         </button>
         @if (auth.isAdmin()) {
-          <button
+          <a
+            href="/processos/gerenciamento"
             class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
-            (click)="processOpen.set(true)"
           >
-            <span appIcon="Plus" class="h-4 w-4"></span>Novo Processo
-          </button>
+            <span appIcon="Plus" class="h-4 w-4"></span>Gerenciar processos
+          </a>
         }
       </div>
     </div>
@@ -48,10 +48,18 @@
         <option value="">Selecione um processo...</option>
         @for (process of processes(); track process.id) {
           <option [value]="process.id">
-            {{ process.code ? process.code + ' — ' : '' }}{{ process.title }}
+            {{ processCode(process) }} — {{ process.title
+            }}{{ process.obsolete ? ' (obsoleto)' : '' }}
           </option>
         }
       </select>
+      @if (selectedProcess(); as process) {
+        <span
+          class="shrink-0 rounded bg-slate-100 px-2 py-1 font-mono text-xs font-medium text-slate-700"
+        >
+          {{ processCode(process) }}
+        </span>
+      }
       @if (selectedStep()) {
         <button
           class="flex items-center gap-1 text-xs font-medium text-violet-600"
@@ -166,7 +174,7 @@
 <app-side-drawer
   [open]="processDetailOpen()"
   [title]="selectedProcess()?.title || 'Detalhes do processo'"
-  [subtitle]="(selectedProcess()?.code || '—') + ' · Etapa do processo'"
+  [subtitle]="processCode(selectedProcess()) + ' · Etapa do processo'"
   width="max-w-xl"
   (closed)="processDetailOpen.set(false)"
 >
@@ -186,14 +194,26 @@
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <p class="text-xs font-medium text-violet-600">{{ process.code || 'Processo' }}</p>
+            <p class="text-xs font-medium text-violet-600">{{ processCode(process) }}</p>
             <h3 class="mt-1 text-sm font-semibold text-slate-800">
               {{ selectedStep()?.title || process.title }}
             </h3>
             @if (selectedStep()?.description) {
               <p class="mt-1 text-xs text-slate-500">{{ selectedStep()?.description }}</p>
             }
+            @if (process.description) {
+              <p class="mt-1 text-xs text-slate-500">{{ process.description }}</p>
+            }
+            @if (process.objective) {
+              <p class="mt-1 text-xs text-slate-500">Missão / objetivo: {{ process.objective }}</p>
+            }
             <p class="mt-2 text-xs text-slate-500">Responsável: {{ process.owner || '—' }}</p>
+            @if (process.participant_ids?.length) {
+              <p class="mt-1 text-xs text-slate-500">
+                {{ process.participant_ids.length }}
+                {{ process.participant_ids.length === 1 ? 'participante' : 'participantes' }}
+              </p>
+            }
           </div>
           <button
             type="button"
@@ -472,56 +492,6 @@
       </div>
     </div>
   </form></app-side-drawer
->
-
-<app-modal
-  [open]="processOpen()"
-  title="Novo Processo"
-  width="max-w-md"
-  (closed)="processOpen.set(false)"
-  ><form [formGroup]="processForm" (ngSubmit)="saveProcess()" class="space-y-4">
-    @if (processError()) {
-      <p class="rounded-lg bg-rose-50 p-3 text-xs text-rose-600">{{ processError() }}</p>
-    }
-    <label class="ui-form-label"
-      >Título *<input formControlName="title" class="ui-form-control" /></label
-    ><label class="ui-form-label"
-      >Código *<input
-        formControlName="tag"
-        placeholder="Ex: ARQ"
-        maxlength="3"
-        autocomplete="off"
-        class="ui-form-control"
-      />
-      <span class="mt-1 text-xs font-normal text-slate-400"
-        >Use 3 letras. Espaços são removidos.</span
-      ></label
-    ><label class="ui-form-label"
-      >Categoria *<select formControlName="category_id" class="ui-form-control bg-white">
-        <option value="">Selecionar...</option>
-        @for (category of categories(); track category.id) {
-          <option [value]="category.id">{{ category.name }}</option>
-        }
-      </select></label
-    ><label class="ui-form-label"
-      >Responsável<input formControlName="owner" class="ui-form-control"
-    /></label>
-    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
-      <button
-        type="button"
-        class="px-4 py-2 text-sm text-slate-500"
-        (click)="processOpen.set(false)"
-      >
-        Cancelar</button
-      ><button
-        type="submit"
-        [disabled]="processSaving()"
-        class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        Criar
-      </button>
-    </div>
-  </form></app-modal
 >
 
 <app-modal

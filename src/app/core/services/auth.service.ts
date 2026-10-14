@@ -9,7 +9,7 @@ type AppRole = 'admin' | 'gestor' | 'operador';
 
 const PERMISSIONS: Record<Exclude<AppRole, 'admin'>, Record<string, PermissionAction[]>> = {
   gestor: {
-    processes: ['read', 'create', 'update', 'delete'],
+    processes: ['read'],
     sipoc_nodes: ['read'],
     tickets: ['read', 'create', 'update', 'delete'],
     indicators: ['read', 'create', 'update', 'delete'],

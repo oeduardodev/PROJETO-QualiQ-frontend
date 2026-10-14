@@ -2,17 +2,12 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { COLUMNS, LABELS } from './sipoc.constants';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import { processTag } from '@features/processes/data-access/process-code.utils';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { formatIndicatorValue } from '@features/indicators/data-access/indicator-unit.utils';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { SlaService } from '@features/processes/data-access/sla.service';
-import {
-  normalizeProcessTag,
-  PROCESS_TAG_INPUT_PATTERN,
-  processTag,
-  processCodeError,
-} from '@features/processes/data-access/process-code.utils';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
@@ -72,6 +67,10 @@ export class SipocComponent {
     return formatIndicatorValue(value, unit);
   }
 
+  processCode(process: Process | null): string {
+    return processTag(process?.code ?? null) || '—';
+  }
+
   readonly processes = signal<Process[]>([]);
   readonly categories = signal<ValueChainCategory[]>([]);
   readonly allNodes = signal<SipocNode[]>([]);
@@ -100,9 +99,6 @@ export class SipocComponent {
   readonly newCustomFieldLabel = signal('');
   readonly newCustomFieldType = signal<CustomFieldType>('text');
   readonly saving = signal(false);
-  readonly processOpen = signal(false);
-  readonly processError = signal<string | null>(null);
-  readonly processSaving = signal(false);
   readonly associationOpen = signal(false);
   readonly associationType = signal<NodeType>('S');
   readonly associationNodes = signal<SipocNode[]>([]);
@@ -114,15 +110,6 @@ export class SipocComponent {
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
   });
-  readonly processForm = new FormGroup({
-    title: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    tag: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.pattern(PROCESS_TAG_INPUT_PATTERN)],
-    }),
-    category_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    owner: new FormControl('', { nonNullable: true }),
-  });
   readonly selectedStep = computed(
     () => this.allNodes().find((node) => node.id === this.selectedStepId()) ?? null,
   );
@@ -132,11 +119,6 @@ export class SipocComponent {
   private nodesRequestId = 0;
 
   constructor() {
-    this.processForm.controls.tag.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
-      const normalized = normalizeProcessTag(value) ?? '';
-      if (value !== normalized)
-        this.processForm.controls.tag.setValue(normalized, { emitEvent: false });
-    });
     this.processControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => {
       if (id) void this.loadNodes(id);
       else {
@@ -398,42 +380,6 @@ export class SipocComponent {
       this.nodeOpen.set(false);
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao excluir'));
-    }
-  }
-
-  async saveProcess(): Promise<void> {
-    if (this.processForm.invalid) {
-      this.processError.set('Informe título e categoria. A tag deve ter exatamente 3 letras.');
-      return;
-    }
-    if (this.processSaving()) return;
-    this.processSaving.set(true);
-    this.processError.set(null);
-    try {
-      const value = this.processForm.getRawValue();
-      const tag = normalizeProcessTag(value.tag) ?? '';
-      if (this.processes().some((process) => processTag(process.code) === tag)) {
-        this.processError.set('Esta sigla já está em uso por outro processo.');
-        return;
-      }
-      const saved = await this.processService.createProcess({
-        title: value.title.trim(),
-        code: tag,
-        category_id: value.category_id,
-        owner: value.owner.trim() || null,
-        impact_score: 5,
-        complexity_score: 5,
-        maturity_level: 1,
-      });
-      this.processes.update((items) => [...items, saved]);
-      this.processControl.setValue(saved.id);
-      this.toast.success('Processo criado');
-      this.processOpen.set(false);
-      this.processForm.reset({ title: '', tag: '', category_id: '', owner: '' });
-    } catch (e) {
-      this.processError.set(processCodeError(e) ?? errorMessage(e, 'Erro ao criar processo'));
-    } finally {
-      this.processSaving.set(false);
     }
   }
 

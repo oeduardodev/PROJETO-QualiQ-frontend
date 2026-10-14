@@ -24,7 +24,7 @@ export class AppShellComponent {
   readonly expandedGroups = signal(new Set(NAV_GROUPS.map((g) => g.id)));
   readonly expandedSubs = signal(new Set(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id))));
   readonly route = signal(this.router.url.slice(1).split('?')[0] || 'dashboard');
-  readonly groups = computed(() => visibleNavigation(this.auth.isOperador()));
+  readonly groups = computed(() => visibleNavigation(this.auth.isOperador(), this.auth.isAdmin()));
   readonly leaves = computed(() =>
     this.groups().flatMap((group) => group.items.flatMap((item) => item.leaves)),
   );

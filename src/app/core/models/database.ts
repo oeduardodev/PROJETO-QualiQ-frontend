@@ -17,6 +17,7 @@ export interface AppDatabase {
     Tables: {
       value_chain_categories: TableDefinition<ValueChainCategory>;
       processes: TableDefinition<Process>;
+      process_history: TableDefinition<ProcessHistory>;
       sipoc_nodes: TableDefinition<SipocNode>;
       sipoc_node_associations: TableDefinition<SipocNodeAssociation>;
       sipoc_step_associations: TableDefinition<SipocStepAssociation>;
@@ -61,6 +62,10 @@ export interface AppDatabase {
     };
     Views: Record<string, never>;
     Functions: {
+      update_process_with_reason: {
+        Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
+        Returns: Process;
+      };
       advance_document: {
         Args: {
           p_document_id: string;
@@ -206,9 +211,25 @@ export interface Process {
   complexity_score: number;
   maturity_level: number;
   owner: string | null;
+  owner_id: string | null;
+  participant_ids: string[];
+  description: string;
+  objective: string;
+  obsolete: boolean;
   custom_fields: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProcessHistory {
+  id: string;
+  process_id: string;
+  action: 'baseline' | 'created' | 'updated';
+  justification: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
 }
 
 export interface SipocNode {

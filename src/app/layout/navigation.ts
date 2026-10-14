@@ -223,7 +223,7 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   dashboard: 'Visão geral do sistema de gestão da qualidade',
   valor: 'Avaliação estratégica de processos',
   dimensoes: 'Dimensões estratégicas com indicadores e planos vinculados ao SIPOC',
-  'processos/gerenciamento': 'Criação e edição de processos (CRUD completo)',
+  'processos/gerenciamento': 'Cadastro, histórico e obsolescência de processos',
   'processos/sipoc':
     'Mapeamento de processos — Fornecedores, Entradas, Processo, Saídas e Clientes',
   'processos/slas/painel': 'Acordos de nível de serviço entre processos — acompanhamento',
@@ -248,12 +248,17 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
 };
 
-export function visibleNavigation(isOperator: boolean): NavGroup[] {
-  if (!isOperator) return NAV_GROUPS;
+export function visibleNavigation(isOperator: boolean, isAdmin: boolean): NavGroup[] {
+  if (isAdmin) return NAV_GROUPS;
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items
-      .map((item) => ({ ...item, leaves: item.leaves.filter((leaf) => !leaf.adminOnly) }))
+      .map((item) => ({
+        ...item,
+        leaves: item.leaves.filter(
+          (leaf) => leaf.id !== 'processos/gerenciamento' && (!isOperator || !leaf.adminOnly),
+        ),
+      }))
       .filter((item) => item.leaves.length),
   })).filter((group) => group.items.length);
 }

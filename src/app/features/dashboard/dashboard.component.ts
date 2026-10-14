@@ -87,7 +87,7 @@ export class DashboardComponent {
       this.processes.set(processes);
       this.recentTickets.set(tickets.slice(0, 5));
       this.totals.set({
-        processes: processes.length,
+        processes: processes.filter((process) => !process.obsolete).length,
         open: tickets.filter(
           (t) => !ticketStatuses.find((status) => status.key === t.status)?.is_terminal,
         ).length,

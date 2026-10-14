@@ -61,7 +61,7 @@ export class SlasComponent {
       (sla) =>
         (this.statusValue() === 'all' || sla.status === this.statusValue()) &&
         (!this.searchValue() ||
-          `${sla.code ?? ''} ${sla.title}`
+          `${sla.title} ${this.processLabel(sla.supplier_process_id)} ${this.processLabel(sla.client_process_id)}`
             .toLowerCase()
             .includes(this.searchValue().toLowerCase())),
     ),
@@ -145,7 +145,7 @@ export class SlasComponent {
       !this.form.controls.client_process_id.value &&
       !this.form.controls.supplier_process_id.value
     ) {
-      this.formError.set('Selecione um processo cliente ou fornecedor para gerar o código.');
+      this.formError.set('Selecione um processo cliente ou fornecedor para associar ao SLA.');
       return;
     }
     this.formError.set(null);
@@ -180,12 +180,11 @@ export class SlasComponent {
     }
   }
 
-  processName(id: string | null): string {
-    return this.processes().find((process) => process.id === id)?.title ?? '—';
-  }
-
-  processCode(id: string | null): string {
-    return processTag(this.processes().find((process) => process.id === id)?.code ?? null) || '—';
+  processLabel(id: string | null): string {
+    const process = this.processes().find((item) => item.id === id);
+    if (!process) return '—';
+    const code = processTag(process.code);
+    return code ? `${code} — ${process.title}` : process.title;
   }
 
   statusLabel(status: SlaStatus): string {

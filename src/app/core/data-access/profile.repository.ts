@@ -20,4 +20,10 @@ export class ProfileRepository {
     // Existing consumers tolerate a profiles query error and display fallback names.
     return (data as Profile[]) ?? [];
   }
+
+  async findAssignableUsers(): Promise<Profile[]> {
+    const { data, error } = await this.client.from('profiles').select('*').order('name');
+    if (error) throw error;
+    return data as Profile[];
+  }
 }

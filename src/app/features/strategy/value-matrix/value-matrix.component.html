@@ -221,12 +221,26 @@
         @if (process.owner) {
           <span>Responsável: {{ process.owner }}</span>
         }
+        @if (process.participant_ids?.length) {
+          <span
+            >{{ process.participant_ids.length }}
+            {{ process.participant_ids.length === 1 ? 'participante' : 'participantes' }}</span
+          >
+        }
         @if (strategicProcessIds().has(process.id)) {
           <span class="rounded-full bg-violet-50 px-2 py-1 font-medium text-violet-700">
             Vinculado ao planejamento estratégico
           </span>
         }
       </div>
+      @if (process.description) {
+        <p class="text-sm text-slate-600">{{ process.description }}</p>
+      }
+      @if (process.objective) {
+        <p class="text-sm text-slate-600">
+          <strong>Missão / objetivo:</strong> {{ process.objective }}
+        </p>
+      }
       @if (strategicDimensions(process.id).length) {
         <p class="text-sm text-violet-700">
           Dimensões estratégicas: {{ strategicDimensions(process.id).join(', ') }}

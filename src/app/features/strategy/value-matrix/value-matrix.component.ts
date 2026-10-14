@@ -137,7 +137,7 @@ export class ValueMatrixComponent {
         categories.map((category) => ({
           ...category,
           processes: processes
-            .filter((process) => process.category_id === category.id)
+            .filter((process) => process.category_id === category.id && !process.obsolete)
             .sort((a, b) =>
               a.order_index === b.order_index
                 ? a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
@@ -363,6 +363,7 @@ export class ValueMatrixComponent {
     if (!this.auth.isAdmin() || !this.manageMode() || this.reordering()) return;
     const lane = this.categories().find((item) => item.id === categoryId);
     if (!lane) return;
+    const positions = lane.processes.map((process) => process.order_index);
     const processes = [...lane.processes];
     const [moved] = processes.splice(from, 1);
     processes.splice(to, 0, moved);
@@ -371,14 +372,19 @@ export class ValueMatrixComponent {
       const first = Math.min(from, to);
       const last = Math.max(from, to);
       for (let index = first; index <= last; index++) {
-        await this.processService.updateProcess(processes[index].id, { order_index: index });
+        await this.processService.updateProcess(processes[index].id, {
+          order_index: positions[index],
+        });
       }
       this.categories.update((lanes) =>
         lanes.map((item) =>
           item.id === categoryId
             ? {
                 ...item,
-                processes: processes.map((process, order_index) => ({ ...process, order_index })),
+                processes: processes.map((process, index) => ({
+                  ...process,
+                  order_index: positions[index],
+                })),
               }
             : item,
         ),
