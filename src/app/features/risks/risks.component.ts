@@ -80,6 +80,14 @@ export class RisksComponent {
   readonly riskTickets = signal<Ticket[]>([]);
   readonly detailLoading = signal(false);
   readonly detailError = signal<string | null>(null);
+  readonly detailEntryOpen = signal(false);
+  readonly detailEntryKind = signal<'factor' | 'action' | 'plan'>('factor');
+  readonly detailEntryDescription = new FormControl('', {
+    nonNullable: true,
+    validators: Validators.required,
+  });
+  readonly detailEntrySaving = signal(false);
+  readonly detailEntryError = signal<string | null>(null);
   readonly search = new FormControl('', { nonNullable: true });
   readonly processFilter = new FormControl('all', { nonNullable: true });
   readonly form = new FormGroup({
@@ -285,17 +293,32 @@ export class RisksComponent {
     }
   }
 
-  async addDetail(kind: 'factor' | 'action' | 'plan'): Promise<void> {
+  openDetailEntry(kind: 'factor' | 'action' | 'plan'): void {
+    if (!this.selectedRisk()) return;
+    this.detailEntryKind.set(kind);
+    this.detailEntryDescription.reset('');
+    this.detailEntryError.set(null);
+    this.detailOpen.set(false);
+    this.detailEntryOpen.set(true);
+  }
+
+  closeDetailEntry(): void {
+    this.detailEntryOpen.set(false);
+    if (this.selectedRisk()) this.detailOpen.set(true);
+  }
+
+  async addDetail(): Promise<void> {
     const risk = this.selectedRisk();
     if (!risk) return;
-    const description = prompt(
-      kind === 'factor'
-        ? 'Descreva o fator de risco:'
-        : kind === 'action'
-          ? 'Descreva a ação preventiva:'
-          : 'Descreva o plano de contingência:',
-    );
-    if (!description?.trim()) return;
+    const description = this.detailEntryDescription.value.trim();
+    if (!description) {
+      this.detailEntryError.set('Informe uma descrição.');
+      return;
+    }
+    if (this.detailEntrySaving()) return;
+    const kind = this.detailEntryKind();
+    this.detailEntrySaving.set(true);
+    this.detailEntryError.set(null);
     try {
       if (kind === 'factor') {
         const saved = await this.riskService.addFactor(risk.id, description);
@@ -308,8 +331,11 @@ export class RisksComponent {
         this.plans.update((items) => [...items, saved]);
       }
       this.toast.success('Registro adicionado');
+      this.closeDetailEntry();
     } catch (e) {
-      this.toast.error(errorMessage(e, 'Erro ao adicionar'));
+      this.detailEntryError.set(errorMessage(e, 'Erro ao adicionar'));
+    } finally {
+      this.detailEntrySaving.set(false);
     }
   }
 

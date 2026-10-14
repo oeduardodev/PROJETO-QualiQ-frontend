@@ -35,20 +35,13 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
-import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    IconDirective,
-    SideDrawerComponent,
-    ModalComponent,
-    MethodologyComponent,
-  ],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, MethodologyComponent],
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.scss',
   host: { class: 'ui-standard-fields' },

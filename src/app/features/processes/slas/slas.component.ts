@@ -10,13 +10,13 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService } from '@core/services/auth.service';
 import type { Process, SLA, SipocNode, SlaStatus, SlaStatusOption } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
-import { ModalComponent } from '@shared/components/modal/modal.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
 
 @Component({
   selector: 'app-slas',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, ModalComponent],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent],
   templateUrl: './slas.component.html',
   styleUrl: './slas.component.scss',
 })

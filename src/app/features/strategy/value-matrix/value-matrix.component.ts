@@ -25,6 +25,7 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
+import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { QuickPaletteComponent } from '@shared/components/quick-palette/quick-palette.component';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 import { ToastService } from '@shared/services/toast.service';
@@ -60,6 +61,7 @@ const MATRIX_COLORS: Record<string, string> = {
     IconDirective,
     MethodologyComponent,
     ModalComponent,
+    SideDrawerComponent,
     QuickPaletteComponent,
   ],
   templateUrl: './value-matrix.component.html',

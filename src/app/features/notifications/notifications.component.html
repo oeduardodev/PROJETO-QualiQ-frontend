@@ -456,7 +456,7 @@
     </div>
   </form></app-side-drawer
 >
-<app-modal
+<app-side-drawer
   [open]="classificationOpen()"
   [title]="editingClassification() ? 'Editar Classificação' : 'Nova Classificação'"
   width="max-w-xl"
@@ -491,9 +491,9 @@
     <div class="col-span-2 flex justify-end">
       <button class="ui-button-primary" type="submit">Salvar</button>
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
-<app-modal
+<app-side-drawer
   [open]="typeOpen()"
   [title]="editingType() ? 'Editar Tipo' : 'Novo Tipo'"
   width="max-w-xl"
@@ -536,7 +536,7 @@
     <div class="col-span-2 flex justify-end">
       <button class="ui-button-primary" type="submit">Salvar</button>
     </div>
-  </form></app-modal
+  </form></app-side-drawer
 >
 <app-methodology
   [open]="methodologyOpen()"

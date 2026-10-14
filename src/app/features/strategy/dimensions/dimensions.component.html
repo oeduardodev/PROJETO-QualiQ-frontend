@@ -329,7 +329,7 @@
   }
 </app-modal>
 
-<app-modal
+<app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar Dimensão' : 'Nova Dimensão'"
   width="max-w-3xl"
@@ -451,9 +451,9 @@
       </button>
     </div>
   </form>
-</app-modal>
+</app-side-drawer>
 
-<app-modal
+<app-side-drawer
   [open]="versionOpen()"
   title="Nova versão do planejamento"
   width="max-w-md"
@@ -486,7 +486,7 @@
       </button>
     </div>
   </form>
-</app-modal>
+</app-side-drawer>
 
 <app-methodology
   [open]="methodologyOpen()"

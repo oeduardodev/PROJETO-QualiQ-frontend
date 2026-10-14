@@ -17,14 +17,13 @@ import type {
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
-import { ModalComponent } from '@shared/components/modal/modal.component';
 import { ToastService } from '@shared/services/toast.service';
 import { DocumentsStore } from './documents.store';
 
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, ModalComponent],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss',
   host: { class: 'ui-standard-fields' },

@@ -494,7 +494,7 @@
   </form></app-side-drawer
 >
 
-<app-modal
+<app-side-drawer
   [open]="associationOpen()"
   [title]="'Associar ' + LABELS[associationType()] + ' à etapa'"
   width="max-w-xl"
@@ -527,7 +527,7 @@
       }
     </div>
   }
-</app-modal>
+</app-side-drawer>
 <app-methodology
   [open]="methodologyOpen()"
   [info]="methodology"

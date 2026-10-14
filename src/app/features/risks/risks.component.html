@@ -361,7 +361,10 @@
         <section>
           <div class="mb-2 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-slate-700">{{ section.label }}</h3>
-            <button class="text-xs font-medium text-blue-600" (click)="addDetail(section.key)">
+            <button
+              class="text-xs font-medium text-blue-600"
+              (click)="openDetailEntry(section.key)"
+            >
               + Adicionar
             </button>
           </div>
@@ -406,6 +409,39 @@
       </section>
     </div>
   }
+</app-side-drawer>
+<app-side-drawer
+  [open]="detailEntryOpen()"
+  [title]="
+    detailEntryKind() === 'factor'
+      ? 'Novo fator de risco'
+      : detailEntryKind() === 'action'
+        ? 'Nova ação preventiva'
+        : 'Novo plano de contingência'
+  "
+  [subtitle]="selectedRisk()?.title || ''"
+  width="max-w-lg"
+  (closed)="closeDetailEntry()"
+>
+  <form (submit)="$event.preventDefault(); addDetail()" class="space-y-4">
+    <label class="ui-form-label">
+      Descrição *
+      <textarea [formControl]="detailEntryDescription" rows="5" class="ui-form-control"></textarea>
+    </label>
+    @if (detailEntryError()) {
+      <p role="alert" class="rounded-lg bg-rose-50 p-3 text-sm text-rose-600">
+        {{ detailEntryError() }}
+      </p>
+    }
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <button type="button" class="ui-button-secondary" (click)="closeDetailEntry()">
+        Cancelar
+      </button>
+      <button type="submit" class="ui-button-primary" [disabled]="detailEntrySaving()">
+        {{ detailEntrySaving() ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </form>
 </app-side-drawer>
 <app-methodology
   [open]="methodologyOpen()"
