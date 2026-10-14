@@ -122,9 +122,8 @@ export const routes: Routes = [
   },
   {
     path: 'indicadores/analises',
-    data: { mode: 'analysis' },
-    loadComponent: () =>
-      import('@features/indicators/indicators.component').then((m) => m.IndicatorsComponent),
+    redirectTo: 'indicadores/alimentacao',
+    pathMatch: 'full',
   },
   {
     path: 'indicadores/cadastro',

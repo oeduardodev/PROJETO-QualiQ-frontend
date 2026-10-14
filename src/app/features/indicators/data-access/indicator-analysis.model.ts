@@ -10,11 +10,9 @@ export interface IndicatorAnalysis {
 export interface IndicatorObservationContext {
   period: string;
   on_target: boolean;
-  related_indicators: {
-    title: string;
+  history: {
     period: string;
     value: number;
     goal: number;
-    unit: string;
   }[];
 }

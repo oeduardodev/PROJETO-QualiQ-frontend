@@ -382,24 +382,13 @@ export class IndicatorPanelComponent {
     this.analyzing.set(true);
     try {
       const indicator = row.indicator;
-      const related = this.indicators()
-        .filter((item) => item.id !== indicator.id && item.process_id === indicator.process_id)
-        .flatMap((item) =>
-          (this.histories()[item.id] ?? [])
-            .filter((entry) => periodDate(entry)?.slice(0, 7) === row.date?.slice(0, 7))
-            .map((entry) => ({
-              title: item.title,
-              period: entry.period,
-              value: entry.value,
-              goal: entry.goal,
-              unit: item.unit,
-            })),
-        );
+      const history = sortedHistory(this.histories()[indicator.id] ?? [])
+        .filter((entry) => !row.date || (periodDate(entry) ?? '') <= row.date)
+        .slice(-12)
+        .map((entry) => ({ period: entry.period, value: entry.value, goal: entry.goal }));
       const result = await this.indicatorService.generateAnalysis(
         { ...indicator, current_value: row.value, goal_value: row.goal },
-        this.processes().find((item) => item.id === indicator.process_id) ?? null,
-        this.relatedTickets(),
-        { period: row.period, on_target: row.onTarget, related_indicators: related },
+        { period: row.period, on_target: row.onTarget, history },
       );
       if (!result) throw new Error('A análise não retornou um resultado.');
       const saved = await this.analysesRepository.create({

@@ -7,8 +7,6 @@ import type {
   IndicatorFrequencyOption,
   IndicatorStatusOption,
   IndicatorUnitOption,
-  Process,
-  Ticket,
 } from '@core/models/database';
 import type { Indicator, IndicatorHistoryEntry } from '@core/models/database';
 
@@ -17,21 +15,29 @@ export class IndicatorService {
   private readonly analysisRepository = inject(IndicatorAnalysisRepository);
   private readonly repository = inject(IndicatorRepository);
 
+  fetchResultActors(): Promise<Record<string, string>> {
+    return this.repository.fetchResultActors();
+  }
+
   fetchStatusOptions(): Promise<IndicatorStatusOption[]> {
     return this.repository.fetchStatusOptions();
   }
 
-  recordValue(indicator: Indicator, period: string, value: number): Promise<Indicator> {
-    return this.repository.recordValue(indicator.id, period, value);
+  recordValue(
+    indicator: Indicator,
+    period: string,
+    value: number,
+    lateJustification: string,
+    analysis: string,
+  ): Promise<{ indicator: Indicator; history: IndicatorHistoryEntry }> {
+    return this.repository.recordValue(indicator.id, period, value, lateJustification, analysis);
   }
 
   generateAnalysis(
     indicator: Indicator,
-    process: Process | null,
-    tickets: Ticket[],
     observation?: IndicatorObservationContext,
   ): Promise<IndicatorAnalysis | null> {
-    return this.analysisRepository.generate(indicator, process, tickets, observation);
+    return this.analysisRepository.generate(indicator, observation);
   }
 
   async fetchHistories(indicators: Indicator[]): Promise<Record<string, IndicatorHistoryEntry[]>> {

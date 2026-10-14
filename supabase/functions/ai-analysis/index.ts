@@ -5,6 +5,7 @@ const corsHeaders = {
 } as const;
 
 interface IndicatorContext {
+  id: string;
   title: string;
   current_value: number;
   goal_value: number;
@@ -14,34 +15,15 @@ interface IndicatorContext {
   goal_direction?: 'higher' | 'lower';
 }
 
-interface ProcessContext {
-  title: string;
-  code: string | null;
-  owner: string | null;
-}
-
-interface TicketContext {
-  title: string;
-  description: string | null;
-  severity: string;
-  status: string;
-  ishikawa?: Record<string, unknown> | null;
-  custom_fields?: Record<string, unknown> | null;
-}
-
 interface AnalysisRequest {
   indicator: IndicatorContext;
-  process: ProcessContext | null;
-  tickets: TicketContext[];
   observation?: {
     period: string;
     on_target: boolean;
-    related_indicators: {
-      title: string;
+    history: {
       period: string;
       value: number;
       goal: number;
-      unit: string;
     }[];
   };
 }
@@ -64,43 +46,12 @@ const GEMINI_MAX_RETRIES = 2;
 const GEMINI_RETRY_BASE_MS = 1_000;
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
-const ISHIKAWA_LABELS: Record<string, string> = {
-  maquina: 'Máquina',
-  metodo: 'Método',
-  mao_de_obra: 'Mão de Obra',
-  material: 'Material',
-  meio_ambiente: 'Meio Ambiente',
-  medida: 'Medida',
-};
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function extractIshikawa(t: TicketContext): Array<[string, string]> {
-  const direct = asRecord(t.ishikawa);
-  const nested = asRecord(asRecord(t.custom_fields)?.['ishikawa']);
-  const source = direct ?? nested;
-  if (!source) return [];
-  const filled: Array<[string, string]> = [];
-  for (const [key, label] of Object.entries(ISHIKAWA_LABELS)) {
-    const raw = source[key];
-    const value = typeof raw === 'string' ? raw.trim() : '';
-    if (value) filled.push([label, value]);
-  }
-  return filled;
-}
-
 function buildSystemPrompt(): string {
-  return `Você é um Engenheiro de Produção e Consultor Sênior de Qualidade com profunda experiência em metodologias Lean, Seis Sigma, Ishikawa (6Ms) e análise de causa raiz (RCA). Sua análise deve ser técnica, prática e acionável, sempre em português brasileiro.`;
+  return `Você é um analista de indicadores de qualidade. Use exclusivamente o resultado atual, a meta e o histórico do mesmo indicador fornecidos. Não infira causas sem evidência. Responda em português brasileiro.`;
 }
 
 function buildUserPrompt(req: AnalysisRequest): string {
   const ind = req.indicator;
-  const proc = req.process;
-  const tickets = req.tickets;
 
   const gap = ind.current_value - ind.goal_value;
   const lowerIsBetter = ind.goal_direction === 'lower';
@@ -127,56 +78,28 @@ function buildUserPrompt(req: AnalysisRequest): string {
     prompt += `**Período observado:** ${req.observation.period}\n`;
     prompt += `**Situação nesse período:** ${req.observation.on_target ? 'Na meta' : 'Fora da meta'}\n`;
     prompt += `**Sentido da meta:** ${lowerIsBetter ? 'menor é melhor' : 'maior é melhor'}\n\n`;
-    if (req.observation.related_indicators.length) {
-      prompt += `## RESULTADOS DE OUTROS INDICADORES NO MESMO PERÍODO\n\n`;
-      for (const related of req.observation.related_indicators) {
-        prompt += `- ${related.title}: ${related.value} ${related.unit}; meta ${related.goal} ${related.unit}; período ${related.period}\n`;
-      }
-      prompt += `Compare os resultados quando houver relação plausível. Não presuma causalidade apenas pela coincidência temporal.\n\n`;
+    prompt += `## HISTÓRICO DESTE INDICADOR\n\n`;
+    for (const entry of req.observation.history) {
+      prompt += `- ${entry.period}: resultado ${entry.value} ${unitLabel}; meta ${entry.goal} ${unitLabel}\n`;
     }
-  }
-
-  if (proc) {
-    prompt += `**Processo Vinculado:** ${proc.code ?? ''} ${proc.title}\n`;
-    prompt += `**Responsável:** ${proc.owner ?? 'Não definido'}\n\n`;
-  }
-
-  prompt += `## EVIDÊNCIAS — Não-Conformidades Vinculadas\n\n`;
-
-  if (tickets.length === 0) {
-    prompt += `Nenhum chamado de não-conformidade vinculado a este processo no momento.\n\n`;
-  } else {
-    prompt += `Total de chamados: ${tickets.length}\n\n`;
-    tickets.forEach((t, i) => {
-      prompt += `### Chamado ${i + 1}: ${t.title}\n`;
-      prompt += `- **Severidade:** ${t.severity}\n`;
-      prompt += `- **Status:** ${t.status}\n`;
-      if (t.description) prompt += `- **Descrição:** ${t.description}\n`;
-      const ishi = extractIshikawa(t);
-      if (ishi.length > 0) {
-        prompt += `- **Análise Ishikawa (6Ms):**\n`;
-        ishi.forEach(([label, value]) => {
-          prompt += `  - **${label}:** ${value}\n`;
-        });
-      }
-      prompt += `\n`;
-    });
+    if (!req.observation.history.length) prompt += `Sem resultados anteriores.\n`;
+    prompt += `\n`;
   }
 
   prompt += `## TAREFA\n\n`;
   prompt += req.observation?.on_target
-    ? `Analise o resultado alcançado e as evidências disponíveis. Quando houver relação plausível com os 6Ms do Ishikawa, explique-a sem presumir causalidade. Gere exatamente 2 planos preventivos ou de melhoria para sustentar o desempenho.\n\n`
-    : `Analise as evidências acima, identifique relações plausíveis entre o desvio do indicador e as falhas registradas nos 6Ms do Ishikawa, e gere exatamente 2 planos de ação práticos para corrigir o problema. Não presuma causalidade sem evidência.\n\n`;
+    ? `Analise a evolução do resultado e gere exatamente 2 sugestões para sustentar ou melhorar o desempenho. Baseie cada sugestão apenas nos números apresentados.\n\n`
+    : `Analise a evolução e o desvio em relação à meta e gere exatamente 2 sugestões para melhorar o desempenho. Baseie cada sugestão apenas nos números apresentados.\n\n`;
   prompt += `## FORMATO DE RESPOSTA (OBRIGATÓRIO)\n\n`;
   prompt += `Responda APENAS com um JSON válido, sem markdown, sem comentários, sem texto antes ou depois. O JSON deve ter exatamente esta estrutura:\n\n`;
   prompt += `{\n`;
-  prompt += `  "diagnostic": "Texto do diagnóstico técnico sobre o resultado e as evidências disponíveis. Cite os 6Ms apenas quando houver evidência; não invente falhas ou relações causais. Mínimo 3 frases, máximo 6 frases.",\n`;
+  prompt += `  "diagnostic": "Diagnóstico técnico sobre resultado e tendência do indicador, sem inventar causas. Mínimo 3 frases, máximo 6 frases.",\n`;
   prompt += `  "suggestions": [\n`;
   prompt += `    {\n`;
   prompt += `      "title": "Título curto e acionável do plano de ação",\n`;
   prompt += `      "what": "O que fazer — descrição objetiva da ação",\n`;
-  prompt += `      "why": "Por que fazer — justificativa técnica baseada nas evidências disponíveis",\n`;
-  prompt += `      "who": "Quem é o responsável pela execução (use o responsável do processo se disponível, senão sugira o cargo adequado)",\n`;
+  prompt += `      "why": "Por que fazer — justificativa baseada nos resultados e metas apresentados",\n`;
+  prompt += `      "who": "Cargo sugerido para a execução",\n`;
   prompt += `      "how": "Como fazer — passo a passo numerado (1. 2. 3. 4.) das etapas de execução",\n`;
   prompt += `      "how_much": "Quanto custa — estimativa de custo ou recurso necessário (pode ser qualitativa se não houver dados)"\n`;
   prompt += `    },\n`;
@@ -318,11 +241,20 @@ Deno.serve(async (req: Request) => {
     }
     if (
       !body?.indicator ||
+      typeof body.indicator.id !== 'string' ||
       typeof body.indicator.title !== 'string' ||
       !Number.isFinite(body.indicator.current_value) ||
       !Number.isFinite(body.indicator.goal_value) ||
-      !Array.isArray(body.tickets) ||
-      body.tickets.length > 100
+      !body.observation ||
+      typeof body.observation.period !== 'string' ||
+      !Array.isArray(body.observation.history) ||
+      body.observation.history.length > 24 ||
+      body.observation.history.some(
+        (entry) =>
+          typeof entry.period !== 'string' ||
+          !Number.isFinite(entry.value) ||
+          !Number.isFinite(entry.goal),
+      )
     ) {
       return new Response(JSON.stringify({ error: 'Dados de análise inválidos.' }), {
         status: 400,

@@ -11,6 +11,8 @@ describe('indicator observations', () => {
       value: 1,
       goal: 2,
       created_at,
+      created_by: null,
+      late_justification: null,
     });
     expect(
       sortedHistory([

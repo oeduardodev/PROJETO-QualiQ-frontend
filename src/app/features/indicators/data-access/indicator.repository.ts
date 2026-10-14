@@ -11,6 +11,12 @@ import type {
 
 @Injectable({ providedIn: 'root' })
 export class IndicatorRepository {
+  async fetchResultActors(): Promise<Record<string, string>> {
+    const { data, error } = await this.client.rpc('indicator_result_actors');
+    if (error) throw error;
+    return Object.fromEntries((data ?? []).map((actor) => [actor.id, actor.name]));
+  }
+
   async fetchStatusOptions(): Promise<IndicatorStatusOption[]> {
     const { data, error } = await this.client
       .from('indicator_statuses')
@@ -33,23 +39,22 @@ export class IndicatorRepository {
     return data;
   }
 
-  async recordValue(id: string, period: string, value: number): Promise<Indicator> {
-    const { data, error } = await this.client
-      .rpc('record_indicator_value', {
-        p_indicator_id: id,
-        p_period: period,
-        p_value: value,
-      })
-      .single();
+  async recordValue(
+    id: string,
+    period: string,
+    value: number,
+    lateJustification: string,
+    analysis: string,
+  ): Promise<{ indicator: Indicator; history: IndicatorHistoryEntry }> {
+    const { data, error } = await this.client.rpc('record_indicator_result', {
+      p_indicator_id: id,
+      p_period: period,
+      p_value: value,
+      p_late_justification: lateJustification.trim() || null,
+      p_analysis: analysis.trim() || null,
+    });
     if (error) throw error;
     return data;
-  }
-
-  async insertHistory(
-    entry: Pick<IndicatorHistoryEntry, 'indicator_id' | 'period' | 'value' | 'goal'>,
-  ): Promise<void> {
-    const { error } = await this.client.from('indicator_history').insert(entry);
-    if (error) throw error;
   }
 
   private readonly client = inject(SupabaseService).client;

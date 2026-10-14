@@ -89,6 +89,20 @@ export interface AppDatabase {
         };
         Returns: Indicator;
       };
+      record_indicator_result: {
+        Args: {
+          p_indicator_id: string;
+          p_period: string;
+          p_value: number;
+          p_late_justification: string | null;
+          p_analysis: string | null;
+        };
+        Returns: { indicator: Indicator; history: IndicatorHistoryEntry };
+      };
+      indicator_result_actors: {
+        Args: never;
+        Returns: { id: string; name: string }[];
+      };
       get_indicator_unit_options: {
         Args: never;
         Returns: IndicatorUnitOption[];
@@ -335,6 +349,8 @@ export interface IndicatorHistoryEntry {
   value: number;
   goal: number;
   created_at: string;
+  created_by: string | null;
+  late_justification: string | null;
 }
 
 export interface IndicatorResultAnalysis {

@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
-import type { Indicator, Process, Ticket } from '@core/models/database';
+import type { Indicator } from '@core/models/database';
 import type { IndicatorAnalysis, IndicatorObservationContext } from './indicator-analysis.model';
 
 @Injectable({ providedIn: 'root' })
@@ -9,12 +9,10 @@ export class IndicatorAnalysisRepository {
 
   async generate(
     indicator: Indicator,
-    process: Process | null,
-    tickets: Ticket[],
     observation?: IndicatorObservationContext,
   ): Promise<IndicatorAnalysis | null> {
     const { data, error } = await this.client.functions.invoke<IndicatorAnalysis>('ai-analysis', {
-      body: { indicator, process, tickets, observation },
+      body: { indicator, observation },
     });
     if (error) throw error;
     return data;

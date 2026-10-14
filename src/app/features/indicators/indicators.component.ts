@@ -1,18 +1,17 @@
-import { todayUtc } from '@shared/utils/date.utils';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { toIndicatorPayload } from './data-access/indicator.mapper';
 import { formatIndicatorValue, indicatorUnitSymbol } from './data-access/indicator-unit.utils';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { IndicatorResultAnalysisRepository } from './data-access/indicator-result-analysis.repository';
-import { periodDate, sortedHistory } from './indicator-panel.utils';
+import { displayPeriod, isOnTarget, periodDate, sortedHistory } from './indicator-panel.utils';
+import { submissionDueDate, todayInSaoPaulo } from './indicator-deadline.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { TicketService } from '@features/notifications/data-access/ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
-import type { IndicatorAnalysis } from './data-access/indicator-analysis.model';
 import type {
   Indicator,
   IndicatorFrequency,
@@ -49,9 +48,9 @@ export class IndicatorsComponent {
   readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
-  readonly mode = this.route.snapshot.data['mode'] as
-    'panel' | 'feed' | 'analysis' | 'registration';
+  readonly mode = this.route.snapshot.data['mode'] as 'panel' | 'feed' | 'registration';
   readonly methodology = METHODOLOGIES['indicadores'];
+  readonly today = todayInSaoPaulo();
   readonly unitOptions = signal<IndicatorUnitOption[]>([]);
   readonly frequencyOptions = signal<IndicatorFrequencyOption[]>([]);
   readonly statusOptions = signal<IndicatorStatusOption[]>([]);
@@ -68,20 +67,22 @@ export class IndicatorsComponent {
   readonly nodes = signal<SipocNode[]>([]);
   readonly tickets = signal<Ticket[]>([]);
   readonly histories = signal<Record<string, IndicatorHistoryEntry[]>>({});
+  readonly resultActors = signal<Record<string, string>>({});
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly methodologyOpen = signal(false);
   readonly formOpen = signal(false);
   readonly editing = signal<Indicator | null>(null);
   readonly savingId = signal<string | null>(null);
-  readonly selectedIndicator = signal<Indicator | null>(null);
-  readonly linkedTickets = signal<Ticket[]>([]);
-  readonly aiLoading = signal(false);
-  readonly aiAnalysis = signal<IndicatorAnalysis | null>(null);
   readonly savedAnalyses = signal<IndicatorResultAnalysis[]>([]);
-  readonly activeAnalysisRecord = signal<IndicatorResultAnalysis | null>(null);
-  readonly approving = signal(false);
-  readonly ticketForPlans = new FormControl('', { nonNullable: true });
+  readonly selectedFeedEntry = signal<string | null>(null);
+  readonly feedAnalysisText = new FormControl('', { nonNullable: true });
+  readonly feedAnalysisSaving = signal(false);
+  readonly feedAiLoading = signal(false);
+  readonly feedPlansSavingId = signal<string | null>(null);
+  private readonly justificationControls = new Map<string, FormControl<string>>();
+  private readonly analysisControls = new Map<string, FormControl<string>>();
+  private readonly feedTicketControls = new Map<string, FormControl<string>>();
   private readonly periodControls = new Map<string, FormControl<string>>();
   private readonly valueControls = new Map<string, FormControl<number | null>>();
   readonly form = new FormGroup({
@@ -100,12 +101,6 @@ export class IndicatorsComponent {
     indicator_type: new FormControl('Não informado', { nonNullable: true }),
     goal_direction: new FormControl<'higher' | 'lower'>('higher', { nonNullable: true }),
   });
-  readonly problemIndicators = computed(() =>
-    this.indicators().filter(
-      (indicator) =>
-        this.statusOptions().find((option) => option.key === indicator.status)?.is_problem,
-    ),
-  );
   readonly summary = computed(() => [
     { label: 'Total', value: this.indicators().length },
     ...this.statusOptions().map((status) => ({
@@ -125,16 +120,13 @@ export class IndicatorsComponent {
   get title(): string {
     return {
       panel: 'Painel de Indicadores',
-      feed: 'Alimentação de Dados',
-      analysis: 'Análises Críticas (IA)',
+      feed: 'Alimentação de Dados e Análise Crítica',
       registration: 'Ficha do Indicador',
     }[this.mode];
   }
 
   get subtitle(): string {
-    return this.mode === 'analysis'
-      ? `${this.problemIndicators().length} indicadores em atenção · Cruza KPIs, não-conformidades e causa raiz`
-      : `${this.indicators().length} indicadores cadastrados`;
+    return `${this.indicators().length} indicadores cadastrados`;
   }
 
   constructor() {
@@ -162,7 +154,9 @@ export class IndicatorsComponent {
       this.frequencyOptions.set(frequencyOptions);
       this.statusOptions.set(statusOptions);
       this.histories.set(await this.indicatorService.fetchHistories(indicators));
-      if (this.mode === 'analysis')
+      if (this.mode === 'feed')
+        this.resultActors.set(await this.indicatorService.fetchResultActors());
+      if (this.mode === 'feed')
         this.savedAnalyses.set(await this.resultAnalysisRepository.fetchAll());
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar indicadores'));
@@ -189,7 +183,7 @@ export class IndicatorsComponent {
 
   periodControl(id: string): FormControl<string> {
     if (!this.periodControls.has(id))
-      this.periodControls.set(id, new FormControl(todayUtc(), { nonNullable: true }));
+      this.periodControls.set(id, new FormControl(todayInSaoPaulo(), { nonNullable: true }));
     return this.periodControls.get(id)!;
   }
 
@@ -199,35 +193,220 @@ export class IndicatorsComponent {
     return this.valueControls.get(id)!;
   }
 
+  justificationControl(id: string): FormControl<string> {
+    if (!this.justificationControls.has(id))
+      this.justificationControls.set(id, new FormControl('', { nonNullable: true }));
+    return this.justificationControls.get(id)!;
+  }
+
+  analysisControl(id: string): FormControl<string> {
+    if (!this.analysisControls.has(id))
+      this.analysisControls.set(id, new FormControl('', { nonNullable: true }));
+    return this.analysisControls.get(id)!;
+  }
+
+  isLate(indicator: Indicator): boolean {
+    const due = this.dueDate(indicator);
+    return due !== null && this.today > due;
+  }
+
+  dueDate(indicator: Indicator): string | null {
+    const latest = sortedHistory(this.history(indicator.id)).at(-1);
+    const baseline = latest ? periodDate(latest) : this.localDate(indicator.created_at);
+    return submissionDueDate(
+      this.periodControl(indicator.id).value,
+      indicator.frequency,
+      baseline ?? this.today,
+    );
+  }
+
+  private localDate(timestamp: string): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(timestamp));
+  }
+
   async saveValue(indicator: Indicator): Promise<void> {
     const value = this.valueControl(indicator.id).value;
     const period = this.periodControl(indicator.id).value;
-    if (value === null || !period) return;
+    const justification = this.justificationControl(indicator.id).value.trim();
+    const analysis = this.analysisControl(indicator.id).value.trim();
+    if (value === null || !Number.isFinite(value) || !period || period > todayInSaoPaulo()) return;
+    if (this.isLate(indicator) && !justification) {
+      this.toast.error('Informe a justificativa do lançamento fora do prazo');
+      return;
+    }
+    if (indicator.requires_critical_analysis && !analysis) {
+      this.toast.error('Informe a análise crítica exigida para este indicador');
+      return;
+    }
     this.savingId.set(indicator.id);
     try {
-      const saved = await this.indicatorService.recordValue(indicator, period, value);
-      this.indicators.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      const saved = await this.indicatorService.recordValue(
+        indicator,
+        period,
+        value,
+        justification,
+        analysis,
+      );
+      this.indicators.update((items) =>
+        items.map((item) => (item.id === saved.indicator.id ? saved.indicator : item)),
+      );
       this.histories.update((items) => ({
         ...items,
-        [indicator.id]: [
-          ...(items[indicator.id] ?? []),
-          {
-            id: `local-${Date.now()}`,
-            indicator_id: indicator.id,
-            period,
-            value,
-            goal: indicator.goal_value,
-            created_at: new Date().toISOString(),
-            period_date: period,
-          },
-        ],
+        [indicator.id]: [...(items[indicator.id] ?? []), saved.history],
       }));
+      if (analysis) {
+        try {
+          this.savedAnalyses.set(await this.resultAnalysisRepository.fetchAll());
+        } catch {
+          // The result was committed; analyses can be reloaded with the page.
+        }
+      }
       this.valueControl(indicator.id).setValue(null);
-      this.toast.success('Valor registrado');
+      this.justificationControl(indicator.id).setValue('');
+      this.analysisControl(indicator.id).setValue('');
+      this.selectedFeedEntry.set(saved.history.id);
+      this.toast.success('Resultado registrado');
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao registrar valor'));
     } finally {
       this.savingId.set(null);
+    }
+  }
+
+  openFeedAnalysis(entry: IndicatorHistoryEntry): void {
+    this.selectedFeedEntry.set(this.selectedFeedEntry() === entry.id ? null : entry.id);
+    this.feedAnalysisText.setValue('');
+  }
+
+  analysesFor(entryId: string): IndicatorResultAnalysis[] {
+    return this.savedAnalyses().filter((item) => item.history_id === entryId);
+  }
+
+  ticketsFor(indicator: Indicator): Ticket[] {
+    return this.tickets().filter((ticket) => ticket.process_id === indicator.process_id);
+  }
+
+  feedTicketControl(analysisId: string, indicator: Indicator): FormControl<string> {
+    if (!this.feedTicketControls.has(analysisId)) {
+      const tickets = this.ticketsFor(indicator);
+      this.feedTicketControls.set(
+        analysisId,
+        new FormControl(tickets.length === 1 ? tickets[0].id : '', { nonNullable: true }),
+      );
+    }
+    return this.feedTicketControls.get(analysisId)!;
+  }
+
+  async createFeedPlans(indicator: Indicator, analysis: IndicatorResultAnalysis): Promise<void> {
+    const ticketId = this.feedTicketControl(analysis.id, indicator).value;
+    if (
+      !this.canAnalyze(indicator) ||
+      !this.auth.can('create', 'action_plans') ||
+      !analysis.suggestions.length ||
+      analysis.action_plan_ids.length ||
+      !this.ticketsFor(indicator).some((ticket) => ticket.id === ticketId) ||
+      this.feedPlansSavingId()
+    )
+      return;
+    this.feedPlansSavingId.set(analysis.id);
+    try {
+      const plans = await this.resultAnalysisRepository.createPlans(analysis.id, ticketId);
+      this.savedAnalyses.update((items) =>
+        items.map((item) =>
+          item.id === analysis.id
+            ? { ...item, action_plan_ids: plans.map((plan) => plan.id) }
+            : item,
+        ),
+      );
+      this.toast.success(`${plans.length} plano(s) de ação criado(s)`);
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao criar planos de ação'));
+    } finally {
+      this.feedPlansSavingId.set(null);
+    }
+  }
+
+  authorName(id: string | null): string {
+    if (!id) return 'Registro anterior à auditoria';
+    return (
+      this.resultActors()[id] ??
+      (id === this.auth.user()?.id ? (this.auth.profile()?.name ?? id) : id)
+    );
+  }
+
+  formatTimestamp(value: string): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  }
+
+  formatPeriod(value: string): string {
+    return displayPeriod(value);
+  }
+
+  async saveFeedAnalysis(indicator: Indicator, entry: IndicatorHistoryEntry): Promise<void> {
+    const diagnostic = this.feedAnalysisText.value.trim();
+    if (!diagnostic || !this.canAnalyze(indicator) || this.feedAnalysisSaving()) return;
+    this.feedAnalysisSaving.set(true);
+    try {
+      const saved = await this.resultAnalysisRepository.create({
+        indicator_id: indicator.id,
+        history_id: entry.id,
+        observed_value: entry.value,
+        observed_goal: entry.goal,
+        observed_period: entry.period,
+        diagnostic,
+        suggestions: [],
+      });
+      this.savedAnalyses.update((items) => [saved, ...items]);
+      this.feedAnalysisText.setValue('');
+      this.toast.success('Análise crítica registrada');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao registrar análise crítica'));
+    } finally {
+      this.feedAnalysisSaving.set(false);
+    }
+  }
+
+  async generateFeedAnalysis(indicator: Indicator, entry: IndicatorHistoryEntry): Promise<void> {
+    if (!this.canAnalyze(indicator) || this.feedAiLoading()) return;
+    this.feedAiLoading.set(true);
+    try {
+      const history = sortedHistory(this.history(indicator.id))
+        .filter((item) => (periodDate(item) ?? '') <= (periodDate(entry) ?? ''))
+        .slice(-12)
+        .map((item) => ({ period: item.period, value: item.value, goal: item.goal }));
+      const result = await this.indicatorService.generateAnalysis(
+        { ...indicator, current_value: entry.value, goal_value: entry.goal },
+        {
+          period: entry.period,
+          on_target: isOnTarget(entry.value, entry.goal, indicator.goal_direction),
+          history,
+        },
+      );
+      if (!result) throw new Error('A IA não retornou uma análise.');
+      const saved = await this.resultAnalysisRepository.create({
+        indicator_id: indicator.id,
+        history_id: entry.id,
+        observed_value: entry.value,
+        observed_goal: entry.goal,
+        observed_period: entry.period,
+        diagnostic: result.diagnostic,
+        suggestions: result.suggestions,
+      });
+      this.savedAnalyses.update((items) => [saved, ...items]);
+      this.toast.success('Sugestões da IA registradas');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao gerar sugestões da IA'));
+    } finally {
+      this.feedAiLoading.set(false);
     }
   }
 
@@ -273,6 +452,10 @@ export class IndicatorsComponent {
     const value = this.form.getRawValue();
     const payload = toIndicatorPayload(value);
     const current = this.editing();
+    if (current) {
+      delete payload.current_value;
+      delete payload.status;
+    }
     const saved = current
       ? await this.indicatorService.updateIndicator(current.id, payload)
       : await this.indicatorService.createIndicator(payload);
@@ -290,109 +473,6 @@ export class IndicatorsComponent {
     this.toast.success('Indicador excluído');
   }
 
-  selectIndicator(indicator: Indicator): void {
-    this.selectedIndicator.set(indicator);
-    const linked = this.tickets().filter((ticket) => ticket.process_id === indicator.process_id);
-    this.linkedTickets.set(linked);
-    const latest = this.currentObservationEntry(indicator);
-    const record = this.savedAnalyses().find(
-      (item) =>
-        item.indicator_id === indicator.id &&
-        item.history_id === (latest?.id ?? null) &&
-        (latest !== null ||
-          (item.observed_value === indicator.current_value &&
-            item.observed_goal === indicator.goal_value)),
-    );
-    this.activeAnalysisRecord.set(record ?? null);
-    this.aiAnalysis.set(
-      record ? { diagnostic: record.diagnostic, suggestions: record.suggestions } : null,
-    );
-    this.ticketForPlans.setValue(linked.length === 1 ? linked[0].id : '');
-  }
-
-  async generateAnalysis(): Promise<void> {
-    const indicator = this.selectedIndicator();
-    if (!indicator || !this.canAnalyze(indicator)) return;
-    this.aiLoading.set(true);
-    try {
-      const process = this.processes().find((item) => item.id === indicator.process_id) ?? null;
-      const latest = this.currentObservationEntry(indicator);
-      const latestMonth = latest ? periodDate(latest)?.slice(0, 7) : null;
-      const value = latest?.value ?? indicator.current_value;
-      const goal = latest?.goal ?? indicator.goal_value;
-      const related = this.indicators()
-        .filter((item) => item.id !== indicator.id && item.process_id === indicator.process_id)
-        .flatMap((item) =>
-          this.history(item.id)
-            .filter((entry) => !!latestMonth && periodDate(entry)?.slice(0, 7) === latestMonth)
-            .map((entry) => ({
-              title: item.title,
-              period: entry.period,
-              value: entry.value,
-              goal: entry.goal,
-              unit: item.unit,
-            })),
-        );
-      const analysis = await this.indicatorService.generateAnalysis(
-        { ...indicator, current_value: value, goal_value: goal },
-        process,
-        this.linkedTickets(),
-        {
-          period: latest?.period ?? 'Atual · sem histórico',
-          on_target: indicator.goal_direction === 'lower' ? value <= goal : value >= goal,
-          related_indicators: related,
-        },
-      );
-      if (!analysis) throw new Error('A análise não retornou um resultado.');
-      const record = await this.resultAnalysisRepository.create({
-        indicator_id: indicator.id,
-        history_id: latest?.id ?? null,
-        observed_value: value,
-        observed_goal: goal,
-        observed_period: latest?.period ?? 'Atual · sem histórico',
-        diagnostic: analysis.diagnostic,
-        suggestions: analysis.suggestions,
-      });
-      this.savedAnalyses.update((items) => [record, ...items]);
-      this.activeAnalysisRecord.set(record);
-      this.aiAnalysis.set(analysis);
-    } catch (e) {
-      this.toast.error(errorMessage(e, 'Erro ao gerar análise'));
-    } finally {
-      this.aiLoading.set(false);
-    }
-  }
-
-  async approveSuggestions(): Promise<void> {
-    const analysis = this.aiAnalysis();
-    const record = this.activeAnalysisRecord();
-    const ticketId = this.ticketForPlans.value;
-    if (
-      !analysis ||
-      !record ||
-      record.action_plan_ids.length ||
-      this.approving() ||
-      !this.selectedIndicator() ||
-      !this.canAnalyze(this.selectedIndicator()!) ||
-      !this.linkedTickets().some((item) => item.id === ticketId)
-    )
-      return;
-    this.approving.set(true);
-    try {
-      const plans = await this.resultAnalysisRepository.createPlans(record.id, ticketId);
-      const updated = { ...record, action_plan_ids: plans.map((plan) => plan.id) };
-      this.activeAnalysisRecord.set(updated);
-      this.savedAnalyses.update((items) =>
-        items.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      this.toast.success(`${plans.length} plano(s) de ação criado(s)`);
-    } catch (e) {
-      this.toast.error(errorMessage(e, 'Erro ao criar planos'));
-    } finally {
-      this.approving.set(false);
-    }
-  }
-
   processName(id: string): string {
     return this.processes().find((item) => item.id === id)?.title ?? '—';
   }
@@ -402,13 +482,6 @@ export class IndicatorsComponent {
     if (this.auth.isAdmin()) return true;
     const process = this.processes().find((item) => item.id === indicator.process_id);
     return !!process && process.category_id === this.auth.profile()?.category_id;
-  }
-
-  private currentObservationEntry(indicator: Indicator): IndicatorHistoryEntry | null {
-    const latest = sortedHistory(this.history(indicator.id)).at(-1);
-    return latest?.value === indicator.current_value && latest.goal === indicator.goal_value
-      ? latest
-      : null;
   }
 
   formatValue(value: number, unit: IndicatorUnitType): string {

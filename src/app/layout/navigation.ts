@@ -56,15 +56,9 @@ export const NAV_GROUPS: NavGroup[] = [
           },
           {
             id: 'indicadores/alimentacao',
-            label: 'Alimentação de Dados',
+            label: 'Alimentação e Análise Crítica',
             icon: 'SlidersHorizontal',
             route: 'indicadores/alimentacao',
-          },
-          {
-            id: 'indicadores/analises',
-            label: 'Análises Críticas',
-            icon: 'Sparkles',
-            route: 'indicadores/analises',
           },
           {
             id: 'indicadores/cadastro',
@@ -249,8 +243,7 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'riscos/gerenciamento':
     'Gerenciamento de riscos, fatores, ações preventivas e planos de contingência',
   'indicadores/painel': 'Dashboard de indicadores com gráficos cruzados e comparação de evolução',
-  'indicadores/alimentacao': 'Lançamento de valores de indicadores por período',
-  'indicadores/analises': 'Análises críticas assistidas por IA',
+  'indicadores/alimentacao': 'Lançamento de resultados, análises críticas e sugestões da IA',
   'indicadores/cadastro': 'Cadastro e configuração de indicadores',
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
 };
