@@ -1,0 +1,132 @@
+<div class="palette" role="group" [attr.aria-label]="label()">
+  <div class="palette-row">
+    <div class="palette-swatches">
+      @for (color of colors(); track color) {
+        <button
+          type="button"
+          class="palette-swatch"
+          [class.is-selected]="isSelected(color)"
+          [style.background-color]="color"
+          [disabled]="disabled()"
+          [attr.aria-label]="'Cor ' + color"
+          [attr.aria-pressed]="isSelected(color)"
+          [title]="color"
+          (click)="selectPreset(color)"
+        ></button>
+      }
+    </div>
+    <button
+      #addButton
+      type="button"
+      class="palette-add"
+      [class.is-selected]="customSelected()"
+      [style.background-color]="customSelected() ? value() : null"
+      [style.color]="customSelected() ? customTextColor() : null"
+      [attr.aria-label]="
+        customSelected()
+          ? 'Cor personalizada atual ' + value() + '. Alterar cor'
+          : 'Escolher cor personalizada'
+      "
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="open() ? panelId : null"
+      [disabled]="disabled()"
+      (click)="toggle()"
+    >
+      +
+    </button>
+  </div>
+
+  @if (open()) {
+    <div
+      class="palette-popover"
+      role="dialog"
+      [id]="panelId"
+      aria-label="Escolher cor personalizada"
+      [style.top.px]="panelTop()"
+      [style.left.px]="panelLeft()"
+      [style.width.px]="panelWidth()"
+    >
+      <div class="palette-popover-heading">
+        <strong>Cor personalizada</strong>
+        <button type="button" class="palette-close" aria-label="Fechar paleta" (click)="close()">
+          ×
+        </button>
+      </div>
+      <div
+        class="palette-saturation-brightness"
+        role="slider"
+        tabindex="0"
+        aria-label="Saturação e brilho"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="hsv().saturation.toFixed(0)"
+        [attr.aria-valuetext]="
+          'Saturação ' +
+          hsv().saturation.toFixed(0) +
+          '%, brilho ' +
+          hsv().brightness.toFixed(0) +
+          '%'
+        "
+        [style.background-color]="'hsl(' + hsv().hue + ' 100% 50%)'"
+        (pointerdown)="onSaturationBrightnessPointerDown($event)"
+        (pointermove)="onSaturationBrightnessPointerMove($event)"
+        (pointerup)="onSaturationBrightnessPointerUp()"
+        (pointercancel)="onSaturationBrightnessPointerUp()"
+        (keydown)="onSaturationBrightnessKeydown($event)"
+      >
+        <span
+          class="palette-saturation-brightness-thumb"
+          [style.left.%]="hsv().saturation"
+          [style.top.%]="100 - hsv().brightness"
+        ></span>
+      </div>
+      <label class="palette-field">
+        <span
+          >Tonalidade <output>{{ hsv().hue.toFixed(0) }}°</output></span
+        >
+        <input
+          type="range"
+          min="0"
+          max="359"
+          step="1"
+          [value]="hsv().hue"
+          [disabled]="disabled()"
+          (input)="onHueInput($event)"
+        />
+      </label>
+      <div class="palette-values">
+        <span>Saturação {{ hsv().saturation.toFixed(0) }}%</span>
+        <span>Brilho {{ hsv().brightness.toFixed(0) }}%</span>
+      </div>
+      <div class="palette-bottom">
+        <span class="palette-preview" [style.background-color]="value() || '#3B82F6'"></span>
+        <label class="palette-hex">
+          <span>Cor HEX</span>
+          <input
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="7"
+            placeholder="#3B82F6"
+            [value]="hexDraft()"
+            [attr.aria-invalid]="!validDraft()"
+            (input)="onHexInput($event)"
+          />
+        </label>
+        <button
+          type="button"
+          class="palette-done"
+          [disabled]="!validDraft()"
+          (click)="finishColor()"
+        >
+          Concluir
+        </button>
+      </div>
+      @if (!validDraft()) {
+        <p class="palette-error">Digite uma cor HEX válida, como #3B82F6.</p>
+      }
+    </div>
+  }
+</div>

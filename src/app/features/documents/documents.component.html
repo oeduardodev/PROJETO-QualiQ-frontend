@@ -74,6 +74,11 @@
                 >Publicado</span
               >
             </div>
+            @if (document.code) {
+              <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
+                document.code
+              }}</span>
+            }
             <h3 class="font-semibold text-slate-800">{{ document.title }}</h3>
             <p class="mt-1 text-xs text-slate-400">
               {{ store.typeName(document.type_id) }} · {{ store.processName(document.process_id) }}
@@ -197,6 +202,11 @@
                     [attr.aria-disabled]="locked"
                     (click)="openDocument(document)"
                   >
+                    @if (document.code) {
+                      <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
+                        document.code
+                      }}</span>
+                    }
                     <strong class="block text-sm text-slate-700">{{ document.title }}</strong
                     ><span class="mt-1 block text-xs text-slate-400">{{
                       store.typeName(document.type_id)

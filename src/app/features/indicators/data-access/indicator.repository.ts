@@ -20,6 +20,7 @@ export class IndicatorRepository {
     if (error) throw error;
     return data;
   }
+
   async fetchUnitOptions(): Promise<IndicatorUnitOption[]> {
     const { data, error } = await this.client.rpc('get_indicator_unit_options');
     if (error) throw error;

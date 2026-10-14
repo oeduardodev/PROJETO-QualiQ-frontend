@@ -71,6 +71,7 @@
         <table class="w-full">
           <thead>
             <tr class="ui-table-header">
+              <th class="ui-table-heading-wider">Código</th>
               <th class="ui-table-heading-wider">SLA</th>
               <th class="ui-table-heading-wider">Fornecedor</th>
               <th class="ui-table-heading-wider">Cliente</th>
@@ -92,6 +93,7 @@
           <tbody>
             @for (sla of filtered(); track sla.id) {
               <tr class="border-b border-slate-50 hover:bg-slate-50/40">
+                <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ sla.code || '—' }}</td>
                 <td class="px-4 py-3">
                   <strong class="block text-sm text-slate-700">{{ sla.title }}</strong>
                   @if (sla.quality_criteria) {
@@ -129,7 +131,7 @@
               </tr>
             } @empty {
               <tr>
-                <td [attr.colspan]="management ? 6 : 5" class="ui-table-empty">
+                <td [attr.colspan]="management ? 7 : 6" class="ui-table-empty">
                   Nenhum SLA encontrado.
                 </td>
               </tr>
@@ -165,7 +167,7 @@
       >Processo cliente<select formControlName="client_process_id" class="ui-form-control bg-white">
         <option value="">—</option>
         @for (process of processes(); track process.id) {
-          <option [value]="process.id">{{ process.title }}</option>
+          <option [value]="process.id">{{ processCode(process.id) }}</option>
         }
       </select></label
     ><label class="ui-form-label"

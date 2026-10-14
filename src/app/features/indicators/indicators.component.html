@@ -137,6 +137,7 @@
           <table class="w-full">
             <thead>
               <tr class="ui-table-header">
+                <th class="ui-table-heading">Código</th>
                 <th class="ui-table-heading">Indicador</th>
                 <th class="ui-table-heading">Processo</th>
                 <th class="ui-table-heading">Meta</th>
@@ -148,6 +149,9 @@
             <tbody>
               @for (indicator of indicators(); track indicator.id) {
                 <tr class="border-b border-slate-50">
+                  <td class="ui-table-cell font-mono text-xs text-slate-500">
+                    {{ indicator.code || '—' }}
+                  </td>
                   <td class="ui-table-cell font-medium text-slate-700">{{ indicator.title }}</td>
                   <td class="ui-table-cell">{{ processName(indicator.process_id) }}</td>
                   <td class="ui-table-cell">
@@ -175,7 +179,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="ui-table-empty">Nenhum indicador.</td>
+                  <td colspan="7" class="ui-table-empty">Nenhum indicador.</td>
                 </tr>
               }
             </tbody>

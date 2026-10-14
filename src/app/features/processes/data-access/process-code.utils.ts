@@ -1,5 +1,3 @@
-import type { Process } from '@core/models/database';
-
 const CODE_WITH_TAG = /^([A-Za-z]{3})-\d+$/;
 const BARE_TAG = /^[A-Za-z]{3}$/;
 
@@ -11,10 +9,12 @@ export function processTag(code: string | null): string {
   return tag.toUpperCase();
 }
 
-export function processTagSuggestions(processes: Pick<Process, 'code'>[]): string[] {
-  return [...new Set(processes.map((process) => processTag(process.code)).filter(Boolean))].sort();
-}
-
 export function normalizeProcessTag(tag: string): string | null {
   return tag.replace(/\s+/g, '').toUpperCase() || null;
+}
+
+export function processCodeError(error: unknown): string | null {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
+    ? 'Esta sigla já está em uso por outro processo.'
+    : null;
 }

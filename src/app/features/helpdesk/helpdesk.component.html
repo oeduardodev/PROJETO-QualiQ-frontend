@@ -62,6 +62,11 @@
             @for (ticket of ticketsByStatus(column.key); track ticket.id) {
               <article class="ui-kanban-card">
                 <button class="block w-full text-left" (click)="openEditTicket(ticket)">
+                  @if (ticket.code) {
+                    <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
+                      ticket.code
+                    }}</span>
+                  }
                   <div class="flex items-start justify-between gap-2">
                     <strong class="text-sm text-slate-700">{{ ticket.title }}</strong
                     ><span

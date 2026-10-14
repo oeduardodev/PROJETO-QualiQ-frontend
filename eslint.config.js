@@ -56,4 +56,11 @@ module.exports = defineConfig([
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
   },
+  {
+    files: ['**/database.generated.ts'],
+    rules: {
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@typescript-eslint/consistent-indexed-object-style': 'off',
+    },
+  },
 ]);

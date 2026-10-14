@@ -309,7 +309,8 @@
                 </div>
                 <p class="mt-1 text-xs text-slate-500">
                   Atual: {{ formatIndicatorValue(indicator.current_value, indicator.unit) }} · Meta:
-                  {{ formatIndicatorValue(indicator.goal_value, indicator.unit) }} · {{ indicator.frequency }}
+                  {{ formatIndicatorValue(indicator.goal_value, indicator.unit) }} ·
+                  {{ indicator.frequency }}
                 </p>
                 @if (indicator.requires_critical_analysis) {
                   <p class="mt-1 text-xs text-amber-600">Exige análise crítica</p>
@@ -485,19 +486,15 @@
     <label class="ui-form-label"
       >Título *<input formControlName="title" class="ui-form-control" /></label
     ><label class="ui-form-label"
-      >Tag do código<input
+      >Código *<input
         formControlName="tag"
-        list="sipoc-process-tags"
         placeholder="Ex: ARQ"
+        maxlength="3"
         autocomplete="off"
         class="ui-form-control"
-      /><datalist id="sipoc-process-tags">
-        @for (tag of tagSuggestions(); track tag) {
-          <option [value]="tag"></option>
-        }
-      </datalist>
+      />
       <span class="mt-1 text-xs font-normal text-slate-400"
-        >Use 3 letras. Espaços são removidos; a numeração é gerada ao salvar.</span
+        >Use 3 letras. Espaços são removidos.</span
       ></label
     ><label class="ui-form-label"
       >Categoria *<select formControlName="category_id" class="ui-form-control bg-white">

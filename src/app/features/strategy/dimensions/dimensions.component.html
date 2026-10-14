@@ -147,10 +147,14 @@
           dimension.code
         }}</span>
         <span
-          class="rounded-md px-2 py-1 text-xs font-semibold"
+          class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold"
           [style.background-color]="colorBackground(dimension.color_key)"
           [style.color]="colorForeground(dimension.color_key)"
         >
+          <span
+            [appIcon]="classificationIcon(dimension.classification_key)"
+            class="h-3.5 w-3.5"
+          ></span>
           {{ classificationLabel(dimension.classification_key) }}
         </span>
         <span class="text-xs text-slate-400"
@@ -337,7 +341,7 @@
         Código permanente: <strong>{{ item.code }}</strong>
       </p>
     }
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-2 sm:items-end">
       <label class="ui-form-label"
         >Classificação *
         <select formControlName="classification_key">
@@ -346,14 +350,14 @@
           }
         </select>
       </label>
-      <label class="ui-form-label"
-        >Cor
-        <select formControlName="color_key">
-          @for (color of formColors(); track color.key) {
-            <option [value]="color.key">{{ color.label }}</option>
-          }
-        </select>
-      </label>
+      <div class="ui-form-label">
+        <app-quick-palette
+          formControlName="color_key"
+          label="Cor da dimensão"
+          [presets]="paletteColors()"
+          class="w-full"
+        />
+      </div>
     </div>
     <label class="ui-form-label">Nome *<input formControlName="name" /></label>
     <label class="ui-form-label"

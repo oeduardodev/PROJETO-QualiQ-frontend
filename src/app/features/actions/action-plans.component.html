@@ -46,6 +46,11 @@
             @for (plan of byStatus(column.key); track plan.id) {
               <article class="ui-kanban-card">
                 <button class="block w-full text-left" (click)="openEditActionPlan(plan)">
+                  @if (plan.code) {
+                    <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
+                      plan.code
+                    }}</span>
+                  }
                   <strong class="text-sm text-slate-700">{{ plan.title }}</strong>
                   <p class="mt-1 line-clamp-2 text-xs text-slate-400">
                     {{ plan.what || 'Sem ação descrita' }}

@@ -1,6 +1,7 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { toSlaPayload } from '../data-access/sla.mapper';
+import { processTag } from '../data-access/process-code.utils';
 import { SlaService } from '@features/processes/data-access/sla.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -59,7 +60,10 @@ export class SlasComponent {
     this.slas().filter(
       (sla) =>
         (this.statusValue() === 'all' || sla.status === this.statusValue()) &&
-        (!this.searchValue() || sla.title.toLowerCase().includes(this.searchValue().toLowerCase())),
+        (!this.searchValue() ||
+          `${sla.code ?? ''} ${sla.title}`
+            .toLowerCase()
+            .includes(this.searchValue().toLowerCase())),
     ),
   );
   readonly summary = computed(() => [
@@ -137,6 +141,14 @@ export class SlasComponent {
       this.formError.set('Título é obrigatório.');
       return;
     }
+    if (
+      !this.form.controls.client_process_id.value &&
+      !this.form.controls.supplier_process_id.value
+    ) {
+      this.formError.set('Selecione um processo cliente ou fornecedor para gerar o código.');
+      return;
+    }
+    this.formError.set(null);
     this.saving.set(true);
     try {
       const value = this.form.getRawValue();
@@ -170,6 +182,10 @@ export class SlasComponent {
 
   processName(id: string | null): string {
     return this.processes().find((process) => process.id === id)?.title ?? '—';
+  }
+
+  processCode(id: string | null): string {
+    return processTag(this.processes().find((process) => process.id === id)?.code ?? null) || '—';
   }
 
   statusLabel(status: SlaStatus): string {

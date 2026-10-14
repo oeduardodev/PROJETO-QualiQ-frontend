@@ -160,6 +160,11 @@
               @for (ticket of ticketsByStatus(column.key); track ticket.id) {
                 <article class="ui-kanban-card">
                   <button class="w-full text-left" (click)="openTicket(ticket)">
+                    @if (ticket.code) {
+                      <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
+                        ticket.code
+                      }}</span>
+                    }
                     <div class="flex items-start justify-between gap-2">
                       <strong class="text-sm text-slate-700">{{ ticket.title }}</strong
                       ><span
@@ -346,17 +351,25 @@
       </div>
     }
     @for (field of dynamicFields(); track field.name) {
-      <label class="ui-form-label" [class.sm:col-span-2]="field.type === 'text'">
+      <label
+        class="ui-form-label"
+        [class.sm:col-span-2]="field.type === 'text'"
+        [attr.for]="'ticket-field-' + field.name"
+      >
         {{ field.label }}{{ field.required ? ' *' : '' }}
         @if (field.type === 'select') {
-          <select [formControl]="dynamicControl(field.name)">
+          <select [id]="'ticket-field-' + field.name" [formControl]="dynamicControl(field.name)">
             <option value="">Selecionar...</option>
             @for (option of field.options || []; track option) {
               <option [value]="option">{{ option }}</option>
             }
           </select>
         } @else {
-          <input [type]="field.type" [formControl]="dynamicControl(field.name)" />
+          <input
+            [id]="'ticket-field-' + field.name"
+            [type]="field.type"
+            [formControl]="dynamicControl(field.name)"
+          />
         }
       </label>
     }

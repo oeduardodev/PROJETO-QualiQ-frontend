@@ -226,17 +226,6 @@
             Vinculado ao planejamento estratégico
           </span>
         }
-        @if (auth.isAdmin()) {
-          <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
-            <button
-              type="button"
-              class="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              (click)="openManagementFromSummary()"
-            >
-              <span appIcon="Cog" class="h-4 w-4"></span>Configurar matriz
-            </button>
-          </div>
-        }
       </div>
       @if (strategicDimensions(process.id).length) {
         <p class="text-sm text-violet-700">
@@ -306,9 +295,8 @@
               <div class="matrix-summary-item">
                 <strong>{{ indicator.title }}</strong>
                 <small
-                  >Resultado:
-                  {{ formatIndicatorValue(indicator.current_value, indicator.unit) }} · Meta:
-                  {{ formatIndicatorValue(indicator.goal_value, indicator.unit) }}</small
+                  >Resultado: {{ formatIndicatorValue(indicator.current_value, indicator.unit) }} ·
+                  Meta: {{ formatIndicatorValue(indicator.goal_value, indicator.unit) }}</small
                 >
               </div>
             } @empty {
@@ -388,17 +376,14 @@
       Descrição
       <textarea formControlName="description" class="matrix-form-input mt-1" rows="3"></textarea>
     </label>
-    <label class="ui-form-label">
-      Cor
-      <select formControlName="color_key">
-        <option value="blue">Azul</option>
-        <option value="green">Verde</option>
-        <option value="orange">Laranja</option>
-        <option value="amber">Âmbar</option>
-        <option value="rose">Rosa</option>
-        <option value="violet">Violeta</option>
-      </select>
-    </label>
+    <div class="ui-form-label">
+      <app-quick-palette
+        formControlName="color_key"
+        label="Cor da classificação"
+        [presets]="paletteColors"
+        class="mt-1.5"
+      />
+    </div>
     @if (categoryError()) {
       <p class="text-sm text-red-600">{{ categoryError() }}</p>
     }

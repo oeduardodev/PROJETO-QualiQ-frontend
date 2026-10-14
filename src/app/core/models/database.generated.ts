@@ -60,6 +60,7 @@ export type Database = {
       };
       action_plans: {
         Row: {
+          code: string;
           created_at: string | null;
           how: string | null;
           how_much: string | null;
@@ -75,6 +76,7 @@ export type Database = {
           why: string | null;
         };
         Insert: {
+          code?: string;
           created_at?: string | null;
           how?: string | null;
           how_much?: string | null;
@@ -90,6 +92,7 @@ export type Database = {
           why?: string | null;
         };
         Update: {
+          code?: string;
           created_at?: string | null;
           how?: string | null;
           how_much?: string | null;
@@ -498,6 +501,7 @@ export type Database = {
       };
       documents: {
         Row: {
+          code: string | null;
           created_at: string | null;
           drive_link: string | null;
           id: string;
@@ -510,6 +514,7 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
+          code?: string | null;
           created_at?: string | null;
           drive_link?: string | null;
           id?: string;
@@ -522,6 +527,7 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          code?: string | null;
           created_at?: string | null;
           drive_link?: string | null;
           id?: string;
@@ -771,6 +777,7 @@ export type Database = {
         Row: {
           assigned_to: string | null;
           category: string;
+          code: string | null;
           created_at: string | null;
           created_by: string | null;
           custom_fields: Json | null;
@@ -786,6 +793,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null;
           category?: string;
+          code?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           custom_fields?: Json | null;
@@ -801,6 +809,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null;
           category?: string;
+          code?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           custom_fields?: Json | null;
@@ -926,6 +935,7 @@ export type Database = {
       };
       indicators: {
         Row: {
+          code: string;
           created_at: string | null;
           current_value: number;
           frequency: Database['public']['Enums']['indicator_frequency_type'] | null;
@@ -940,6 +950,7 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
+          code?: string;
           created_at?: string | null;
           current_value: number;
           frequency?: Database['public']['Enums']['indicator_frequency_type'] | null;
@@ -954,6 +965,7 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          code?: string;
           created_at?: string | null;
           current_value?: number;
           frequency?: Database['public']['Enums']['indicator_frequency_type'] | null;
@@ -990,6 +1002,24 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      module_code_counters: {
+        Row: {
+          last_number: number;
+          module_code: string;
+          process_code: string;
+        };
+        Insert: {
+          last_number: number;
+          module_code: string;
+          process_code: string;
+        };
+        Update: {
+          last_number?: number;
+          module_code?: string;
+          process_code?: string;
+        };
+        Relationships: [];
       };
       notification_classifications: {
         Row: {
@@ -1358,25 +1388,10 @@ export type Database = {
           },
         ];
       };
-      process_code_counters: {
-        Row: {
-          last_number: number;
-          tag: string;
-        };
-        Insert: {
-          last_number: number;
-          tag: string;
-        };
-        Update: {
-          last_number?: number;
-          tag?: string;
-        };
-        Relationships: [];
-      };
       processes: {
         Row: {
           category_id: string;
-          code: string | null;
+          code: string;
           complexity_score: number;
           created_at: string | null;
           custom_fields: Json;
@@ -1390,7 +1405,7 @@ export type Database = {
         };
         Insert: {
           category_id: string;
-          code?: string | null;
+          code?: string;
           complexity_score?: number;
           created_at?: string | null;
           custom_fields?: Json;
@@ -1404,7 +1419,7 @@ export type Database = {
         };
         Update: {
           category_id?: string;
-          code?: string | null;
+          code?: string;
           complexity_score?: number;
           created_at?: string | null;
           custom_fields?: Json;
@@ -1704,6 +1719,7 @@ export type Database = {
       risks: {
         Row: {
           barriers: string | null;
+          code: string;
           created_at: string | null;
           custom_fields: Json;
           description: string | null;
@@ -1722,6 +1738,7 @@ export type Database = {
         };
         Insert: {
           barriers?: string | null;
+          code?: string;
           created_at?: string | null;
           custom_fields?: Json;
           description?: string | null;
@@ -1740,6 +1757,7 @@ export type Database = {
         };
         Update: {
           barriers?: string | null;
+          code?: string;
           created_at?: string | null;
           custom_fields?: Json;
           description?: string | null;
@@ -1939,6 +1957,7 @@ export type Database = {
       slas: {
         Row: {
           client_process_id: string | null;
+          code: string | null;
           created_at: string | null;
           criticality: Database['public']['Enums']['sla_criticality_level'] | null;
           custom_fields: Json | null;
@@ -1953,6 +1972,7 @@ export type Database = {
         };
         Insert: {
           client_process_id?: string | null;
+          code?: string | null;
           created_at?: string | null;
           criticality?: Database['public']['Enums']['sla_criticality_level'] | null;
           custom_fields?: Json | null;
@@ -1967,6 +1987,7 @@ export type Database = {
         };
         Update: {
           client_process_id?: string | null;
+          code?: string | null;
           created_at?: string | null;
           criticality?: Database['public']['Enums']['sla_criticality_level'] | null;
           custom_fields?: Json | null;
@@ -2171,6 +2192,7 @@ export type Database = {
         Row: {
           analysis_completed: boolean;
           classification_flag: string | null;
+          code: string;
           created_at: string | null;
           created_by: string | null;
           custom_fields: Json;
@@ -2192,6 +2214,7 @@ export type Database = {
         Insert: {
           analysis_completed?: boolean;
           classification_flag?: string | null;
+          code?: string;
           created_at?: string | null;
           created_by?: string | null;
           custom_fields?: Json;
@@ -2213,6 +2236,7 @@ export type Database = {
         Update: {
           analysis_completed?: boolean;
           classification_flag?: string | null;
+          code?: string;
           created_at?: string | null;
           created_by?: string | null;
           custom_fields?: Json;
@@ -2322,6 +2346,7 @@ export type Database = {
           p_next_status: Database['public']['Enums']['document_status'];
         };
         Returns: {
+          code: string | null;
           created_at: string | null;
           drive_link: string | null;
           id: string;
@@ -2344,6 +2369,7 @@ export type Database = {
       create_action_plans_from_suggestions: {
         Args: { p_suggestions: Json; p_ticket_id: string };
         Returns: {
+          code: string;
           created_at: string | null;
           how: string | null;
           how_much: string | null;
@@ -2430,6 +2456,7 @@ export type Database = {
       record_indicator_value: {
         Args: { p_indicator_id: string; p_period: string; p_value: number };
         Returns: {
+          code: string;
           created_at: string | null;
           current_value: number;
           frequency: Database['public']['Enums']['indicator_frequency_type'] | null;
@@ -2497,6 +2524,7 @@ export type Database = {
           p_type_id: string;
         };
         Returns: {
+          code: string | null;
           created_at: string | null;
           drive_link: string | null;
           id: string;

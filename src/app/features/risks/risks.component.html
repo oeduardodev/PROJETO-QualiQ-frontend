@@ -126,6 +126,9 @@
             <thead>
               <tr class="ui-table-header">
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
+                  Código
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
                   Risco
                 </th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
@@ -150,6 +153,7 @@
             <tbody>
               @for (risk of filtered(); track risk.id) {
                 <tr class="border-b border-slate-50 hover:bg-slate-50/40">
+                  <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ risk.code || '—' }}</td>
                   <td class="px-4 py-3">
                     <button
                       class="text-left text-sm font-medium text-slate-700"
@@ -186,7 +190,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="ui-table-empty">Nenhum risco encontrado.</td>
+                  <td colspan="7" class="ui-table-empty">Nenhum risco encontrado.</td>
                 </tr>
               }
             </tbody>

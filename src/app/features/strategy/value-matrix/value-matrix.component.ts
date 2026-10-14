@@ -25,6 +25,7 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
+import { QuickPaletteComponent } from '@shared/components/quick-palette/quick-palette.component';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 import { ToastService } from '@shared/services/toast.service';
 import { errorMessage } from '@shared/utils/error.utils';
@@ -54,7 +55,13 @@ const MATRIX_COLORS: Record<string, string> = {
 @Component({
   selector: 'app-value-matrix',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, MethodologyComponent, ModalComponent],
+  imports: [
+    ReactiveFormsModule,
+    IconDirective,
+    MethodologyComponent,
+    ModalComponent,
+    QuickPaletteComponent,
+  ],
   templateUrl: './value-matrix.component.html',
   styleUrl: './value-matrix.component.scss',
 })
@@ -69,10 +76,12 @@ export class ValueMatrixComponent {
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['valor'];
+  readonly paletteColors = Object.values(MATRIX_COLORS);
 
   formatIndicatorValue(value: number, unit: IndicatorUnitType): string {
     return formatIndicatorValue(value, unit);
   }
+
   readonly methodologyOpen = signal(false);
   readonly manageMode = signal(false);
   readonly loading = signal(true);
@@ -93,7 +102,10 @@ export class ValueMatrixComponent {
   readonly categoryForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
-    color_key: new FormControl('blue', { nonNullable: true, validators: Validators.required }),
+    color_key: new FormControl(MATRIX_COLORS['blue'], {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
   });
   readonly total = computed(() =>
     this.categories().reduce((sum, item) => sum + item.processes.length, 0),
@@ -144,21 +156,6 @@ export class ValueMatrixComponent {
 
   colorHex(key: string): string {
     return /^#[0-9a-fA-F]{6}$/.test(key) ? key : (MATRIX_COLORS[key] ?? MATRIX_COLORS['blue']);
-  }
-
-  paletteColorKey(color: string): string {
-    if (MATRIX_COLORS[color]) return color;
-    const hex = this.colorHex(color);
-    const distance = (paletteHex: string): number =>
-      [1, 3, 5].reduce((sum, index) => {
-        const difference =
-          Number.parseInt(hex.slice(index, index + 2), 16) -
-          Number.parseInt(paletteHex.slice(index, index + 2), 16);
-        return sum + difference * difference;
-      }, 0);
-    return Object.keys(MATRIX_COLORS).reduce((closest, current) =>
-      distance(MATRIX_COLORS[current]) < distance(MATRIX_COLORS[closest]) ? current : closest,
-    );
   }
 
   categoryName(categoryId: string): string {
@@ -235,17 +232,11 @@ export class ValueMatrixComponent {
     this.draggedProcessId.set(null);
   }
 
-  openManagementFromSummary(): void {
-    if (!this.auth.isAdmin()) return;
-    this.closeSummary();
-    this.manageMode.set(true);
-  }
-
   openCreateCategory(): void {
     if (!this.auth.isAdmin() || !this.manageMode()) return;
     this.editingCategory.set(null);
     this.categoryError.set(null);
-    this.categoryForm.reset({ name: '', description: '', color_key: 'blue' });
+    this.categoryForm.reset({ name: '', description: '', color_key: MATRIX_COLORS['blue'] });
     this.categoryEditorOpen.set(true);
   }
 
@@ -256,7 +247,7 @@ export class ValueMatrixComponent {
     this.categoryForm.reset({
       name: category.name,
       description: category.description ?? '',
-      color_key: this.paletteColorKey(category.color_key),
+      color_key: this.colorHex(category.color_key),
     });
     this.categoryEditorOpen.set(true);
   }

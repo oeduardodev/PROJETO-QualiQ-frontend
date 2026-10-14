@@ -29,13 +29,20 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
+import { QuickPaletteComponent } from '@shared/components/quick-palette/quick-palette.component';
 import { ToastService } from '@shared/services/toast.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
   selector: 'app-dimensions',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, ModalComponent, MethodologyComponent],
+  imports: [
+    ReactiveFormsModule,
+    IconDirective,
+    ModalComponent,
+    MethodologyComponent,
+    QuickPaletteComponent,
+  ],
   templateUrl: './dimensions.component.html',
   styleUrl: './dimensions.component.scss',
 })
@@ -51,9 +58,7 @@ export class DimensionsComponent {
   readonly classifications = signal<DimensionClassificationOption[]>([]);
   readonly colors = signal<DimensionColorOption[]>([]);
   readonly activeColors = computed(() => this.colors().filter((option) => option.is_active));
-  readonly formColors = computed(() =>
-    this.colors().filter((option) => option.is_active || option.key === this.editing()?.color_key),
-  );
+  readonly paletteColors = computed(() => this.activeColors().map((option) => option.line_color));
   readonly formClassifications = computed(() => {
     const editingKey = this.editing()?.classification_key;
     return this.classifications().filter(
@@ -288,7 +293,7 @@ export class DimensionsComponent {
       description: item.description ?? '',
       objective: item.objective ?? '',
       classification_key: item.classification_key,
-      color_key: item.color_key,
+      color_key: this.colorLine(item.color_key),
     });
     this.formOpen.set(true);
   }
@@ -411,21 +416,24 @@ export class DimensionsComponent {
 
   private defaultColor(): DimensionColor {
     return (
-      this.activeColors().find((option) => option.is_default)?.key ??
-      this.activeColors()[0]?.key ??
-      ''
+      this.activeColors().find((option) => option.is_default)?.line_color ??
+      this.activeColors()[0]?.line_color ??
+      '#2563eb'
     );
   }
 
   colorBackground(key: DimensionColor): string {
+    if (/^#[0-9a-fA-F]{6}$/.test(key)) return `${key}1a`;
     return this.colors().find((option) => option.key === key)?.background_color ?? '#f1f5f9';
   }
 
   colorForeground(key: DimensionColor): string {
+    if (/^#[0-9a-fA-F]{6}$/.test(key)) return key;
     return this.colors().find((option) => option.key === key)?.foreground_color ?? '#475569';
   }
 
   colorLine(key: DimensionColor): string {
+    if (/^#[0-9a-fA-F]{6}$/.test(key)) return key;
     return this.colors().find((option) => option.key === key)?.line_color ?? '#64748b';
   }
 

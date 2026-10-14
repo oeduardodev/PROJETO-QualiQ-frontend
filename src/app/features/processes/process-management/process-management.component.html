@@ -154,19 +154,13 @@
     <label class="ui-form-label"
       >Código *<input
         formControlName="tag"
-        list="process-management-tags"
         placeholder="Ex: FIN"
-        maxlength="3"
         maxlength="3"
         autocomplete="off"
         class="ui-form-control outline-none focus:border-blue-400"
-      /><datalist id="process-management-tags">
-        @for (tag of tagSuggestions(); track tag) {
-          <option [value]="tag"></option>
-        }
-      </datalist>
+      />
       <span class="mt-1 text-xs font-normal text-slate-400"
-        >Use 3 letras. Espaços são removidos; a numeração é gerada ao salvar.</span
+        >Use 3 letras. Espaços são removidos.</span
       ></label
     >
     <label class="ui-form-label"

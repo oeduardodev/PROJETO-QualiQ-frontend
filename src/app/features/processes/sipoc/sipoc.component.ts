@@ -10,7 +10,8 @@ import { SlaService } from '@features/processes/data-access/sla.service';
 import {
   normalizeProcessTag,
   PROCESS_TAG_INPUT_PATTERN,
-  processTagSuggestions,
+  processTag,
+  processCodeError,
 } from '@features/processes/data-access/process-code.utils';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -70,6 +71,7 @@ export class SipocComponent {
   formatIndicatorValue(value: number, unit: IndicatorUnitType): string {
     return formatIndicatorValue(value, unit);
   }
+
   readonly processes = signal<Process[]>([]);
   readonly categories = signal<ValueChainCategory[]>([]);
   readonly allNodes = signal<SipocNode[]>([]);
@@ -116,7 +118,7 @@ export class SipocComponent {
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     tag: new FormControl('', {
       nonNullable: true,
-      validators: Validators.pattern(PROCESS_TAG_INPUT_PATTERN),
+      validators: [Validators.required, Validators.pattern(PROCESS_TAG_INPUT_PATTERN)],
     }),
     category_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     owner: new FormControl('', { nonNullable: true }),
@@ -127,7 +129,6 @@ export class SipocComponent {
   readonly selectedProcess = computed(
     () => this.processes().find((process) => process.id === this.selectedProcessId()) ?? null,
   );
-  readonly tagSuggestions = computed(() => processTagSuggestions(this.processes()));
   private nodesRequestId = 0;
 
   constructor() {
@@ -410,9 +411,14 @@ export class SipocComponent {
     this.processError.set(null);
     try {
       const value = this.processForm.getRawValue();
+      const tag = normalizeProcessTag(value.tag) ?? '';
+      if (this.processes().some((process) => processTag(process.code) === tag)) {
+        this.processError.set('Esta sigla já está em uso por outro processo.');
+        return;
+      }
       const saved = await this.processService.createProcess({
         title: value.title.trim(),
-        code: normalizeProcessTag(value.tag),
+        code: tag,
         category_id: value.category_id,
         owner: value.owner.trim() || null,
         impact_score: 5,
@@ -425,7 +431,7 @@ export class SipocComponent {
       this.processOpen.set(false);
       this.processForm.reset({ title: '', tag: '', category_id: '', owner: '' });
     } catch (e) {
-      this.processError.set(errorMessage(e, 'Erro ao criar processo'));
+      this.processError.set(processCodeError(e) ?? errorMessage(e, 'Erro ao criar processo'));
     } finally {
       this.processSaving.set(false);
     }

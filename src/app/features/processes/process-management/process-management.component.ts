@@ -5,7 +5,7 @@ import {
   normalizeProcessTag,
   PROCESS_TAG_INPUT_PATTERN,
   processTag,
-  processTagSuggestions,
+  processCodeError,
 } from '../data-access/process-code.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -41,7 +41,7 @@ export class ProcessManagementComponent {
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     tag: new FormControl('', {
       nonNullable: true,
-      validators: Validators.pattern(PROCESS_TAG_INPUT_PATTERN),
+      validators: [Validators.required, Validators.pattern(PROCESS_TAG_INPUT_PATTERN)],
     }),
     category_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     owner: new FormControl('', { nonNullable: true }),
@@ -51,7 +51,6 @@ export class ProcessManagementComponent {
   });
   readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
   readonly filtered = signal<Process[]>([]);
-  readonly tagSuggestions = computed(() => processTagSuggestions(this.processes()));
 
   constructor() {
     void this.loadProcesses();
@@ -138,7 +137,15 @@ export class ProcessManagementComponent {
     try {
       const value = this.form.getRawValue();
       const current = this.editing();
-      const payload = toProcessPayload(value, current);
+      const payload = toProcessPayload(value);
+      if (
+        this.processes().some(
+          (process) => process.id !== current?.id && processTag(process.code) === payload.code,
+        )
+      ) {
+        this.formError.set('Esta sigla já está em uso por outro processo.');
+        return;
+      }
       const saved = current
         ? await this.processService.updateProcess(current.id, payload)
         : await this.processService.createProcess(payload);
@@ -149,7 +156,7 @@ export class ProcessManagementComponent {
       this.toast.success(current ? 'Processo atualizado' : 'Processo criado');
       this.formOpen.set(false);
     } catch (e) {
-      this.formError.set(errorMessage(e, 'Erro ao salvar processo'));
+      this.formError.set(processCodeError(e) ?? errorMessage(e, 'Erro ao salvar processo'));
     } finally {
       this.saving.set(false);
     }

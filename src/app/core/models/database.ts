@@ -154,7 +154,7 @@ export interface Process {
   category_id: string;
   order_index: number;
   title: string;
-  code: string | null;
+  code: string;
   impact_score: number;
   complexity_score: number;
   maturity_level: number;
@@ -196,6 +196,7 @@ export type TicketSeverity = GeneratedDatabase['public']['Tables']['tickets']['R
 
 export interface Ticket {
   id: string;
+  code: string;
   title: string;
   description: string | null;
   process_id: string;
@@ -231,6 +232,7 @@ export type HelpdeskPriorityOption =
 
 export interface HelpdeskTicket {
   id: string;
+  code: string | null;
   created_by: string | null;
   title: string;
   description: string | null;
@@ -261,6 +263,7 @@ export type ActionPlanStatusOption =
 
 export interface ActionPlan {
   id: string;
+  code: string;
   title: string;
   ticket_id: string;
   what: string | null;
@@ -303,6 +306,7 @@ export interface IndicatorUnitOption {
 
 export interface Indicator {
   id: string;
+  code: string;
   title: string;
   process_id: string;
   step_id: string | null;
@@ -395,6 +399,7 @@ export interface DocumentType {
 
 export interface GEDDocument {
   id: string;
+  code: string | null;
   title: string;
   type_id: string | null;
   process_id: string | null;
@@ -438,6 +443,7 @@ export type RiskTypeOption = GeneratedDatabase['public']['Tables']['risk_types']
 
 export interface Risk {
   id: string;
+  code: string;
   title: string;
   description: string | null;
   process_id: string;
@@ -502,6 +508,7 @@ export type SlaStatusOption = GeneratedDatabase['public']['Tables']['sla_statuse
 
 export interface SLA {
   id: string;
+  code: string | null;
   title: string;
   supplier_process_id: string | null;
   client_process_id: string | null;

@@ -103,7 +103,9 @@ export class RisksComponent {
       (risk) =>
         (this.processValue() === 'all' || risk.process_id === this.processValue()) &&
         (!this.searchValue() ||
-          risk.title.toLowerCase().includes(this.searchValue().toLowerCase())),
+          `${risk.code ?? ''} ${risk.title}`
+            .toLowerCase()
+            .includes(this.searchValue().toLowerCase())),
     ),
   );
   readonly summary = computed(() => [
