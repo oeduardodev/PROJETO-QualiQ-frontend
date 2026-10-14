@@ -109,9 +109,10 @@ export const routes: Routes = [
   },
   {
     path: 'indicadores/painel',
-    data: { mode: 'panel' },
     loadComponent: () =>
-      import('@features/indicators/indicators.component').then((m) => m.IndicatorsComponent),
+      import('@features/indicators/indicator-panel.component').then(
+        (m) => m.IndicatorPanelComponent,
+      ),
   },
   {
     path: 'indicadores/alimentacao',

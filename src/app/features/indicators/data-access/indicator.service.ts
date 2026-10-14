@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { IndicatorRepository } from './indicator.repository';
 import { IndicatorAnalysisRepository } from './indicator-analysis.repository';
 import type { IndicatorAnalysis } from './indicator-analysis.model';
+import type { IndicatorObservationContext } from './indicator-analysis.model';
 import type {
   IndicatorFrequencyOption,
   IndicatorStatusOption,
@@ -28,8 +29,9 @@ export class IndicatorService {
     indicator: Indicator,
     process: Process | null,
     tickets: Ticket[],
+    observation?: IndicatorObservationContext,
   ): Promise<IndicatorAnalysis | null> {
-    return this.analysisRepository.generate(indicator, process, tickets);
+    return this.analysisRepository.generate(indicator, process, tickets, observation);
   }
 
   async fetchHistories(indicators: Indicator[]): Promise<Record<string, IndicatorHistoryEntry[]>> {

@@ -15,8 +15,14 @@ export interface IndicatorFormValue {
   frequency: IndicatorFrequency;
   status: IndicatorStatus;
   requires_critical_analysis: boolean;
+  indicator_type: string;
+  goal_direction: 'higher' | 'lower';
 }
 
 export function toIndicatorPayload(value: IndicatorFormValue): Partial<Indicator> {
-  return { ...value, step_id: value.step_id || null };
+  return {
+    ...value,
+    step_id: value.step_id || null,
+    indicator_type: value.indicator_type.trim() || 'Não informado',
+  };
 }

@@ -11,6 +11,7 @@ interface IndicatorContext {
   unit: string;
   status: string;
   frequency: string;
+  goal_direction?: 'higher' | 'lower';
 }
 
 interface ProcessContext {
@@ -32,6 +33,17 @@ interface AnalysisRequest {
   indicator: IndicatorContext;
   process: ProcessContext | null;
   tickets: TicketContext[];
+  observation?: {
+    period: string;
+    on_target: boolean;
+    related_indicators: {
+      title: string;
+      period: string;
+      value: number;
+      goal: number;
+      unit: string;
+    }[];
+  };
 }
 
 interface AIAnalysis {
@@ -91,10 +103,14 @@ function buildUserPrompt(req: AnalysisRequest): string {
   const tickets = req.tickets;
 
   const gap = ind.current_value - ind.goal_value;
-  const lowerIsBetter = ind.unit !== 'percentual';
+  const lowerIsBetter = ind.goal_direction === 'lower';
   const unitLabel =
-    ind.unit === 'percentual' ? '%' : ind.unit === 'monetario' ? 'R$' : 'un';
-  const direction = lowerIsBetter ? 'acima' : 'abaixo';
+    ind.unit === 'percentual'
+      ? '%'
+      : ind.unit === 'moeda_reais'
+        ? 'R$'
+        : ind.unit.replaceAll('_', ' ');
+  const direction = gap >= 0 ? 'acima' : 'abaixo';
   const gapDescription =
     ind.goal_value === 0
       ? 'não calculável em percentual (meta zero)'
@@ -105,8 +121,20 @@ function buildUserPrompt(req: AnalysisRequest): string {
   prompt += `**Valor Atual:** ${ind.current_value} ${unitLabel}\n`;
   prompt += `**Meta:** ${ind.goal_value} ${unitLabel}\n`;
   prompt += `**Desvio:** ${gapDescription}\n`;
-  prompt += `**Status:** ${ind.status}\n`;
+  prompt += `**Status:** ${req.observation ? (req.observation.on_target ? 'Na meta' : 'Fora da meta') : ind.status}\n`;
   prompt += `**Frequência de medição:** ${ind.frequency}\n\n`;
+  if (req.observation) {
+    prompt += `**Período observado:** ${req.observation.period}\n`;
+    prompt += `**Situação nesse período:** ${req.observation.on_target ? 'Na meta' : 'Fora da meta'}\n`;
+    prompt += `**Sentido da meta:** ${lowerIsBetter ? 'menor é melhor' : 'maior é melhor'}\n\n`;
+    if (req.observation.related_indicators.length) {
+      prompt += `## RESULTADOS DE OUTROS INDICADORES NO MESMO PERÍODO\n\n`;
+      for (const related of req.observation.related_indicators) {
+        prompt += `- ${related.title}: ${related.value} ${related.unit}; meta ${related.goal} ${related.unit}; período ${related.period}\n`;
+      }
+      prompt += `Compare os resultados quando houver relação plausível. Não presuma causalidade apenas pela coincidência temporal.\n\n`;
+    }
+  }
 
   if (proc) {
     prompt += `**Processo Vinculado:** ${proc.code ?? ''} ${proc.title}\n`;
@@ -136,16 +164,18 @@ function buildUserPrompt(req: AnalysisRequest): string {
   }
 
   prompt += `## TAREFA\n\n`;
-  prompt += `Analise as evidências acima, identifique a correlação entre o desvio do indicador e as falhas registradas nos 6Ms do Ishikawa, e gere exatamente 2 Planos de Ação práticos para corrigir o problema.\n\n`;
+  prompt += req.observation?.on_target
+    ? `Analise o resultado alcançado e as evidências disponíveis. Quando houver relação plausível com os 6Ms do Ishikawa, explique-a sem presumir causalidade. Gere exatamente 2 planos preventivos ou de melhoria para sustentar o desempenho.\n\n`
+    : `Analise as evidências acima, identifique relações plausíveis entre o desvio do indicador e as falhas registradas nos 6Ms do Ishikawa, e gere exatamente 2 planos de ação práticos para corrigir o problema. Não presuma causalidade sem evidência.\n\n`;
   prompt += `## FORMATO DE RESPOSTA (OBRIGATÓRIO)\n\n`;
   prompt += `Responda APENAS com um JSON válido, sem markdown, sem comentários, sem texto antes ou depois. O JSON deve ter exatamente esta estrutura:\n\n`;
   prompt += `{\n`;
-  prompt += `  "diagnostic": "Texto do diagnóstico técnico correlacionando o desvio do indicador com as causas raiz identificadas nos 6Ms. Deve citar especificamente quais dos 6Ms estão falhando e por quê. Mínimo 3 frases, máximo 6 frases.",\n`;
+  prompt += `  "diagnostic": "Texto do diagnóstico técnico sobre o resultado e as evidências disponíveis. Cite os 6Ms apenas quando houver evidência; não invente falhas ou relações causais. Mínimo 3 frases, máximo 6 frases.",\n`;
   prompt += `  "suggestions": [\n`;
   prompt += `    {\n`;
   prompt += `      "title": "Título curto e acionável do plano de ação",\n`;
   prompt += `      "what": "O que fazer — descrição objetiva da ação",\n`;
-  prompt += `      "why": "Por que fazer — justificativa técnica baseada na análise de causa raiz",\n`;
+  prompt += `      "why": "Por que fazer — justificativa técnica baseada nas evidências disponíveis",\n`;
   prompt += `      "who": "Quem é o responsável pela execução (use o responsável do processo se disponível, senão sugira o cargo adequado)",\n`;
   prompt += `      "how": "Como fazer — passo a passo numerado (1. 2. 3. 4.) das etapas de execução",\n`;
   prompt += `      "how_much": "Quanto custa — estimativa de custo ou recurso necessário (pode ser qualitativa se não houver dados)"\n`;
@@ -361,10 +391,13 @@ Deno.serve(async (req: Request) => {
 
     if (!geminiResponse || !geminiResponse.ok) {
       const status = geminiResponse?.status ?? 504;
-      return new Response(JSON.stringify({ error: `Erro da API de IA (${status}). Tente novamente.` }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: `Erro da API de IA (${status}). Tente novamente.` }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const geminiData = await geminiResponse.json();

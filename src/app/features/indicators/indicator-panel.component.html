@@ -1,0 +1,452 @@
+@if (loading()) {
+  <div class="ui-page-loading">Carregando indicadores...</div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p>{{ error() }}</p>
+    <button class="ui-button-secondary mt-3" (click)="load()">Tentar novamente</button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <header class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">Painel de Indicadores</h2>
+        <p class="ui-page-subtitle">
+          Resultados históricos, análises críticas e comparação com metas
+        </p>
+      </div>
+      <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">Metodologia</button>
+    </header>
+
+    <section
+      class="grid grid-cols-2 gap-4 lg:grid-cols-3"
+      aria-label="Resumo dos resultados filtrados"
+    >
+      <article class="ui-card">
+        <span class="text-xs text-slate-500">Indicadores</span
+        ><strong class="block text-2xl">{{ visibleIndicators() }}</strong>
+      </article>
+      <article class="ui-card">
+        <span class="text-xs text-slate-500">Resultados</span
+        ><strong class="block text-2xl">{{ rows().length }}</strong>
+      </article>
+      <article class="ui-card">
+        <span class="text-xs text-slate-500">Fora da meta</span
+        ><strong class="block text-2xl text-rose-700">{{ offTarget() }}</strong>
+      </article>
+    </section>
+
+    <section class="ui-card" aria-label="Filtros dos indicadores">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h3 class="font-semibold text-slate-800">Filtros</h3>
+        <button class="ui-button-secondary" (click)="clearFilters()">Limpar filtros</button>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label class="ui-form-label"
+          >Nome
+          <input
+            aria-label="Filtrar por nome"
+            [value]="nameFilter()"
+            (input)="nameFilter.set($any($event.target).value)"
+            placeholder="Buscar indicador"
+          />
+        </label>
+        <label class="ui-form-label"
+          >Processo
+          <select
+            [value]="processFilter()"
+            (change)="processFilter.set($any($event.target).value); stepFilter.set('')"
+          >
+            <option value="">Todos</option>
+            @for (process of processes(); track process.id) {
+              <option [value]="process.id">{{ process.title }}</option>
+            }
+          </select>
+        </label>
+        <label class="ui-form-label"
+          >Responsável pelo processo
+          <select [value]="ownerFilter()" (change)="ownerFilter.set($any($event.target).value)">
+            <option value="">Todos</option>
+            @for (owner of owners(); track owner) {
+              <option [value]="owner">{{ owner }}</option>
+            }
+          </select>
+        </label>
+        <label class="ui-form-label"
+          >Etapa SIPOC relacionada
+          <select [value]="stepFilter()" (change)="stepFilter.set($any($event.target).value)">
+            <option value="">Todas</option>
+            @for (node of relatedSteps(); track node.id) {
+              <option [value]="node.id">{{ node.title }}</option>
+            }
+          </select>
+        </label>
+        <label class="ui-form-label"
+          >Tipo de indicador
+          <select [value]="typeFilter()" (change)="typeFilter.set($any($event.target).value)">
+            <option value="">Todos</option>
+            @for (type of types(); track type) {
+              <option [value]="type">{{ type }}</option>
+            }
+          </select>
+        </label>
+        <label class="ui-form-label"
+          >Ano
+          <select [value]="yearFilter()" (change)="yearFilter.set($any($event.target).value)">
+            <option value="">Todos</option>
+            @for (year of years(); track year) {
+              <option [value]="year">{{ year }}</option>
+            }
+          </select>
+        </label>
+        <label class="ui-form-label"
+          >Mês
+          <select [value]="monthFilter()" (change)="monthFilter.set($any($event.target).value)">
+            <option value="">Todos</option>
+            <option value="01">Janeiro</option>
+            <option value="02">Fevereiro</option>
+            <option value="03">Março</option>
+            <option value="04">Abril</option>
+            <option value="05">Maio</option>
+            <option value="06">Junho</option>
+            <option value="07">Julho</option>
+            <option value="08">Agosto</option>
+            <option value="09">Setembro</option>
+            <option value="10">Outubro</option>
+            <option value="11">Novembro</option>
+            <option value="12">Dezembro</option>
+          </select>
+        </label>
+        <label class="ui-form-label"
+          >Situação da meta
+          <select [value]="goalFilter()" (change)="goalFilter.set($any($event.target).value)">
+            <option value="">Todas</option>
+            <option value="on">Na meta</option>
+            <option value="off">Fora da meta</option>
+          </select>
+        </label>
+      </div>
+      @if (undatedCount()) {
+        <p class="mt-3 text-xs text-slate-500">
+          {{ undatedCount() }} registro(s) antigo(s) sem data completa aparecem na lista geral, mas
+          não nos filtros de ano e mês nem no gráfico comparativo.
+        </p>
+      }
+    </section>
+
+    <section class="ui-table-panel" aria-label="Resultados dos indicadores">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="ui-table-header">
+              <th class="ui-table-heading">Indicador</th>
+              <th class="ui-table-heading">Processo / etapa</th>
+              <th class="ui-table-heading">Período</th>
+              <th class="ui-table-heading">Resultado</th>
+              <th class="ui-table-heading">Meta</th>
+              <th class="ui-table-heading">Situação</th>
+              <th class="ui-table-heading">Observação</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.entry?.id ?? row.indicator.id) {
+              <tr
+                class="border-b border-slate-100"
+                [class.bg-blue-50]="
+                  selected()?.entry?.id === row.entry?.id &&
+                  selected()?.indicator.id === row.indicator.id
+                "
+              >
+                <td class="ui-table-cell">
+                  <strong class="block text-slate-800">{{ row.indicator.title }}</strong
+                  ><span class="text-xs text-slate-500">{{ row.indicator.indicator_type }}</span>
+                </td>
+                <td class="ui-table-cell">
+                  <span class="block">{{ processName(row.indicator.process_id) }}</span
+                  ><span class="text-xs text-slate-500">{{ stepName(row.indicator.step_id) }}</span>
+                </td>
+                <td class="ui-table-cell">{{ displayPeriod(row.period) }}</td>
+                <td class="ui-table-cell font-semibold">{{ format(row.value, row.indicator) }}</td>
+                <td class="ui-table-cell">{{ format(row.goal, row.indicator) }}</td>
+                <td class="ui-table-cell">
+                  <span
+                    class="rounded-full px-2 py-1 text-xs"
+                    [class.bg-emerald-50]="row.onTarget"
+                    [class.text-emerald-700]="row.onTarget"
+                    [class.bg-rose-50]="!row.onTarget"
+                    [class.text-rose-700]="!row.onTarget"
+                    >{{ row.onTarget ? 'Na meta' : 'Fora da meta' }}</span
+                  >
+                </td>
+                <td class="ui-table-cell">
+                  <button
+                    class="text-sm font-medium text-blue-700 hover:underline"
+                    (click)="open(row)"
+                  >
+                    Observar
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="ui-table-empty">
+                  Nenhum resultado corresponde aos filtros.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (selected(); as row) {
+      <section class="ui-card space-y-6" aria-label="Observação do resultado">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-800">
+              {{ row.indicator.title }} · {{ displayPeriod(row.period) }}
+            </h3>
+            <p class="text-sm text-slate-500">
+              {{ processName(row.indicator.process_id) }} ·
+              {{ processOwner(row.indicator.process_id) }} · {{ stepName(row.indicator.step_id) }}
+            </p>
+            <p class="mt-2 text-sm">
+              Resultado <strong>{{ format(row.value, row.indicator) }}</strong> · Meta
+              <strong>{{ format(row.goal, row.indicator) }}</strong> ·
+              {{ row.indicator.goal_direction === 'lower' ? 'Menor é melhor' : 'Maior é melhor' }}
+            </p>
+          </div>
+          <button class="ui-button-secondary" (click)="selected.set(null)">
+            Fechar observação
+          </button>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+          <div>
+            <h4 class="font-semibold text-slate-700">Evolução e comparação</h4>
+            <p class="mt-1 text-xs text-slate-500">
+              Valores expressos em percentual de cumprimento da meta; a linha tracejada marca 100%.
+            </p>
+            @if (chartMonths().length) {
+              <div class="mt-4 overflow-x-auto">
+                <svg
+                  viewBox="0 0 820 250"
+                  class="min-w-[620px] w-full"
+                  role="img"
+                  aria-label="Gráfico de evolução dos indicadores comparados com a meta"
+                >
+                  <line
+                    x1="40"
+                    x2="780"
+                    [attr.y1]="goalLineY()"
+                    [attr.y2]="goalLineY()"
+                    stroke="#64748b"
+                    stroke-dasharray="5 5"
+                  />
+                  <text x="5" [attr.y]="goalLineY() + 4" fill="#64748b" font-size="11">100%</text>
+                  <line x1="40" x2="780" y1="200" y2="200" stroke="#cbd5e1" />
+                  @for (series of chartSeries(); track series.indicator.id) {
+                    @for (segment of series.segments; track $index) {
+                      <polyline
+                        [attr.points]="points(segment)"
+                        fill="none"
+                        [attr.stroke]="series.color"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      @for (point of segment; track $index) {
+                        <circle
+                          [attr.cx]="point.x"
+                          [attr.cy]="point.y"
+                          r="4"
+                          [attr.fill]="series.color"
+                        >
+                          <title>{{ point.title }}</title>
+                        </circle>
+                      }
+                    }
+                  }
+                  @for (month of chartMonths(); track month) {
+                    <text
+                      [attr.x]="40 + ($index * 740) / (chartMonths().length - 1 || 1)"
+                      y="222"
+                      text-anchor="middle"
+                      fill="#64748b"
+                      font-size="11"
+                    >
+                      {{ month.slice(5) }}/{{ month.slice(2, 4) }}
+                    </text>
+                  }
+                </svg>
+              </div>
+              <div class="flex flex-wrap gap-4 text-xs">
+                @for (series of chartSeries(); track series.indicator.id) {
+                  <span class="flex items-center gap-1"
+                    ><span
+                      class="inline-block h-2 w-2 rounded-full"
+                      [style.background-color]="series.color"
+                    ></span
+                    >{{ series.indicator.title }}</span
+                  >
+                }
+              </div>
+              <div class="mt-4 overflow-x-auto">
+                <table
+                  class="w-full text-xs"
+                  aria-label="Valores e metas dos indicadores comparados"
+                >
+                  <thead>
+                    <tr class="border-b border-slate-200">
+                      <th class="p-2 text-left">Mês</th>
+                      @for (series of chartSeries(); track series.indicator.id) {
+                        <th class="p-2 text-left">
+                          {{ series.indicator.title
+                          }}<span class="block font-normal text-slate-500">Valor / meta</span>
+                        </th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (month of chartMonths(); track month) {
+                      <tr class="border-b border-slate-100">
+                        <td class="p-2">{{ month.slice(5) }}/{{ month.slice(0, 4) }}</td>
+                        @for (series of chartSeries(); track series.indicator.id) {
+                          <td class="p-2">{{ monthResult(series.indicator, month) }}</td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="mt-4 text-sm text-slate-500">
+                Ainda não há períodos datados para traçar a evolução.
+              </p>
+            }
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-700">Cruzar com outros indicadores</h4>
+            <p class="mt-1 text-xs text-slate-500">
+              Selecione indicadores para comparar a evolução e a meta.
+            </p>
+            <div class="mt-3 max-h-56 space-y-2 overflow-y-auto">
+              @for (indicator of comparisonCandidates(); track indicator.id) {
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    [checked]="comparisonIds().includes(indicator.id)"
+                    (change)="toggleComparison(indicator.id)"
+                  />
+                  {{ indicator.title }}
+                </label>
+              } @empty {
+                <p class="text-sm text-slate-500">
+                  Não há outros indicadores com histórico datado.
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h4 class="font-semibold text-slate-700">Análises críticas deste resultado</h4>
+              <p class="text-xs text-slate-500">
+                {{ resultAnalyses().length }} análise(s) registrada(s)
+              </p>
+            </div>
+            @if (canAnalyze(row.indicator)) {
+              <button
+                class="ui-button-primary"
+                [disabled]="analyzing()"
+                (click)="generateAnalysis()"
+              >
+                {{ analyzing() ? 'Analisando...' : 'Gerar e registrar análise' }}
+              </button>
+            }
+          </div>
+          @if (resultAnalyses().length > 1) {
+            <label class="ui-form-label mt-3 max-w-sm"
+              >Análise registrada
+              <select
+                [value]="activeAnalysis()?.id ?? ''"
+                (change)="selectedAnalysisId.set($any($event.target).value)"
+              >
+                @for (analysis of resultAnalyses(); track analysis.id) {
+                  <option [value]="analysis.id">
+                    {{ analysis.created_at.slice(0, 10) }} · {{ analysis.diagnostic.slice(0, 45) }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
+          @if (activeAnalysis(); as analysis) {
+            <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
+              <p class="text-sm leading-6 text-slate-700">{{ analysis.diagnostic }}</p>
+            </div>
+            <h5 class="mt-5 text-sm font-semibold text-slate-700">Planos sugeridos pela análise</h5>
+            <div class="mt-2 grid gap-3 md:grid-cols-2">
+              @for (suggestion of analysis.suggestions; track $index) {
+                <article class="rounded-lg border border-slate-200 p-3">
+                  <strong class="text-sm">{{ suggestion.title }}</strong>
+                  <p class="mt-1 text-xs text-slate-600">{{ suggestion.what }}</p>
+                </article>
+              }
+            </div>
+            @if (linkedPlans().length) {
+              <h5 class="mt-5 text-sm font-semibold text-slate-700">Planos de ação criados</h5>
+              <div class="mt-2 space-y-2">
+                @for (plan of linkedPlans(); track plan.id) {
+                  <article class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+                    <strong>{{ plan.title }}</strong
+                    ><span class="ml-2 text-xs text-slate-600">{{ plan.status }}</span>
+                  </article>
+                }
+              </div>
+            } @else if (
+              canAnalyze(row.indicator) &&
+              auth.can('create', 'action_plans') &&
+              relatedTickets().length
+            ) {
+              <div class="mt-5 flex flex-wrap items-end gap-3">
+                <label class="ui-form-label min-w-64"
+                  >Notificação vinculada
+                  <select
+                    [value]="selectedTicketId()"
+                    (change)="selectedTicketId.set($any($event.target).value)"
+                  >
+                    <option value="">Selecione...</option>
+                    @for (ticket of relatedTickets(); track ticket.id) {
+                      <option [value]="ticket.id">{{ ticket.title }}</option>
+                    }
+                  </select>
+                </label>
+                <button
+                  class="ui-button-primary"
+                  [disabled]="creatingPlans() || !selectedTicketId()"
+                  (click)="createPlans()"
+                >
+                  {{ creatingPlans() ? 'Criando...' : 'Aprovar e criar planos' }}
+                </button>
+              </div>
+            } @else if (!relatedTickets().length) {
+              <p class="mt-3 text-xs text-slate-500">
+                Para criar planos, vincule uma notificação a este processo.
+              </p>
+            }
+          } @else {
+            <p class="mt-4 text-sm text-slate-500">
+              Nenhuma análise crítica foi registrada para este resultado.
+            </p>
+          }
+        </div>
+      </section>
+    }
+  </div>
+}
+<app-methodology
+  [open]="methodologyOpen()"
+  [info]="methodology"
+  (closed)="methodologyOpen.set(false)"
+/>

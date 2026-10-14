@@ -3,8 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { errorMessage } from '@shared/utils/error.utils';
 import { toIndicatorPayload } from './data-access/indicator.mapper';
 import { formatIndicatorValue, indicatorUnitSymbol } from './data-access/indicator-unit.utils';
-import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
+import { IndicatorResultAnalysisRepository } from './data-access/indicator-result-analysis.repository';
+import { periodDate, sortedHistory } from './indicator-panel.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { TicketService } from '@features/notifications/data-access/ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -17,6 +18,7 @@ import type {
   IndicatorFrequency,
   IndicatorFrequencyOption,
   IndicatorHistoryEntry,
+  IndicatorResultAnalysis,
   IndicatorStatus,
   IndicatorStatusOption,
   IndicatorUnitOption,
@@ -40,8 +42,8 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
   host: { class: 'ui-standard-fields' },
 })
 export class IndicatorsComponent {
-  private readonly actionPlanService = inject(ActionPlanService);
   private readonly indicatorService = inject(IndicatorService);
+  private readonly resultAnalysisRepository = inject(IndicatorResultAnalysisRepository);
   private readonly processService = inject(ProcessService);
   private readonly ticketService = inject(TicketService);
   readonly auth = inject(AuthService);
@@ -76,6 +78,8 @@ export class IndicatorsComponent {
   readonly linkedTickets = signal<Ticket[]>([]);
   readonly aiLoading = signal(false);
   readonly aiAnalysis = signal<IndicatorAnalysis | null>(null);
+  readonly savedAnalyses = signal<IndicatorResultAnalysis[]>([]);
+  readonly activeAnalysisRecord = signal<IndicatorResultAnalysis | null>(null);
   readonly approving = signal(false);
   readonly ticketForPlans = new FormControl('', { nonNullable: true });
   private readonly periodControls = new Map<string, FormControl<string>>();
@@ -93,6 +97,8 @@ export class IndicatorsComponent {
       validators: Validators.required,
     }),
     requires_critical_analysis: new FormControl(false, { nonNullable: true }),
+    indicator_type: new FormControl('Não informado', { nonNullable: true }),
+    goal_direction: new FormControl<'higher' | 'lower'>('higher', { nonNullable: true }),
   });
   readonly problemIndicators = computed(() =>
     this.indicators().filter(
@@ -156,6 +162,8 @@ export class IndicatorsComponent {
       this.frequencyOptions.set(frequencyOptions);
       this.statusOptions.set(statusOptions);
       this.histories.set(await this.indicatorService.fetchHistories(indicators));
+      if (this.mode === 'analysis')
+        this.savedAnalyses.set(await this.resultAnalysisRepository.fetchAll());
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar indicadores'));
     } finally {
@@ -210,6 +218,7 @@ export class IndicatorsComponent {
             value,
             goal: indicator.goal_value,
             created_at: new Date().toISOString(),
+            period_date: period,
           },
         ],
       }));
@@ -235,6 +244,8 @@ export class IndicatorsComponent {
       frequency: 'mensal',
       status: this.defaultStatus(),
       requires_critical_analysis: false,
+      indicator_type: 'Não informado',
+      goal_direction: 'higher',
     });
     this.formOpen.set(true);
   }
@@ -251,6 +262,8 @@ export class IndicatorsComponent {
       frequency: indicator.frequency,
       status: indicator.status,
       requires_critical_analysis: indicator.requires_critical_analysis,
+      indicator_type: indicator.indicator_type,
+      goal_direction: indicator.goal_direction,
     });
     this.formOpen.set(true);
   }
@@ -281,19 +294,68 @@ export class IndicatorsComponent {
     this.selectedIndicator.set(indicator);
     const linked = this.tickets().filter((ticket) => ticket.process_id === indicator.process_id);
     this.linkedTickets.set(linked);
-    this.aiAnalysis.set(null);
+    const latest = this.currentObservationEntry(indicator);
+    const record = this.savedAnalyses().find(
+      (item) =>
+        item.indicator_id === indicator.id &&
+        item.history_id === (latest?.id ?? null) &&
+        (latest !== null ||
+          (item.observed_value === indicator.current_value &&
+            item.observed_goal === indicator.goal_value)),
+    );
+    this.activeAnalysisRecord.set(record ?? null);
+    this.aiAnalysis.set(
+      record ? { diagnostic: record.diagnostic, suggestions: record.suggestions } : null,
+    );
     this.ticketForPlans.setValue(linked.length === 1 ? linked[0].id : '');
   }
 
   async generateAnalysis(): Promise<void> {
     const indicator = this.selectedIndicator();
-    if (!indicator) return;
+    if (!indicator || !this.canAnalyze(indicator)) return;
     this.aiLoading.set(true);
     try {
       const process = this.processes().find((item) => item.id === indicator.process_id) ?? null;
-      this.aiAnalysis.set(
-        await this.indicatorService.generateAnalysis(indicator, process, this.linkedTickets()),
+      const latest = this.currentObservationEntry(indicator);
+      const latestMonth = latest ? periodDate(latest)?.slice(0, 7) : null;
+      const value = latest?.value ?? indicator.current_value;
+      const goal = latest?.goal ?? indicator.goal_value;
+      const related = this.indicators()
+        .filter((item) => item.id !== indicator.id && item.process_id === indicator.process_id)
+        .flatMap((item) =>
+          this.history(item.id)
+            .filter((entry) => !!latestMonth && periodDate(entry)?.slice(0, 7) === latestMonth)
+            .map((entry) => ({
+              title: item.title,
+              period: entry.period,
+              value: entry.value,
+              goal: entry.goal,
+              unit: item.unit,
+            })),
+        );
+      const analysis = await this.indicatorService.generateAnalysis(
+        { ...indicator, current_value: value, goal_value: goal },
+        process,
+        this.linkedTickets(),
+        {
+          period: latest?.period ?? 'Atual · sem histórico',
+          on_target: indicator.goal_direction === 'lower' ? value <= goal : value >= goal,
+          related_indicators: related,
+        },
       );
+      if (!analysis) throw new Error('A análise não retornou um resultado.');
+      const record = await this.resultAnalysisRepository.create({
+        indicator_id: indicator.id,
+        history_id: latest?.id ?? null,
+        observed_value: value,
+        observed_goal: goal,
+        observed_period: latest?.period ?? 'Atual · sem histórico',
+        diagnostic: analysis.diagnostic,
+        suggestions: analysis.suggestions,
+      });
+      this.savedAnalyses.update((items) => [record, ...items]);
+      this.activeAnalysisRecord.set(record);
+      this.aiAnalysis.set(analysis);
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao gerar análise'));
     } finally {
@@ -303,14 +365,27 @@ export class IndicatorsComponent {
 
   async approveSuggestions(): Promise<void> {
     const analysis = this.aiAnalysis();
+    const record = this.activeAnalysisRecord();
     const ticketId = this.ticketForPlans.value;
-    if (!analysis || this.approving() || !this.linkedTickets().some((item) => item.id === ticketId))
+    if (
+      !analysis ||
+      !record ||
+      record.action_plan_ids.length ||
+      this.approving() ||
+      !this.selectedIndicator() ||
+      !this.canAnalyze(this.selectedIndicator()!) ||
+      !this.linkedTickets().some((item) => item.id === ticketId)
+    )
       return;
     this.approving.set(true);
     try {
-      await this.actionPlanService.createFromSuggestions(ticketId, analysis.suggestions);
-      this.toast.success(`${analysis.suggestions.length} plano(s) de ação criado(s)`);
-      this.aiAnalysis.set(null);
+      const plans = await this.resultAnalysisRepository.createPlans(record.id, ticketId);
+      const updated = { ...record, action_plan_ids: plans.map((plan) => plan.id) };
+      this.activeAnalysisRecord.set(updated);
+      this.savedAnalyses.update((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      this.toast.success(`${plans.length} plano(s) de ação criado(s)`);
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao criar planos'));
     } finally {
@@ -320,6 +395,20 @@ export class IndicatorsComponent {
 
   processName(id: string): string {
     return this.processes().find((item) => item.id === id)?.title ?? '—';
+  }
+
+  canAnalyze(indicator: Indicator): boolean {
+    if (!this.auth.can('create', 'indicators')) return false;
+    if (this.auth.isAdmin()) return true;
+    const process = this.processes().find((item) => item.id === indicator.process_id);
+    return !!process && process.category_id === this.auth.profile()?.category_id;
+  }
+
+  private currentObservationEntry(indicator: Indicator): IndicatorHistoryEntry | null {
+    const latest = sortedHistory(this.history(indicator.id)).at(-1);
+    return latest?.value === indicator.current_value && latest.goal === indicator.goal_value
+      ? latest
+      : null;
   }
 
   formatValue(value: number, unit: IndicatorUnitType): string {

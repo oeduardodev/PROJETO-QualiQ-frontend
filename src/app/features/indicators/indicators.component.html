@@ -242,14 +242,16 @@
                   {{ linkedTickets().length }} notificações relacionadas
                 </p>
               </div>
-              <button
-                class="ui-button-primary"
-                [disabled]="aiLoading()"
-                (click)="generateAnalysis()"
-              >
-                <span appIcon="Sparkles" class="h-4 w-4"></span
-                >{{ aiLoading() ? 'Analisando...' : 'Gerar análise com IA' }}
-              </button>
+              @if (canAnalyze(selectedIndicator()!)) {
+                <button
+                  class="ui-button-primary"
+                  [disabled]="aiLoading()"
+                  (click)="generateAnalysis()"
+                >
+                  <span appIcon="Sparkles" class="h-4 w-4"></span
+                  >{{ aiLoading() ? 'Analisando...' : 'Gerar análise com IA' }}
+                </button>
+              }
             </div>
             @if (aiAnalysis()) {
               <div class="mt-6 space-y-5">
@@ -270,7 +272,11 @@
                     }
                   </div>
                 </div>
-                @if (linkedTickets().length && auth.can('create', 'action_plans')) {
+                @if (
+                  linkedTickets().length &&
+                  auth.can('create', 'action_plans') &&
+                  canAnalyze(selectedIndicator()!)
+                ) {
                   @if (linkedTickets().length > 1) {
                     <label class="ui-form-label">
                       Notificação para os planos
@@ -284,11 +290,20 @@
                   }
                   <button
                     class="ui-button-primary"
-                    [disabled]="approving() || !ticketForPlans.value"
+                    [disabled]="
+                      approving() ||
+                      !ticketForPlans.value ||
+                      !!activeAnalysisRecord()?.action_plan_ids?.length
+                    "
                     (click)="approveSuggestions()"
                   >
                     <span appIcon="ClipboardList" class="h-4 w-4"></span>Aprovar e criar planos
                   </button>
+                  @if (activeAnalysisRecord()?.action_plan_ids?.length) {
+                    <p class="mt-2 text-xs text-emerald-700">
+                      Planos criados e vinculados a esta análise.
+                    </p>
+                  }
                 }
               </div>
             }
@@ -339,11 +354,15 @@
           <option [value]="frequency.value">{{ frequency.label }}</option>
         }
       </select></label
+    >
+    <p class="self-end text-xs text-slate-500">
+      O status é calculado pelo valor atual, meta e sentido da meta.
+    </p>
+    <label class="ui-form-label">Tipo de indicador<input formControlName="indicator_type" /></label
     ><label class="ui-form-label"
-      >Status<select formControlName="status">
-        @for (status of formStatusOptions(); track status.key) {
-          <option [value]="status.key">{{ status.label }}</option>
-        }
+      >Sentido da meta<select formControlName="goal_direction">
+        <option value="higher">Maior é melhor</option>
+        <option value="lower">Menor é melhor</option>
       </select></label
     ><label class="mt-6 flex items-center gap-2 text-sm text-slate-600"
       ><input type="checkbox" formControlName="requires_critical_analysis" />Exige análise

@@ -31,6 +31,7 @@ export interface AppDatabase {
       indicators: TableDefinition<Indicator>;
       indicator_statuses: TableDefinition<IndicatorStatusOption>;
       indicator_history: TableDefinition<IndicatorHistoryEntry>;
+      indicator_result_analyses: TableDefinition<IndicatorResultAnalysis>;
       profiles: TableDefinition<Profile>;
       dimension_versions: TableDefinition<DimensionVersion>;
       dimensions: TableDefinition<Dimension>;
@@ -108,6 +109,10 @@ export interface AppDatabase {
       };
       create_action_plans_from_suggestions: {
         Args: { p_ticket_id: string; p_suggestions: unknown };
+        Returns: ActionPlan[];
+      };
+      create_plans_for_indicator_analysis: {
+        Args: { p_analysis_id: string; p_ticket_id: string };
         Returns: ActionPlan[];
       };
       consume_ai_quota: {
@@ -316,6 +321,8 @@ export interface Indicator {
   frequency: IndicatorFrequency;
   status: IndicatorStatus;
   requires_critical_analysis: boolean;
+  indicator_type: string;
+  goal_direction: 'higher' | 'lower';
   created_at: string;
   updated_at: string;
 }
@@ -324,9 +331,33 @@ export interface IndicatorHistoryEntry {
   id: string;
   indicator_id: string;
   period: string;
+  period_date: string | null;
   value: number;
   goal: number;
   created_at: string;
+}
+
+export interface IndicatorResultAnalysis {
+  id: string;
+  indicator_id: string;
+  history_id: string | null;
+  observed_value: number;
+  observed_goal: number;
+  observed_period: string;
+  diagnostic: string;
+  suggestions: IndicatorActionPlanSuggestion[];
+  action_plan_ids: string[];
+  created_by: string;
+  created_at: string;
+}
+
+export interface IndicatorActionPlanSuggestion {
+  title: string;
+  what: string;
+  why: string;
+  who: string;
+  how: string;
+  how_much: string;
 }
 
 export type DimensionColor =
