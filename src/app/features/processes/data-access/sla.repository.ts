@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
-import type { SLA, SlaStatusOption } from '@core/models/database';
+import type { SLA, SlaHistory, SlaStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaRepository {
@@ -49,19 +49,26 @@ export class SlaRepository {
   async updateSla(
     id: string,
     patch: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>,
+    justification: string,
   ): Promise<SLA> {
-    const { data, error } = await this.client
-      .from('slas')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single();
+    const { data, error } = await this.client.rpc('update_sla_with_reason', {
+      p_id: id,
+      p_patch: patch,
+      p_justification: justification,
+    });
     if (error) throw error;
     return data;
   }
 
-  async deleteSla(id: string): Promise<void> {
-    const { error } = await this.client.from('slas').delete().eq('id', id);
-    if (error) throw error;
+  fetchSlaHistory(id: string): Promise<SlaHistory[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sla_history')
+        .select('*')
+        .eq('sla_id', id)
+        .order('changed_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
   }
 }

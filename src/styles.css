@@ -98,6 +98,22 @@
     @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600;
   }
 
+  .ui-action-history {
+    @apply text-slate-700 hover:text-slate-900;
+  }
+
+  .ui-action-activate {
+    @apply text-green-700 hover:text-green-800;
+  }
+
+  .ui-action-danger {
+    @apply text-red-600 hover:text-red-700;
+  }
+
+  .ui-action-edit {
+    @apply text-blue-600 hover:text-blue-700;
+  }
+
   .ui-form-label {
     @apply block text-xs font-medium text-slate-500;
   }

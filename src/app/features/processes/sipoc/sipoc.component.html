@@ -217,7 +217,7 @@
           </div>
           <button
             type="button"
-            class="text-xs font-medium text-blue-600"
+            class="ui-action-edit text-xs font-medium"
             (click)="editSelectedStep()"
           >
             Editar etapa
@@ -464,7 +464,7 @@
     }
     <div class="flex justify-between border-t border-slate-100 pt-4">
       @if (editingNode()) {
-        <button type="button" class="text-sm font-medium text-rose-500" (click)="removeNode()">
+        <button type="button" class="ui-action-danger text-sm font-medium" (click)="removeNode()">
           Excluir
         </button>
       } @else {

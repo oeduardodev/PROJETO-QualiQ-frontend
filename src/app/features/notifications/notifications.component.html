@@ -187,7 +187,7 @@
                         Avançar
                       </button>
                     }
-                    <button class="text-[11px] text-rose-500" (click)="removeTicket(ticket)">
+                    <button class="ui-action-danger text-[11px]" (click)="removeTicket(ticket)">
                       Excluir
                     </button>
                   </div>
@@ -219,12 +219,12 @@
                   </div>
                   <div>
                     <button
-                      class="text-xs text-slate-500"
+                      class="ui-action-edit text-xs"
                       (click)="openClassification(classification)"
                     >
                       Editar</button
                     ><button
-                      class="ml-2 text-xs text-rose-500"
+                      class="ui-action-danger ml-2 text-xs"
                       (click)="removeClassification(classification)"
                     >
                       Excluir
@@ -252,8 +252,8 @@
                     </p>
                   </div>
                   <div>
-                    <button class="text-xs text-slate-500" (click)="openType(type)">Editar</button
-                    ><button class="ml-2 text-xs text-rose-500" (click)="removeType(type)">
+                    <button class="ui-action-edit text-xs" (click)="openType(type)">Editar</button
+                    ><button class="ui-action-danger ml-2 text-xs" (click)="removeType(type)">
                       Excluir
                     </button>
                   </div>

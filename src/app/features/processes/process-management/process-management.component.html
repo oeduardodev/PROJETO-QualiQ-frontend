@@ -127,22 +127,29 @@
                   {{ process.maturity_level }}
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <button
-                    class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
-                    (click)="openEditProcess(process)"
-                  >
-                    Editar
-                  </button>
-                  <button class="ml-3 text-xs text-slate-500" (click)="toggleHistory(process)">
-                    {{ historyProcessId() === process.id ? 'Ocultar histórico' : 'Histórico' }}
-                  </button>
-                  <button
-                    class="ml-1 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    [disabled]="saving()"
-                    (click)="setObsolete(process, !process.obsolete)"
-                  >
-                    {{ process.obsolete ? 'Reativar' : 'Desativar' }}
-                  </button>
+                  <div class="inline-flex flex-nowrap items-center justify-end gap-1">
+                    <button
+                      class="ui-action-edit inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium hover:bg-blue-50"
+                      (click)="openEditProcess(process)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      class="ui-action-history inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium hover:bg-slate-100"
+                      (click)="toggleHistory(process)"
+                    >
+                      {{ historyProcessId() === process.id ? 'Ocultar histórico' : 'Histórico' }}
+                    </button>
+                    <button
+                      class="inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium hover:bg-slate-100"
+                      [class.ui-action-activate]="process.obsolete"
+                      [class.ui-action-danger]="!process.obsolete"
+                      [disabled]="saving()"
+                      (click)="setObsolete(process, !process.obsolete)"
+                    >
+                      {{ process.obsolete ? 'Reativar' : 'Desativar' }}
+                    </button>
+                  </div>
                 </td>
               </tr>
               @if (historyProcessId() === process.id) {

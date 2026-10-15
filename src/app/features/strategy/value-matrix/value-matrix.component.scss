@@ -19,6 +19,15 @@
   }
 }
 
+.matrix-icon-button.ui-action-edit {
+  color: #2563eb;
+
+  &:hover:not(:disabled) {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+}
+
 .matrix-process-card {
   border-color: #e2e8f0;
 }

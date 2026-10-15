@@ -181,9 +181,9 @@
                     {{ statusLabel(risk.status) }}
                   </td>
                   <td class="px-4 py-3 text-right">
-                    <button class="px-2 py-1 text-xs text-slate-500" (click)="openEditRisk(risk)">
+                    <button class="ui-action-edit px-2 py-1 text-xs" (click)="openEditRisk(risk)">
                       Editar</button
-                    ><button class="px-2 py-1 text-xs text-rose-500" (click)="deleteRisk(risk)">
+                    ><button class="ui-action-danger px-2 py-1 text-xs" (click)="deleteRisk(risk)">
                       Excluir
                     </button>
                   </td>
@@ -341,7 +341,7 @@
           @if (canManage()) {
             <button
               type="button"
-              class="text-xs font-medium text-blue-600"
+              class="ui-action-edit text-xs font-medium"
               (click)="detailOpen.set(false); openEditRisk(selectedRisk()!)"
             >
               Editar risco
@@ -378,7 +378,10 @@
                       detailMeta(section.key, item)
                     }}</small>
                   }</span
-                ><button class="text-xs text-rose-500" (click)="removeDetail(section.key, item.id)">
+                ><button
+                  class="ui-action-danger text-xs"
+                  (click)="removeDetail(section.key, item.id)"
+                >
                   Excluir
                 </button>
               </div>

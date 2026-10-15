@@ -136,14 +136,14 @@
                     <strong class="text-sm text-slate-700">{{ type.name }}</strong>
                     <div>
                       <button
-                        class="text-xs text-slate-500"
+                        class="ui-action-edit text-xs"
                         [class.ui-locked]="locked"
                         [attr.aria-disabled]="locked"
                         (click)="openType(type)"
                       >
                         Editar</button
                       ><button
-                        class="ml-2 text-xs text-rose-500"
+                        class="ui-action-danger ml-2 text-xs"
                         [class.ui-locked]="locked"
                         [attr.aria-disabled]="locked"
                         (click)="removeType(type)"
@@ -214,7 +214,7 @@
                   </button>
                   <div class="ui-kanban-card-footer">
                     <button
-                      class="text-[11px] font-medium text-slate-600"
+                      class="ui-action-history text-[11px] font-medium"
                       (click)="openWorkflow(document)"
                     >
                       Histórico
@@ -230,7 +230,7 @@
                       </button>
                     }
                     <button
-                      class="text-[11px] text-rose-500"
+                      class="ui-action-danger text-[11px]"
                       [class.ui-locked]="locked"
                       [attr.aria-disabled]="locked"
                       (click)="removeDocument(document)"
@@ -283,7 +283,7 @@
                   </td>
                   <td class="ui-table-cell text-right">
                     <button
-                      class="text-xs text-rose-500"
+                      class="ui-action-danger text-xs"
                       [class.ui-locked]="locked"
                       [attr.aria-disabled]="locked"
                       (click)="removeCopy(copy)"

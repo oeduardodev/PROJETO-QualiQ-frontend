@@ -346,12 +346,12 @@
                   </td>
                   <td class="ui-table-cell text-right">
                     @if (auth.isAdmin()) {
-                      <button class="text-xs text-blue-700" (click)="openEditIndicator(indicator)">
+                      <button class="ui-action-edit text-xs" (click)="openEditIndicator(indicator)">
                         Editar
                       </button>
                     }
                     <button
-                      class="ml-3 text-xs text-slate-500"
+                      class="ui-action-history ml-3 text-xs"
                       (click)="toggleDefinitionHistory(indicator)"
                     >
                       {{

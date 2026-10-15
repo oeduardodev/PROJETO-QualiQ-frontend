@@ -12,13 +12,15 @@
     Você não tem permissão para acessar esta página.
   </p>
 } @else {
-  <div class="space-y-6">
+  <div class="sla-page space-y-5">
     <div class="ui-page-header">
       <div>
         <h2 class="ui-page-title">
           {{ management ? 'Gerenciamento de SLAs' : 'Painel de SLAs' }}
         </h2>
-        <p class="ui-page-subtitle">{{ slas().length }} acordos de nível de serviço cadastrados</p>
+        <p class="ui-page-subtitle">
+          Acordos de nível de serviço entre processos — {{ slas().length }} acordos
+        </p>
       </div>
       @if (management) {
         <button
@@ -31,113 +33,260 @@
       }
     </div>
     @if (!management) {
-      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div class="sla-overview" aria-label="Resumo dos SLAs filtrados">
         @for (item of summary(); track item.label) {
-          <article class="ui-card">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                  {{ item.label }}
-                </p>
-                <p class="mt-1 text-2xl font-bold text-slate-800">{{ item.value }}</p>
-              </div>
-              <span [appIcon]="item.icon" class="h-6 w-6" [style.color]="item.color"></span>
+          <article
+            class="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+          >
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                {{ item.label }}
+              </p>
+              <strong class="mt-1 block text-2xl leading-none text-slate-800">{{
+                item.value
+              }}</strong>
             </div>
+            <span [appIcon]="item.icon" class="h-5 w-5" [style.color]="item.color"></span>
           </article>
         }
+        <section
+          class="sla-mini-chart rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
+          aria-label="Notificações por SLA"
+        >
+          <h3 class="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            Notificações por SLA
+          </h3>
+          @if (chartRows().length) {
+            @for (row of chartRows(); track row.sla.id) {
+              <div
+                class="mt-1 grid grid-cols-[minmax(65px,1fr)_minmax(50px,1.5fr)_18px] items-center gap-2 text-[10px] text-slate-500"
+              >
+                <span class="truncate" [title]="row.sla.title">{{ row.sla.title }}</span>
+                <span
+                  class="block h-[5px] overflow-hidden rounded bg-slate-100"
+                  role="img"
+                  [attr.aria-label]="row.count + ' notificações para ' + row.sla.title"
+                >
+                  <span
+                    class="block h-full rounded bg-teal-400"
+                    [style.width.%]="(row.count / chartMax()) * 100"
+                  ></span>
+                </span>
+                <strong class="text-right text-slate-700">{{ row.count }}</strong>
+              </div>
+            }
+          } @else {
+            <p class="text-xs text-slate-400">Sem SLAs para exibir</p>
+          }
+        </section>
       </div>
     }
-    <div class="flex flex-col gap-3 sm:flex-row">
+    <div class="sla-filters">
       <div class="relative flex-1 sm:max-w-sm">
         <span appIcon="Search" class="ui-search-icon"></span
         ><input
           [formControl]="search"
           class="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
-          placeholder="Buscar SLA..."
+          placeholder="Buscar acordo, fornecedor ou cliente..."
+          aria-label="Buscar acordo, fornecedor ou cliente"
         />
       </div>
       <select
         [formControl]="statusFilter"
         class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        aria-label="Filtrar por status"
       >
         <option value="all">Todos os status</option>
         @for (item of statuses(); track item.key) {
           <option [value]="item.key">{{ item.label }}</option>
         }
       </select>
+      <select
+        [formControl]="processFilter"
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        aria-label="Filtrar por processo"
+      >
+        <option value="all">Todos os processos</option>
+        @for (process of linkedProcesses(); track process.id) {
+          <option [value]="process.id">{{ processLabel(process.id) }}</option>
+        }
+      </select>
+      <select
+        [formControl]="criticalityFilter"
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        aria-label="Filtrar por criticidade"
+      >
+        <option value="all">Todas as criticidades</option>
+        @for (option of criticalityOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+        <option value="none">Não informada</option>
+      </select>
+      @if (!management) {
+        <label class="flex items-center gap-2 text-xs text-slate-500"
+          >Notificações de
+          <input
+            type="date"
+            [formControl]="periodStart"
+            class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700"
+            aria-label="Início do período das notificações"
+          />
+        </label>
+        <label class="flex items-center gap-2 text-xs text-slate-500"
+          >até
+          <input
+            type="date"
+            [formControl]="periodEnd"
+            [min]="periodStart.value"
+            class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700"
+            aria-label="Fim do período das notificações"
+          />
+        </label>
+      }
     </div>
-    <div class="ui-table-panel">
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="ui-table-header">
-              <th class="ui-table-heading-wider">SLA</th>
-              <th class="ui-table-heading-wider">Fornecedor</th>
-              <th class="ui-table-heading-wider">Cliente</th>
-              <th
-                class="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 md:table-cell"
-              >
-                Lead time
-              </th>
-              <th class="ui-table-heading-wider">Status</th>
-              @if (management) {
-                <th
-                  class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
-                >
-                  Ações
-                </th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (sla of filtered(); track sla.id) {
-              <tr class="border-b border-slate-50 hover:bg-slate-50/40">
-                <td class="px-4 py-3">
-                  <strong class="block text-sm text-slate-700">{{ sla.title }}</strong>
-                  @if (sla.quality_criteria) {
-                    <span class="line-clamp-1 text-xs text-slate-400">{{
-                      sla.quality_criteria
-                    }}</span>
+    <section class="sla-grid" aria-label="Lista de SLAs">
+      @for (sla of filtered(); track sla.id) {
+        <div class="sla-card-item">
+          <article
+            class="sla-card"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'Observar SLA ' + sla.title"
+            (click)="openDetail(sla)"
+            (keydown.enter)="openDetail(sla)"
+            (keydown.space)="$event.preventDefault(); openDetail(sla)"
+          >
+            <header class="sla-card-header">
+              <div class="sla-card-heading">
+                <h3>{{ sla.title }}</h3>
+                <div class="sla-card-meta">
+                  <span class="sla-card-status" [style.color]="statusForeground(sla.status)">
+                    <span
+                      class="sla-status-dot"
+                      [style.background-color]="statusForeground(sla.status)"
+                    ></span>
+                    {{ statusLabel(sla.status) }}
+                  </span>
+                  @if (sla.criticality) {
+                    <span class="sla-card-criticality"
+                      >Criticidade {{ criticalityLabel(sla.criticality) }}</span
+                    >
                   }
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-500">
-                  {{ processLabel(sla.supplier_process_id) }}
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-500">
-                  {{ processLabel(sla.client_process_id) }}
-                </td>
-                <td class="hidden px-4 py-3 text-sm font-medium text-slate-700 md:table-cell">
-                  {{ sla.lead_time_hours }}h
-                </td>
-                <td class="px-4 py-3">
-                  <span
-                    class="rounded-full px-2 py-1 text-xs font-medium"
-                    [style.background-color]="statusBackground(sla.status)"
-                    [style.color]="statusForeground(sla.status)"
-                    >{{ statusLabel(sla.status) }}</span
-                  >
-                </td>
-                @if (management) {
-                  <td class="px-4 py-3 text-right">
-                    <button class="px-2 py-1 text-xs text-slate-500" (click)="openEditSla(sla)">
-                      Editar</button
-                    ><button class="px-2 py-1 text-xs text-rose-500" (click)="deleteSla(sla)">
-                      Excluir
-                    </button>
-                  </td>
+                </div>
+              </div>
+              <span class="sla-lead-time"
+                ><span appIcon="Clock3" class="h-3.5 w-3.5"></span>{{ sla.lead_time_hours }}h</span
+              >
+            </header>
+
+            <div class="sla-card-content">
+              <div class="sla-processes">
+                <div class="sla-process">
+                  <span>Fornecedor</span>
+                  <strong>{{ processName(sla.supplier_process_id) }}</strong>
+                </div>
+                <span class="sla-process-arrow" appIcon="ArrowRight" aria-hidden="true"></span>
+                <div class="sla-process sla-process-client">
+                  <span>Cliente</span>
+                  <strong>{{ processName(sla.client_process_id) }}</strong>
+                </div>
+              </div>
+              <div class="sla-input">
+                <span>Entrada vinculada</span>
+                <strong>{{ inputLabel(sla.sipoc_input_id) }}</strong>
+              </div>
+              <div class="sla-criteria">
+                <span>Critérios de aceitação</span>
+                <p>{{ sla.quality_criteria || 'Não informados' }}</p>
+              </div>
+            </div>
+
+            <footer class="sla-card-footer" [class.sla-card-footer-alert]="ticketCount(sla.id) > 0">
+              <span
+                [appIcon]="ticketCount(sla.id) > 0 ? 'TriangleAlert' : 'CircleCheck'"
+                class="h-4 w-4"
+              ></span>
+              <div>
+                <strong>{{
+                  ticketCount(sla.id) > 0
+                    ? ticketCount(sla.id) + ' notificações registradas'
+                    : 'Sem notificações registradas'
+                }}</strong>
+                @if (ticketCount(sla.id) > 0) {
+                  <small>Clique para ver as notificações vinculadas</small>
                 }
-              </tr>
-            } @empty {
-              <tr>
-                <td [attr.colspan]="management ? 6 : 5" class="ui-table-empty">
-                  Nenhum SLA encontrado.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+              </div>
+              @if (management) {
+                <div class="sla-card-actions">
+                  <button
+                    type="button"
+                    class="ui-action-history"
+                    [attr.aria-expanded]="historySlaId() === sla.id"
+                    (click)="$event.stopPropagation(); toggleHistory(sla)"
+                    (keydown.enter)="$event.stopPropagation()"
+                    (keydown.space)="$event.stopPropagation()"
+                  >
+                    {{ historySlaId() === sla.id ? 'Ocultar histórico' : 'Histórico' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="ui-action-edit"
+                    (click)="$event.stopPropagation(); openEditSla(sla)"
+                    (keydown.enter)="$event.stopPropagation()"
+                    (keydown.space)="$event.stopPropagation()"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    [class.ui-action-activate]="sla.status === 'Inativo'"
+                    [class.ui-action-danger]="sla.status !== 'Inativo'"
+                    [disabled]="saving()"
+                    (click)="$event.stopPropagation(); setSlaActive(sla, sla.status === 'Inativo')"
+                    (keydown.enter)="$event.stopPropagation()"
+                    (keydown.space)="$event.stopPropagation()"
+                  >
+                    {{ sla.status === 'Inativo' ? 'Reativar' : 'Desativar' }}
+                  </button>
+                </div>
+              }
+            </footer>
+          </article>
+          @if (historySlaId() === sla.id) {
+            <section class="sla-history" aria-label="Histórico de alterações do SLA">
+              <h4 class="mb-2 text-sm font-semibold text-slate-700">Alterações do SLA</h4>
+              @if (historyLoading()) {
+                <p class="text-xs text-slate-500">Carregando...</p>
+              } @else if (historyError()) {
+                <p class="text-xs text-rose-600">{{ historyError() }}</p>
+              } @else {
+                <ol class="space-y-2">
+                  @for (entry of history(); track entry.id) {
+                    <li class="text-xs text-slate-600">
+                      <strong>{{ historyActionLabel(entry.action) }}</strong>
+                      · {{ formatHistoryDate(entry.changed_at) }} ·
+                      {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
+                      @if (entry.justification) {
+                        · {{ entry.justification }}
+                      }
+                    </li>
+                    @for (change of historyChanges(entry); track change.label) {
+                      <li class="ml-4 text-xs text-slate-500">
+                        {{ change.label }}: {{ change.before }} → {{ change.after }}
+                      </li>
+                    }
+                  } @empty {
+                    <li class="text-xs text-slate-500">Sem registros de alteração.</li>
+                  }
+                </ol>
+              }
+            </section>
+          }
+        </div>
+      } @empty {
+        <p class="sla-empty">Nenhum SLA encontrado para os filtros selecionados.</p>
+      }
+    </section>
   </div>
 }
 <app-side-drawer
@@ -193,7 +342,24 @@
           <option [value]="item.key">{{ item.label }}</option>
         }
       </select></label
+    ><label class="ui-form-label"
+      >Criticidade<select formControlName="criticality" class="ui-form-control bg-white">
+        <option value="">Não informada</option>
+        @for (option of criticalityOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select></label
     >
+    @if (editing()) {
+      <label class="block text-xs font-medium text-slate-500 sm:col-span-2"
+        >Justificativa da alteração *<textarea
+          formControlName="justification"
+          rows="2"
+          class="ui-form-control"
+          placeholder="Explique o motivo desta alteração"
+        ></textarea>
+      </label>
+    }
     <div class="flex items-end justify-end gap-2 sm:col-span-2">
       <button type="button" class="px-4 py-2 text-sm text-slate-500" (click)="formOpen.set(false)">
         Cancelar</button
@@ -207,3 +373,105 @@
     </div>
   </form></app-side-drawer
 >
+<app-side-drawer
+  [open]="detailOpen()"
+  [title]="selectedSla()?.title ?? 'Observação do SLA'"
+  [subtitle]="selectedSla()?.code ?? ''"
+  width="max-w-2xl"
+  (closed)="detailOpen.set(false)"
+>
+  @if (selectedSla(); as sla) {
+    <div class="space-y-6 text-sm">
+      <section class="grid grid-cols-1 gap-4 sm:grid-cols-2" aria-label="Dados do acordo">
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Status</p>
+          <p class="mt-1 font-medium" [style.color]="statusForeground(sla.status)">
+            {{ statusLabel(sla.status) }}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Criticidade</p>
+          <p class="mt-1 text-slate-700">{{ criticalityLabel(sla.criticality) }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Fornecedor</p>
+          <p class="mt-1 text-slate-700">{{ processLabel(sla.supplier_process_id) }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Cliente</p>
+          <p class="mt-1 text-slate-700">{{ processLabel(sla.client_process_id) }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Entrada vinculada</p>
+          <p class="mt-1 text-slate-700">{{ inputLabel(sla.sipoc_input_id) }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Prazo acordado</p>
+          <p class="mt-1 text-slate-700">{{ sla.lead_time_hours }} horas</p>
+        </div>
+        <div class="sm:col-span-2">
+          <p class="text-xs font-semibold uppercase text-slate-400">Critérios de aceitação</p>
+          <p class="mt-1 whitespace-pre-wrap text-slate-700">
+            {{ sla.quality_criteria || 'Não informados' }}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Criado em</p>
+          <p class="mt-1 text-slate-700">{{ formatDate(sla.created_at) }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Atualizado em</p>
+          <p class="mt-1 text-slate-700">{{ formatDate(sla.updated_at) }}</p>
+        </div>
+      </section>
+      <section class="border-t border-slate-100 pt-5" aria-label="Notificações vinculadas">
+        <h3 class="font-semibold text-slate-800">
+          Notificações vinculadas ({{ selectedTickets().length }})
+        </h3>
+        @if (selectedTickets().length) {
+          <div class="mt-3 space-y-2">
+            @for (ticket of selectedTickets(); track ticket.id) {
+              <article class="rounded-lg border border-slate-200 p-3">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <strong class="text-slate-700">{{ ticket.code }} · {{ ticket.title }}</strong>
+                  <span class="text-xs text-slate-500">{{ formatDate(ticket.created_at) }}</span>
+                </div>
+                <p class="mt-1 text-xs text-slate-500">
+                  Tipo: {{ notificationTypeLabel(ticket.notification_type_id) }} · Status:
+                  {{ ticket.status }} · Severidade: {{ ticket.severity }}
+                </p>
+                @if (ticket.description) {
+                  <p class="mt-2 whitespace-pre-wrap text-slate-600">{{ ticket.description }}</p>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="mt-2 text-slate-500">Nenhuma notificação vinculada a este SLA.</p>
+        }
+      </section>
+      <section class="border-t border-slate-100 pt-5" aria-label="Riscos relacionados">
+        <h3 class="font-semibold text-slate-800">
+          Riscos relacionados ({{ selectedRisks().length }})
+        </h3>
+        @if (selectedRisks().length) {
+          <div class="mt-3 space-y-2">
+            @for (risk of selectedRisks(); track risk.id) {
+              <article class="rounded-lg border border-slate-200 p-3">
+                <strong class="text-slate-700">{{ risk.code }} · {{ risk.title }}</strong>
+                <p class="mt-1 text-xs text-slate-500">
+                  Nível: {{ risk.risk_level }} · Status: {{ risk.status }}
+                </p>
+                @if (risk.description) {
+                  <p class="mt-2 whitespace-pre-wrap text-slate-600">{{ risk.description }}</p>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="mt-2 text-slate-500">Nenhum risco vinculado às notificações deste SLA.</p>
+        }
+      </section>
+    </div>
+  }
+</app-side-drawer>

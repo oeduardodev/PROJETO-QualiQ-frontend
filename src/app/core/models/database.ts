@@ -18,6 +18,7 @@ export interface AppDatabase {
       value_chain_categories: TableDefinition<ValueChainCategory>;
       processes: TableDefinition<Process>;
       process_history: TableDefinition<ProcessHistory>;
+      sla_history: TableDefinition<SlaHistory>;
       sipoc_nodes: TableDefinition<SipocNode>;
       sipoc_node_associations: TableDefinition<SipocNodeAssociation>;
       sipoc_step_associations: TableDefinition<SipocStepAssociation>;
@@ -65,6 +66,10 @@ export interface AppDatabase {
       update_process_with_reason: {
         Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
         Returns: Process;
+      };
+      update_sla_with_reason: {
+        Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
+        Returns: SLA;
       };
       advance_document: {
         Args: {
@@ -224,6 +229,17 @@ export interface Process {
 export interface ProcessHistory {
   id: string;
   process_id: string;
+  action: 'baseline' | 'created' | 'updated';
+  justification: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
+}
+
+export interface SlaHistory {
+  id: string;
+  sla_id: string;
   action: 'baseline' | 'created' | 'updated';
   justification: string | null;
   before_data: Record<string, unknown> | null;
@@ -630,6 +646,7 @@ export interface RiskContingencyPlan {
 // =====================================================
 export type SlaStatus = GeneratedDatabase['public']['Tables']['slas']['Row']['status'];
 export type SlaStatusOption = GeneratedDatabase['public']['Tables']['sla_statuses']['Row'];
+export type SlaCriticality = GeneratedDatabase['public']['Enums']['sla_criticality_level'];
 
 export interface SLA {
   id: string;
@@ -640,6 +657,7 @@ export interface SLA {
   sipoc_input_id: string | null;
   lead_time_hours: number;
   quality_criteria: string | null;
+  criticality: SlaCriticality | null;
   status: SlaStatus;
   custom_fields: Record<string, unknown> | null;
   created_at: string;

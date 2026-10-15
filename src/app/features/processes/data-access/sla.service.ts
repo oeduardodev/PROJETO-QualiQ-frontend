@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { SlaRepository } from './sla.repository';
-import type { SLA, SlaStatusOption } from '@core/models/database';
+import type { SLA, SlaHistory, SlaStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaService {
@@ -25,11 +25,12 @@ export class SlaService {
   updateSla(
     id: string,
     patch: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>,
+    justification: string,
   ): Promise<SLA> {
-    return this.repository.updateSla(id, patch);
+    return this.repository.updateSla(id, patch, justification);
   }
 
-  deleteSla(id: string): Promise<void> {
-    return this.repository.deleteSla(id);
+  fetchSlaHistory(id: string): Promise<SlaHistory[]> {
+    return this.repository.fetchSlaHistory(id);
   }
 }

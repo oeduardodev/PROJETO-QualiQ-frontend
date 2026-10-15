@@ -110,11 +110,11 @@
             </div>
             @if (canManage()) {
               <div class="flex gap-3">
-                <button class="text-xs font-medium text-blue-600" (click)="openEdit(dimension)">
+                <button class="ui-action-edit text-xs font-medium" (click)="openEdit(dimension)">
                   Editar
                 </button>
                 <button
-                  class="text-xs font-medium text-rose-600"
+                  class="ui-action-danger text-xs font-medium"
                   (click)="deleteDimension(dimension)"
                 >
                   Excluir
