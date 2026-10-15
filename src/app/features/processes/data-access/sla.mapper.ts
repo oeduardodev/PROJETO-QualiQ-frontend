@@ -1,25 +1,25 @@
-import type { SlaCriticality, SlaStatus, SLA } from '@core/models/database';
+import type { SlaCriticality } from '@core/models/database';
 
 export interface SlaFormValue {
   title: string;
   supplier_process_id: string;
   client_process_id: string;
   sipoc_input_id: string;
-  lead_time_hours: number;
-  quality_criteria: string;
+  description: string;
+  business_rules: string;
   criticality: SlaCriticality | '';
-  status: SlaStatus;
+  notification_type_ids: string[];
 }
 
-export function toSlaPayload(value: SlaFormValue): Partial<SLA> {
+export function toSlaPayload(value: SlaFormValue): Record<string, unknown> {
   return {
-    title: value.title,
-    supplier_process_id: value.supplier_process_id || null,
-    client_process_id: value.client_process_id || null,
+    title: value.title.trim(),
+    description: value.description.trim(),
+    business_rules: value.business_rules.trim(),
+    supplier_process_id: value.supplier_process_id,
+    client_process_id: value.client_process_id,
     sipoc_input_id: value.sipoc_input_id || null,
-    lead_time_hours: value.lead_time_hours,
-    quality_criteria: value.quality_criteria || null,
-    criticality: value.criticality || null,
-    status: value.status,
+    criticality: value.criticality,
+    notification_type_ids: value.notification_type_ids,
   };
 }

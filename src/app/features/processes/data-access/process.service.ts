@@ -127,6 +127,10 @@ export class ProcessService {
     return this.repository.fetchAssociationsByProcess(processId);
   }
 
+  fetchAllNodeAssociations(): Promise<SipocNodeAssociation[]> {
+    return this.repository.fetchAllNodeAssociations();
+  }
+
   fetchAssociationsByNode(nodeId: string): Promise<SipocNodeAssociation[]> {
     return this.repository.fetchAssociationsByNode(nodeId);
   }

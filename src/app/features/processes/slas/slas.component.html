@@ -15,17 +15,15 @@
   <div class="sla-page space-y-5">
     <div class="ui-page-header">
       <div>
-        <h2 class="ui-page-title">
-          {{ management ? 'Gerenciamento de SLAs' : 'Painel de SLAs' }}
-        </h2>
+        <h2 class="ui-page-title">{{ management ? 'Gerenciamento de SLAs' : 'Painel de SLAs' }}</h2>
         <p class="ui-page-subtitle">
-          Acordos de nível de serviço entre processos — {{ slas().length }} acordos
+          Acordos de nível de serviço entre processos —
+          {{ slas().length }} acordos
         </p>
       </div>
       @if (management) {
         <button
           class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
-          [disabled]="!activeStatuses().length"
           (click)="openCreateSla()"
         >
           <span appIcon="Plus" class="h-4 w-4"></span>Novo SLA
@@ -167,6 +165,7 @@
                     ></span>
                     {{ statusLabel(sla.status) }}
                   </span>
+                  <span class="text-xs text-slate-500">{{ approvalLabel(sla) }}</span>
                   @if (sla.criticality) {
                     <span class="sla-card-criticality"
                       >Criticidade {{ criticalityLabel(sla.criticality) }}</span
@@ -174,9 +173,9 @@
                   }
                 </div>
               </div>
-              <span class="sla-lead-time"
-                ><span appIcon="Clock3" class="h-3.5 w-3.5"></span>{{ sla.lead_time_hours }}h</span
-              >
+              @if (sla.code) {
+                <span class="text-xs font-semibold text-slate-500">{{ sla.code }}</span>
+              }
             </header>
 
             <div class="sla-card-content">
@@ -196,8 +195,12 @@
                 <strong>{{ inputLabel(sla.sipoc_input_id) }}</strong>
               </div>
               <div class="sla-criteria">
-                <span>Critérios de aceitação</span>
-                <p>{{ sla.quality_criteria || 'Não informados' }}</p>
+                <span>Descrição</span>
+                <p>{{ sla.description || 'Não informada' }}</p>
+              </div>
+              <div class="sla-criteria">
+                <span>Regras de negócio</span>
+                <p>{{ sla.business_rules || sla.quality_criteria || 'Não informadas' }}</p>
               </div>
             </div>
 
@@ -237,21 +240,46 @@
                   >
                     Editar
                   </button>
-                  <button
-                    type="button"
-                    [class.ui-action-activate]="sla.status === 'Inativo'"
-                    [class.ui-action-danger]="sla.status !== 'Inativo'"
-                    [disabled]="saving()"
-                    (click)="$event.stopPropagation(); setSlaActive(sla, sla.status === 'Inativo')"
-                    (keydown.enter)="$event.stopPropagation()"
-                    (keydown.space)="$event.stopPropagation()"
-                  >
-                    {{ sla.status === 'Inativo' ? 'Reativar' : 'Desativar' }}
-                  </button>
+                  @if (sla.approval_state === 'draft' || sla.approval_state === 'rejected') {
+                    <button
+                      type="button"
+                      class="ui-action-activate"
+                      [disabled]="saving()"
+                      (click)="$event.stopPropagation(); activateSla(sla)"
+                    >
+                      Ativar SLA
+                    </button>
+                  }
+                  @if (sla.status === 'Ativo') {
+                    <button
+                      type="button"
+                      class="ui-action-danger"
+                      [disabled]="saving()"
+                      (click)="$event.stopPropagation(); deactivateSla(sla)"
+                    >
+                      Desativar
+                    </button>
+                  }
                 </div>
               }
             </footer>
           </article>
+          @if (slaApprovals(sla).length) {
+            <section class="sla-history" aria-label="Decisões anteriores do SLA">
+              <h4 class="mb-2 text-sm font-semibold text-slate-700">Decisões anteriores</h4>
+              @for (approval of slaApprovals(sla); track approval.id) {
+                <p class="text-xs text-slate-600">
+                  {{ management ? userName(approval.approver_id) : 'Sua decisão' }}
+                  ({{ approvalProcesses(approval) }}) ·
+                  {{ approvalDecisionLabel(approval.decision) }} ·
+                  {{ approval.decided_at ? formatHistoryDate(approval.decided_at) : 'Aguardando' }}
+                  @if (approval.reason) {
+                    · {{ approval.reason }}
+                  }
+                </p>
+              }
+            </section>
+          }
           @if (historySlaId() === sla.id) {
             <section class="sla-history" aria-label="Histórico de alterações do SLA">
               <h4 class="mb-2 text-sm font-semibold text-slate-700">Alterações do SLA</h4>
@@ -298,10 +326,14 @@
     @if (formError()) {
       <p class="rounded-lg bg-rose-50 p-3 text-xs text-rose-600 sm:col-span-2">{{ formError() }}</p>
     }
+    <p class="text-xs text-slate-500 sm:col-span-2">
+      O processo fornecedor oferece a entrega; o processo cliente a recebe. Usuários Admin e Gestor
+      podem ativar o SLA diretamente após preencher seus dados.
+    </p>
     <label class="block text-xs font-medium text-slate-500 sm:col-span-2"
-      >Título *<input formControlName="title" class="ui-form-control" /></label
+      >Nome do SLA *<input formControlName="title" class="ui-form-control" /></label
     ><label class="ui-form-label"
-      >Processo fornecedor<select
+      >Processo fornecedor *<select
         formControlName="supplier_process_id"
         class="ui-form-control bg-white"
       >
@@ -311,7 +343,10 @@
         }
       </select></label
     ><label class="ui-form-label"
-      >Processo cliente<select formControlName="client_process_id" class="ui-form-control bg-white">
+      >Processo cliente *<select
+        formControlName="client_process_id"
+        class="ui-form-control bg-white"
+      >
         <option value="">—</option>
         @for (process of processes(); track process.id) {
           <option [value]="process.id">{{ processLabel(process.id) }}</option>
@@ -324,32 +359,46 @@
           <option [value]="node.id">{{ node.title }}</option>
         }
       </select></label
-    ><label class="ui-form-label"
-      >Lead time (horas)<input
-        type="number"
-        min="0"
-        formControlName="lead_time_hours"
-        class="ui-form-control" /></label
     ><label class="block text-xs font-medium text-slate-500 sm:col-span-2"
-      >Critérios de qualidade<textarea
-        formControlName="quality_criteria"
+      >Descrição *<textarea
+        formControlName="description"
         rows="3"
         class="ui-form-control"
       ></textarea></label
+    ><label class="block text-xs font-medium text-slate-500 sm:col-span-2"
+      >Regras de negócio *<textarea
+        formControlName="business_rules"
+        rows="5"
+        class="ui-form-control"
+        placeholder="Descreva as condições, responsabilidades e critérios do acordo"
+      ></textarea></label
     ><label class="ui-form-label"
-      >Status<select formControlName="status" class="ui-form-control bg-white">
-        @for (item of formStatuses(); track item.key) {
-          <option [value]="item.key">{{ item.label }}</option>
-        }
-      </select></label
-    ><label class="ui-form-label"
-      >Criticidade<select formControlName="criticality" class="ui-form-control bg-white">
-        <option value="">Não informada</option>
+      >Criticidade *<select formControlName="criticality" class="ui-form-control bg-white">
+        <option value="">Selecione</option>
         @for (option of criticalityOptions; track option.value) {
           <option [value]="option.value">{{ option.label }}</option>
         }
       </select></label
     >
+    <fieldset class="rounded-lg border border-slate-200 p-3 sm:col-span-2">
+      <legend class="px-1 text-xs font-medium text-slate-500">
+        Tipos de notificação vinculados
+      </legend>
+      <div class="mt-2 grid max-h-44 gap-2 overflow-y-auto sm:grid-cols-2">
+        @for (type of availableNotificationTypes(); track type.id) {
+          <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              [checked]="form.controls.notification_type_ids.value.includes(type.id)"
+              (change)="toggleNotificationType(type.id, $any($event.target).checked)"
+            />
+            {{ type.name }}
+          </label>
+        } @empty {
+          <p class="text-xs text-slate-500">Nenhum tipo de notificação cadastrado.</p>
+        }
+      </div>
+    </fieldset>
     @if (editing()) {
       <label class="block text-xs font-medium text-slate-500 sm:col-span-2"
         >Justificativa da alteração *<textarea
@@ -390,6 +439,10 @@
           </p>
         </div>
         <div>
+          <p class="text-xs font-semibold uppercase text-slate-400">Etapa</p>
+          <p class="mt-1 text-slate-700">{{ approvalLabel(sla) }}</p>
+        </div>
+        <div>
           <p class="text-xs font-semibold uppercase text-slate-400">Criticidade</p>
           <p class="mt-1 text-slate-700">{{ criticalityLabel(sla.criticality) }}</p>
         </div>
@@ -405,14 +458,28 @@
           <p class="text-xs font-semibold uppercase text-slate-400">Entrada vinculada</p>
           <p class="mt-1 text-slate-700">{{ inputLabel(sla.sipoc_input_id) }}</p>
         </div>
-        <div>
-          <p class="text-xs font-semibold uppercase text-slate-400">Prazo acordado</p>
-          <p class="mt-1 text-slate-700">{{ sla.lead_time_hours }} horas</p>
+        <div class="sm:col-span-2">
+          <p class="text-xs font-semibold uppercase text-slate-400">Descrição</p>
+          <p class="mt-1 whitespace-pre-wrap text-slate-700">
+            {{ sla.description || 'Não informada' }}
+          </p>
         </div>
         <div class="sm:col-span-2">
-          <p class="text-xs font-semibold uppercase text-slate-400">Critérios de aceitação</p>
+          <p class="text-xs font-semibold uppercase text-slate-400">Regras de negócio</p>
           <p class="mt-1 whitespace-pre-wrap text-slate-700">
-            {{ sla.quality_criteria || 'Não informados' }}
+            {{ sla.business_rules || sla.quality_criteria || 'Não informadas' }}
+          </p>
+        </div>
+        <div class="sm:col-span-2">
+          <p class="text-xs font-semibold uppercase text-slate-400">
+            Tipos de notificação vinculados
+          </p>
+          <p class="mt-1 text-slate-700">
+            @for (type of notificationTypes(); track type.id) {
+              @if (type.sla_id === sla.id) {
+                <span class="mr-2">{{ type.name }}</span>
+              }
+            }
           </p>
         </div>
         <div>

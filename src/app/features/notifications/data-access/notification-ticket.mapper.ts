@@ -25,7 +25,7 @@ export function toNotificationTicketPayload(
     description: value.description || null,
     step_id: value.step_id || null,
     risk_id: value.risk_id || notificationType?.risk_id || null,
-    sla_id: value.sla_id || notificationType?.sla_id || null,
+    sla_id: value.sla_id || null,
     notification_type_id: value.notification_type_id || null,
     incident_datetime: value.incident_datetime || null,
     classification_flag: notificationType ? classificationName : null,

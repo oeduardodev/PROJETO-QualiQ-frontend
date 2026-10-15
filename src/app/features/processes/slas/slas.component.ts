@@ -18,7 +18,9 @@ import type {
   Risk,
   NotificationType,
   SLA,
+  SlaApproval,
   SlaHistory,
+  SipocNodeAssociation,
   SipocNode,
   SlaCriticality,
   SlaStatus,
@@ -48,13 +50,11 @@ export class SlasComponent {
   private readonly toast = inject(ToastService);
   readonly management = this.route.snapshot.data['mode'] === 'management';
   readonly statuses = signal<SlaStatusOption[]>([]);
-  readonly activeStatuses = computed(() => this.statuses().filter((option) => option.is_active));
-  readonly formStatuses = computed(() =>
-    this.statuses().filter((option) => option.is_active || option.key === this.editing()?.status),
-  );
   readonly slas = signal<SLA[]>([]);
+  readonly approvals = signal<SlaApproval[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly nodes = signal<SipocNode[]>([]);
+  readonly associations = signal<SipocNodeAssociation[]>([]);
   readonly tickets = signal<Ticket[]>([]);
   readonly notificationTypes = signal<NotificationType[]>([]);
   readonly risks = signal<Risk[]>([]);
@@ -79,6 +79,7 @@ export class SlasComponent {
   readonly statusValue = signal('all');
   readonly processValue = signal('all');
   readonly criticalityValue = signal('all');
+  readonly clientProcessValue = signal('');
   readonly periodStartValue = signal('');
   readonly periodEndValue = signal('');
   readonly search = new FormControl('', { nonNullable: true });
@@ -98,14 +99,33 @@ export class SlasComponent {
     supplier_process_id: new FormControl('', { nonNullable: true }),
     client_process_id: new FormControl('', { nonNullable: true }),
     sipoc_input_id: new FormControl('', { nonNullable: true }),
-    lead_time_hours: new FormControl(0, { nonNullable: true }),
-    quality_criteria: new FormControl('', { nonNullable: true }),
+    description: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    business_rules: new FormControl('', { nonNullable: true, validators: Validators.required }),
     criticality: new FormControl<SlaCriticality | ''>('', { nonNullable: true }),
-    status: new FormControl<SlaStatus>('', { nonNullable: true, validators: Validators.required }),
+    notification_type_ids: new FormControl<string[]>([], { nonNullable: true }),
     justification: new FormControl('', { nonNullable: true }),
   });
   readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
-  readonly inputs = computed(() => this.nodes().filter((node) => node.node_type === 'I'));
+  readonly inputs = computed(() =>
+    this.nodes().filter(
+      (node) =>
+        node.node_type === 'I' &&
+        !!this.clientProcessValue() &&
+        (node.process_id === this.clientProcessValue() ||
+          this.associations().some(
+            (association) =>
+              association.node_id === node.id &&
+              association.process_id === this.clientProcessValue(),
+          )),
+    ),
+  );
+  readonly availableNotificationTypes = computed(() =>
+    this.notificationTypes().filter(
+      (type) =>
+        (type.active || type.sla_id === this.editing()?.id) &&
+        (type.sla_id === null || type.sla_id === this.editing()?.id),
+    ),
+  );
   readonly linkedProcesses = computed(() => {
     const ids = new Set(
       this.slas().flatMap((sla) => [sla.supplier_process_id, sla.client_process_id]),
@@ -196,6 +216,16 @@ export class SlasComponent {
     this.criticalityFilter.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((value) => this.criticalityValue.set(value));
+    this.form.controls.client_process_id.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((value) => {
+        this.clientProcessValue.set(value);
+        if (
+          this.form.controls.sipoc_input_id.value &&
+          !this.inputs().some((node) => node.id === this.form.controls.sipoc_input_id.value)
+        )
+          this.form.controls.sipoc_input_id.setValue('');
+      });
     this.periodStart.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((value) => this.periodStartValue.set(value));
@@ -209,23 +239,39 @@ export class SlasComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [slas, processes, nodes, statuses, tickets, risks, notificationTypes] =
-        await Promise.all([
-          this.slaService.fetchSlas(),
-          this.processService.fetchProcesses(),
-          this.processService.fetchSipocNodes(),
-          this.slaService.fetchStatuses(),
-          this.ticketService.fetchTickets(),
-          this.riskService.fetchRisks(),
-          this.notificationService.fetchNotificationTypes(),
-        ]);
+      const [
+        slas,
+        processes,
+        nodes,
+        associations,
+        statuses,
+        tickets,
+        risks,
+        notificationTypes,
+        approvals,
+        users,
+      ] = await Promise.all([
+        this.slaService.fetchSlas(),
+        this.processService.fetchProcesses(),
+        this.processService.fetchSipocNodes(),
+        this.processService.fetchAllNodeAssociations(),
+        this.slaService.fetchStatuses(),
+        this.ticketService.fetchTickets(),
+        this.riskService.fetchRisks(),
+        this.notificationService.fetchNotificationTypes(),
+        this.management ? this.slaService.fetchApprovals() : Promise.resolve([]),
+        this.management ? this.profilesRepository.findAssignableUsers() : Promise.resolve([]),
+      ]);
       this.slas.set(slas);
       this.processes.set(processes);
       this.nodes.set(nodes);
+      this.associations.set(associations);
       this.statuses.set(statuses);
       this.tickets.set(tickets);
       this.risks.set(risks);
       this.notificationTypes.set(notificationTypes);
+      this.approvals.set(approvals);
+      this.users.set(users);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar SLAs'));
     } finally {
@@ -234,7 +280,7 @@ export class SlasComponent {
   }
 
   openCreateSla(): void {
-    if (!this.activeStatuses().length) return;
+    if (!this.management || !this.canManage()) return;
     this.editing.set(null);
     this.formError.set(null);
     this.form.reset({
@@ -242,16 +288,18 @@ export class SlasComponent {
       supplier_process_id: '',
       client_process_id: '',
       sipoc_input_id: '',
-      lead_time_hours: 0,
-      quality_criteria: '',
+      description: '',
+      business_rules: '',
       criticality: '',
-      status: this.defaultStatus(),
+      notification_type_ids: [],
       justification: '',
     });
+    this.clientProcessValue.set('');
     this.formOpen.set(true);
   }
 
   openEditSla(sla: SLA): void {
+    if (!this.management || !this.canManage()) return;
     this.editing.set(sla);
     this.formError.set(null);
     this.form.reset({
@@ -259,12 +307,15 @@ export class SlasComponent {
       supplier_process_id: sla.supplier_process_id ?? '',
       client_process_id: sla.client_process_id ?? '',
       sipoc_input_id: sla.sipoc_input_id ?? '',
-      lead_time_hours: sla.lead_time_hours,
-      quality_criteria: sla.quality_criteria ?? '',
+      description: sla.description ?? '',
+      business_rules: sla.business_rules ?? '',
       criticality: sla.criticality ?? '',
-      status: sla.status,
+      notification_type_ids: this.notificationTypes()
+        .filter((type) => type.sla_id === sla.id)
+        .map((type) => type.id),
       justification: '',
     });
+    this.clientProcessValue.set(sla.client_process_id ?? '');
     this.formOpen.set(true);
   }
 
@@ -274,15 +325,30 @@ export class SlasComponent {
   }
 
   async saveSla(): Promise<void> {
-    if (this.form.invalid) {
-      this.formError.set('Título é obrigatório.');
+    if (!this.management || !this.canManage() || this.saving()) return;
+    if (
+      this.form.invalid ||
+      !this.form.controls.title.value.trim() ||
+      !this.form.controls.description.value.trim() ||
+      !this.form.controls.business_rules.value.trim() ||
+      !this.form.controls.criticality.value
+    ) {
+      this.formError.set('Informe nome, descrição, regras de negócio e criticidade.');
       return;
     }
     if (
-      !this.form.controls.client_process_id.value &&
-      !this.form.controls.supplier_process_id.value
+      !this.form.controls.client_process_id.value ||
+      !this.form.controls.supplier_process_id.value ||
+      this.form.controls.client_process_id.value === this.form.controls.supplier_process_id.value
     ) {
-      this.formError.set('Selecione um processo cliente ou fornecedor para associar ao SLA.');
+      this.formError.set('Selecione processos diferentes para cliente e fornecedor.');
+      return;
+    }
+    if (
+      this.form.controls.sipoc_input_id.value &&
+      !this.inputs().some((node) => node.id === this.form.controls.sipoc_input_id.value)
+    ) {
+      this.formError.set('A entrada SIPOC deve pertencer ao processo cliente.');
       return;
     }
     const current = this.editing();
@@ -303,6 +369,7 @@ export class SlasComponent {
       );
       this.toast.success(current ? 'SLA atualizado' : 'SLA criado');
       this.formOpen.set(false);
+      void this.loadSlas();
       if (current && this.historySlaId() === current.id) void this.loadHistory(current.id);
     } catch (e) {
       this.formError.set(errorMessage(e, 'Erro ao salvar SLA'));
@@ -311,28 +378,72 @@ export class SlasComponent {
     }
   }
 
-  async setSlaActive(sla: SLA, active: boolean): Promise<void> {
+  async activateSla(sla: SLA): Promise<void> {
     if (!this.management || !this.canManage() || this.saving()) return;
-    const status = this.statuses().find((option) => option.key === (active ? 'Ativo' : 'Inativo'));
-    if (!status) {
-      this.toast.error('Status do SLA não disponível');
-      return;
-    }
     this.saving.set(true);
     try {
-      const saved = await this.slaService.updateSla(
-        sla.id,
-        { status: status.key },
-        active ? 'SLA reativado' : 'SLA desativado',
-      );
+      const saved = await this.slaService.activateSla(sla.id);
       this.slas.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      void this.loadSlas();
       if (this.historySlaId() === saved.id) void this.loadHistory(saved.id);
-      this.toast.success(active ? 'SLA reativado' : 'SLA desativado');
+      this.toast.success('SLA ativado');
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao alterar o SLA'));
     } finally {
       this.saving.set(false);
     }
+  }
+
+  async deactivateSla(sla: SLA): Promise<void> {
+    if (!this.management || !this.canManage() || this.saving()) return;
+    this.saving.set(true);
+    try {
+      const saved = await this.slaService.deactivate(sla.id, 'Desativado pelo administrador');
+      this.slas.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      if (this.historySlaId() === saved.id) void this.loadHistory(saved.id);
+      this.toast.success('SLA desativado');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao desativar SLA'));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  approvalLabel(sla: SLA): string {
+    const labels: Record<SLA['approval_state'], string> = {
+      draft: 'Rascunho',
+      pending: 'Aguardando aprovação',
+      approved: 'Ativado',
+      rejected: 'Rejeitado',
+      legacy: 'Ativo (cadastro anterior)',
+    };
+    return labels[sla.approval_state];
+  }
+
+  slaApprovals(sla: SLA): SlaApproval[] {
+    return this.approvals().filter(
+      (approval) => approval.sla_id === sla.id && approval.revision === sla.approval_revision,
+    );
+  }
+
+  approvalDecisionLabel(decision: SlaApproval['decision']): string {
+    return {
+      pending: 'Pendente',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+      cancelled: 'Cancelado',
+    }[decision];
+  }
+
+  approvalProcesses(approval: SlaApproval): string {
+    return approval.process_ids.map((id) => this.processName(id)).join(', ');
+  }
+
+  toggleNotificationType(id: string, checked: boolean): void {
+    const control = this.form.controls.notification_type_ids;
+    control.setValue(
+      checked ? [...control.value, id] : control.value.filter((item) => item !== id),
+    );
   }
 
   processLabel(id: string | null): string {
@@ -394,6 +505,13 @@ export class SlasComponent {
     if (!entry.before_data) return [];
     const labels: Record<string, string> = {
       title: 'Nome',
+      description: 'Descrição',
+      business_rules: 'Regras de negócio',
+      notification_type_ids: 'Tipos de notificação',
+      approval_state: 'Etapa de ativação',
+      approval_revision: 'Versão de ativação',
+      submitted_at: 'Enviado em',
+      approved_at: 'Ativado em',
       supplier_process_id: 'Processo fornecedor',
       client_process_id: 'Processo cliente',
       sipoc_input_id: 'Entrada vinculada',
@@ -421,6 +539,23 @@ export class SlasComponent {
     if (key === 'sipoc_input_id') return this.inputLabel(String(value));
     if (key === 'criticality') return this.criticalityLabel(value as SlaCriticality);
     if (key === 'status') return this.statusLabel(String(value) as SlaStatus);
+    if (key === 'approval_state') {
+      return (
+        {
+          draft: 'Rascunho',
+          pending: 'Pendente',
+          approved: 'Ativado',
+          rejected: 'Rejeitado',
+          legacy: 'Legado',
+        }[String(value)] ?? String(value)
+      );
+    }
+    if (key === 'submitted_at' || key === 'approved_at')
+      return this.formatHistoryDate(String(value));
+    if (key === 'notification_type_ids' && Array.isArray(value))
+      return value.length
+        ? value.map((id) => this.notificationTypeLabel(String(id))).join(', ')
+        : '—';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   }
@@ -466,13 +601,5 @@ export class SlasComponent {
     } finally {
       if (requestId === this.historyRequestId) this.historyLoading.set(false);
     }
-  }
-
-  private defaultStatus(): SlaStatus {
-    return (
-      this.activeStatuses().find((option) => option.is_default)?.key ??
-      this.activeStatuses()[0]?.key ??
-      ''
-    );
   }
 }

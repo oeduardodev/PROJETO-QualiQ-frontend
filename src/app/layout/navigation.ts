@@ -102,10 +102,9 @@ export const NAV_GROUPS: NavGroup[] = [
           },
           {
             id: 'processos/slas/gerenciamento',
-            label: 'Gerenciamento de SLAs (Admin)',
+            label: 'Gerenciamento de SLAs',
             icon: 'Gauge',
             route: 'processos/slas/gerenciamento',
-            adminOnly: true,
           },
         ],
       },
@@ -256,7 +255,9 @@ export function visibleNavigation(isOperator: boolean, isAdmin: boolean): NavGro
       .map((item) => ({
         ...item,
         leaves: item.leaves.filter(
-          (leaf) => leaf.id !== 'processos/gerenciamento' && (!isOperator || !leaf.adminOnly),
+          (leaf) =>
+            leaf.id !== 'processos/gerenciamento' &&
+            (!isOperator || (!leaf.adminOnly && leaf.id !== 'processos/slas/gerenciamento')),
         ),
       }))
       .filter((item) => item.leaves.length),

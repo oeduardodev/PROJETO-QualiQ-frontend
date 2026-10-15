@@ -372,14 +372,18 @@
               <article class="rounded-lg border border-slate-200 p-3 text-sm">
                 <div class="flex justify-between gap-2">
                   <strong>{{ sla.title }}</strong
-                  ><span class="text-xs text-slate-500">{{ sla.lead_time_hours }}h</span>
+                  ><span class="text-xs text-slate-500">{{
+                    sla.criticality || 'Sem criticidade'
+                  }}</span>
                 </div>
                 <p class="mt-1 text-xs text-slate-500">
                   {{ sla.supplier_process_id === process.id ? 'Fornecedor' : 'Cliente' }} ·
                   {{ sla.status }}
                 </p>
-                @if (sla.quality_criteria) {
-                  <p class="mt-2 text-xs text-slate-400">{{ sla.quality_criteria }}</p>
+                @if (sla.business_rules || sla.quality_criteria) {
+                  <p class="mt-2 text-xs text-slate-400">
+                    {{ sla.business_rules || sla.quality_criteria }}
+                  </p>
                 }
               </article>
             } @empty {

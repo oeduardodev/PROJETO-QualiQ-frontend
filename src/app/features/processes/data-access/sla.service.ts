@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { SlaRepository } from './sla.repository';
-import type { SLA, SlaHistory, SlaStatusOption } from '@core/models/database';
+import type { SLA, SlaApproval, SlaHistory, SlaStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaService {
@@ -18,19 +18,31 @@ export class SlaService {
     return this.repository.fetchSlasByProcess(processId);
   }
 
-  createSla(input: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>): Promise<SLA> {
+  createSla(input: Record<string, unknown>): Promise<SLA> {
     return this.repository.createSla(input);
   }
 
-  updateSla(
-    id: string,
-    patch: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>,
-    justification: string,
-  ): Promise<SLA> {
+  updateSla(id: string, patch: Record<string, unknown>, justification: string): Promise<SLA> {
     return this.repository.updateSla(id, patch, justification);
   }
 
   fetchSlaHistory(id: string): Promise<SlaHistory[]> {
     return this.repository.fetchSlaHistory(id);
+  }
+
+  fetchApprovals(): Promise<SlaApproval[]> {
+    return this.repository.fetchApprovals();
+  }
+
+  activateSla(id: string): Promise<SLA> {
+    return this.repository.activateSla(id);
+  }
+
+  decideApproval(id: string, approve: boolean, reason: string): Promise<SLA> {
+    return this.repository.decideApproval(id, approve, reason);
+  }
+
+  deactivate(id: string, reason: string): Promise<SLA> {
+    return this.repository.deactivate(id, reason);
   }
 }

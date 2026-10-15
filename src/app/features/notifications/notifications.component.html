@@ -330,7 +330,9 @@
       >SLA vinculado<select formControlName="sla_id">
         <option value="">—</option>
         @for (sla of slas(); track sla.id) {
-          <option [value]="sla.id">{{ sla.title }}</option>
+          @if (sla.status === 'Ativo' || sla.id === editingTicket()?.sla_id) {
+            <option [value]="sla.id">{{ sla.title }}</option>
+          }
         }
       </select></label
     ><label class="ui-form-label"
@@ -516,14 +518,9 @@
           <option [value]="option.key">{{ option.label }}</option>
         }
       </select></label
-    ><label class="ui-form-label"
-      >SLA vinculado<select formControlName="sla_id">
-        <option value="">—</option>
-        @for (sla of slas(); track sla.id) {
-          <option [value]="sla.id">{{ sla.title }}</option>
-        }
-      </select></label
-    ><label class="ui-form-label"
+    >
+    <p class="ui-form-label">SLA vinculado: gerencie o vínculo na tela de Gerenciamento de SLAs.</p>
+    <label class="ui-form-label"
       >Risco vinculado<select formControlName="risk_id">
         <option value="">—</option>
         @for (risk of risks(); track risk.id) {

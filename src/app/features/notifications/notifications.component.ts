@@ -503,7 +503,9 @@ export class NotificationsComponent {
         ? type.default_severity
         : this.defaultSeverity(),
       risk_id: type.risk_id ?? '',
-      sla_id: type.sla_id ?? '',
+      sla_id: this.slas().some((sla) => sla.id === type.sla_id && sla.status === 'Ativo')
+        ? (type.sla_id ?? '')
+        : '',
     });
     for (const field of type.form_schema ?? [])
       this.dynamicValues.set(field.name, new FormControl('', { nonNullable: true }));

@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
-import type { SLA, SlaHistory, SlaStatusOption } from '@core/models/database';
+import type { SLA, SlaApproval, SlaHistory, SlaStatusOption } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
 export class SlaRepository {
@@ -40,17 +40,13 @@ export class SlaRepository {
     );
   }
 
-  async createSla(input: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>): Promise<SLA> {
-    const { data, error } = await this.client.from('slas').insert(input).select('*').single();
+  async createSla(input: Record<string, unknown>): Promise<SLA> {
+    const { data, error } = await this.client.rpc('create_sla_draft', { p_payload: input });
     if (error) throw error;
     return data;
   }
 
-  async updateSla(
-    id: string,
-    patch: Partial<Omit<SLA, 'id' | 'created_at' | 'updated_at'>>,
-    justification: string,
-  ): Promise<SLA> {
+  async updateSla(id: string, patch: Record<string, unknown>, justification: string): Promise<SLA> {
     const { data, error } = await this.client.rpc('update_sla_with_reason', {
       p_id: id,
       p_patch: patch,
@@ -70,5 +66,38 @@ export class SlaRepository {
         .order('id')
         .range(from, to),
     );
+  }
+
+  fetchApprovals(): Promise<SlaApproval[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('sla_approvals')
+        .select('*')
+        .order('requested_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
+  }
+
+  async activateSla(id: string): Promise<SLA> {
+    const { data, error } = await this.client.rpc('activate_sla', { p_id: id });
+    if (error) throw error;
+    return data;
+  }
+
+  async decideApproval(id: string, approve: boolean, reason: string): Promise<SLA> {
+    const { data, error } = await this.client.rpc('decide_sla_approval', {
+      p_id: id,
+      p_approve: approve,
+      p_reason: reason,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async deactivate(id: string, reason: string): Promise<SLA> {
+    const { data, error } = await this.client.rpc('deactivate_sla', { p_id: id, p_reason: reason });
+    if (error) throw error;
+    return data;
   }
 }

@@ -26,7 +26,7 @@ describe('toNotificationTicketPayload', () => {
       description: null,
       step_id: null,
       risk_id: 'risk-default',
-      sla_id: 'sla-default',
+      sla_id: null,
       notification_type_id: 'type-1',
       incident_datetime: null,
       classification_flag: 'Incidentes',

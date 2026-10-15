@@ -167,6 +167,12 @@ export class ProcessRepository {
     );
   }
 
+  fetchAllNodeAssociations(): Promise<SipocNodeAssociation[]> {
+    return fetchAllPages((from, to) =>
+      this.client.from('sipoc_node_associations').select('*').order('id').range(from, to),
+    );
+  }
+
   fetchAssociationsByNode(nodeId: string): Promise<SipocNodeAssociation[]> {
     return fetchAllPages((from, to) =>
       this.client

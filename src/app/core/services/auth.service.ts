@@ -19,7 +19,7 @@ const PERMISSIONS: Record<Exclude<AppRole, 'admin'>, Record<string, PermissionAc
     documents: ['read', 'create', 'update', 'delete'],
     document_types: ['read', 'create', 'update', 'delete'],
     controlled_copies: ['read', 'create', 'update', 'delete'],
-    slas: ['read', 'create', 'update', 'delete'],
+    slas: ['read', 'create', 'update'],
   },
   operador: {
     processes: ['read'],

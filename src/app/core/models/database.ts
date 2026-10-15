@@ -19,6 +19,7 @@ export interface AppDatabase {
       processes: TableDefinition<Process>;
       process_history: TableDefinition<ProcessHistory>;
       sla_history: TableDefinition<SlaHistory>;
+      sla_approvals: TableDefinition<SlaApproval>;
       sipoc_nodes: TableDefinition<SipocNode>;
       sipoc_node_associations: TableDefinition<SipocNodeAssociation>;
       sipoc_step_associations: TableDefinition<SipocStepAssociation>;
@@ -71,6 +72,17 @@ export interface AppDatabase {
         Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
         Returns: SLA;
       };
+      create_sla_draft: {
+        Args: { p_payload: Record<string, unknown> };
+        Returns: SLA;
+      };
+      activate_sla: { Args: { p_id: string }; Returns: SLA };
+      submit_sla_for_approval: { Args: { p_id: string }; Returns: SLA };
+      decide_sla_approval: {
+        Args: { p_id: string; p_approve: boolean; p_reason: string };
+        Returns: SLA;
+      };
+      deactivate_sla: { Args: { p_id: string; p_reason: string }; Returns: SLA };
       advance_document: {
         Args: {
           p_document_id: string;
@@ -246,6 +258,18 @@ export interface SlaHistory {
   after_data: Record<string, unknown>;
   changed_by: string | null;
   changed_at: string;
+}
+
+export interface SlaApproval {
+  id: string;
+  sla_id: string;
+  revision: number;
+  approver_id: string | null;
+  process_ids: string[];
+  decision: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reason: string | null;
+  requested_at: string;
+  decided_at: string | null;
 }
 
 export interface SipocNode {
@@ -652,6 +676,8 @@ export interface SLA {
   id: string;
   code: string | null;
   title: string;
+  description: string | null;
+  business_rules: string | null;
   supplier_process_id: string | null;
   client_process_id: string | null;
   sipoc_input_id: string | null;
@@ -659,6 +685,10 @@ export interface SLA {
   quality_criteria: string | null;
   criticality: SlaCriticality | null;
   status: SlaStatus;
+  approval_state: 'draft' | 'pending' | 'approved' | 'rejected' | 'legacy';
+  approval_revision: number;
+  submitted_at: string | null;
+  approved_at: string | null;
   custom_fields: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
