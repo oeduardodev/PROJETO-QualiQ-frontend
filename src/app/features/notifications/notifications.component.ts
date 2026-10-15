@@ -36,6 +36,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
@@ -56,6 +57,7 @@ export class NotificationsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly mode = this.route.snapshot.data['mode'] as 'realize' | 'panel' | 'settings';
   readonly ticketColumns = signal<TicketStatusOption[]>([]);
   readonly activeStatuses = computed(() =>
@@ -483,7 +485,7 @@ export class NotificationsComponent {
   }
 
   async removeTicket(ticket: Ticket): Promise<void> {
-    if (!confirm('Excluir esta notificação?')) return;
+    if (!(await this.alertDialog.confirm('Excluir esta notificação?'))) return;
     await this.ticketService.deleteTicket(ticket.id);
     this.tickets.update((items) => items.filter((item) => item.id !== ticket.id));
     this.toast.success('Notificação excluída');
@@ -586,7 +588,7 @@ export class NotificationsComponent {
   }
 
   async removeClassification(item: NotificationClassification): Promise<void> {
-    if (!confirm('Excluir esta classificação?')) return;
+    if (!(await this.alertDialog.confirm('Excluir esta classificação?'))) return;
     await this.notificationService.deleteNotificationClassification(item.id);
     this.classifications.update((items) => items.filter((current) => current.id !== item.id));
     this.toast.success('Classificação excluída');
@@ -640,7 +642,7 @@ export class NotificationsComponent {
   }
 
   async removeType(item: NotificationType): Promise<void> {
-    if (!confirm('Excluir este tipo?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este tipo?'))) return;
     await this.notificationService.deleteNotificationType(item.id);
     this.types.update((items) => items.filter((current) => current.id !== item.id));
     this.toast.success('Tipo excluído');

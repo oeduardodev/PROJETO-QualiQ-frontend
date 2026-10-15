@@ -32,6 +32,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { QuickPaletteComponent } from '@shared/components/quick-palette/quick-palette.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
@@ -55,6 +56,7 @@ export class DimensionsComponent {
   private readonly processService = inject(ProcessService);
   private readonly ticketService = inject(TicketService);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['dimensoes'];
   readonly classifications = signal<DimensionClassificationOption[]>([]);
@@ -354,7 +356,7 @@ export class DimensionsComponent {
 
   async deleteDimension(item: Dimension): Promise<void> {
     if (!this.canManage() || item.version_id !== this.selectedVersionId()) return;
-    if (!confirm(`Excluir a dimensão ${item.code} desta versão?`)) return;
+    if (!(await this.alertDialog.confirm(`Excluir a dimensão ${item.code} desta versão?`))) return;
     try {
       await this.dimensionService.deleteDimension(item.id);
       this.dimensions.update((items) => items.filter((entry) => entry.id !== item.id));

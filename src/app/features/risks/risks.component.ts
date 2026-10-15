@@ -28,6 +28,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
@@ -44,6 +45,7 @@ export class RisksComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly management = this.route.snapshot.data['mode'] === 'management';
   readonly statuses = signal<RiskStatusOption[]>([]);
   readonly activeStatuses = computed(() => this.statuses().filter((option) => option.is_active));
@@ -261,7 +263,8 @@ export class RisksComponent {
   }
 
   async deleteRisk(risk: Risk): Promise<void> {
-    if (!confirm('Excluir este risco e seus registros relacionados?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este risco e seus registros relacionados?')))
+      return;
     try {
       await this.riskService.deleteRisk(risk.id);
       this.risks.update((items) => items.filter((item) => item.id !== risk.id));
@@ -340,7 +343,7 @@ export class RisksComponent {
   }
 
   async removeDetail(kind: 'factor' | 'action' | 'plan', id: string): Promise<void> {
-    if (!confirm('Excluir este registro?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este registro?'))) return;
     if (kind === 'factor') {
       await this.riskService.deleteRiskFactor(id);
       this.factors.update((items) => items.filter((item) => item.id !== id));

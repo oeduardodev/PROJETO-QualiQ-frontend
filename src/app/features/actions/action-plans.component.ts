@@ -14,6 +14,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
@@ -28,6 +29,7 @@ export class ActionPlansComponent {
   private readonly actionPlanService = inject(ActionPlanService);
   private readonly ticketService = inject(TicketService);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly columns = signal<ActionPlanStatusOption[]>([]);
   readonly activeStatuses = computed(() => this.columns().filter((option) => option.is_active));
   readonly formStatuses = computed(() =>
@@ -157,7 +159,7 @@ export class ActionPlansComponent {
   }
 
   async deleteActionPlan(plan: ActionPlan): Promise<void> {
-    if (!confirm('Excluir este plano de ação?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este plano de ação?'))) return;
     try {
       await this.actionPlanService.deleteActionPlan(plan.id);
       this.plans.update((items) => items.filter((item) => item.id !== plan.id));

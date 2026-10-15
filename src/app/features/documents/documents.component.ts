@@ -18,6 +18,7 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { DocumentsStore } from './documents.store';
 
 @Component({
@@ -34,6 +35,7 @@ export class DocumentsComponent {
   readonly store = inject(DocumentsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly mode = this.route.snapshot.data['mode'] as
     'panel' | 'hierarchy' | 'management' | 'copies';
   readonly workflow = WORKFLOW;
@@ -210,7 +212,7 @@ export class DocumentsComponent {
 
   async removeDocument(document: GEDDocument): Promise<void> {
     if (this.blocked()) return;
-    if (!confirm('Excluir este documento?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este documento?'))) return;
     await this.documentService.deleteDocument(document.id);
     this.store.documents.update((items) => items.filter((item) => item.id !== document.id));
     this.toast.success('Documento excluído');
@@ -255,7 +257,7 @@ export class DocumentsComponent {
 
   async removeType(type: DocumentType): Promise<void> {
     if (this.blocked()) return;
-    if (!confirm('Excluir este tipo documental?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este tipo documental?'))) return;
     await this.documentService.deleteDocumentType(type.id);
     this.store.types.update((items) => items.filter((item) => item.id !== type.id));
     this.toast.success('Tipo excluído');
@@ -315,7 +317,7 @@ export class DocumentsComponent {
 
   async removeCopy(copy: ControlledCopy): Promise<void> {
     if (this.blocked()) return;
-    if (!confirm('Excluir este registro de cópia?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este registro de cópia?'))) return;
     await this.documentService.deleteControlledCopy(copy.id);
     this.store.copies.update((items) => items.filter((item) => item.id !== copy.id));
     this.toast.success('Cópia excluída');

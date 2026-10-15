@@ -27,6 +27,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 type CustomFieldType = 'text' | 'number' | 'date' | 'link';
@@ -52,6 +53,7 @@ export class SipocComponent {
   private readonly slaService = inject(SlaService);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly columns = COLUMNS;
   readonly LABELS = LABELS;
   readonly methodology = METHODOLOGIES['sipoc'];
@@ -365,7 +367,7 @@ export class SipocComponent {
 
   async removeNode(): Promise<void> {
     const current = this.editingNode();
-    if (!current || !confirm('Excluir este item?')) return;
+    if (!current || !(await this.alertDialog.confirm('Excluir este item?'))) return;
     try {
       await this.processService.deleteSipocNode(current.id);
       this.allNodes.update((items) => items.filter((item) => item.id !== current.id));

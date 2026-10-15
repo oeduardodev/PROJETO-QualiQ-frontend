@@ -1,0 +1,32 @@
+<app-modal
+  [open]="!!dialog.current()"
+  [title]="dialog.current()?.title ?? ''"
+  width="max-w-md"
+  (closed)="dialog.answer(false)"
+>
+  @if (dialog.current(); as request) {
+    <div class="flex items-start gap-3 text-sm text-slate-600">
+      <span appIcon="TriangleAlert" class="mt-0.5 h-5 w-5 shrink-0 text-amber-500"></span>
+      <p class="whitespace-pre-line">{{ request.message }}</p>
+    </div>
+  }
+  <div modal-footer class="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+    @if (dialog.current(); as request) {
+      <button
+        #cancelButton
+        type="button"
+        class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        (click)="dialog.answer(false)"
+      >
+        {{ request.cancelLabel }}
+      </button>
+      <button
+        type="button"
+        class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700"
+        (click)="dialog.answer(true)"
+      >
+        {{ request.confirmLabel }}
+      </button>
+    }
+  </div>
+</app-modal>

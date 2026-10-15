@@ -20,6 +20,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
+import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 
 @Component({
@@ -34,6 +35,7 @@ export class HelpdeskComponent {
   private readonly helpdeskService = inject(HelpdeskService);
   private readonly processService = inject(ProcessService);
   private readonly toast = inject(ToastService);
+  private readonly alertDialog = inject(AlertDialogService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['helpdesk'];
   readonly columns = signal<HelpdeskStatusOption[]>([]);
@@ -218,7 +220,7 @@ export class HelpdeskComponent {
 
   async deleteTicket(ticket: HelpdeskTicket): Promise<void> {
     if (!this.canManage(ticket)) return;
-    if (!confirm('Excluir este chamado?')) return;
+    if (!(await this.alertDialog.confirm('Excluir este chamado?'))) return;
     try {
       await this.helpdeskService.deleteHelpdeskTicket(ticket.id);
       this.tickets.update((items) => items.filter((item) => item.id !== ticket.id));
