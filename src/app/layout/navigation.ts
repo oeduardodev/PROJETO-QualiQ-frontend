@@ -144,7 +144,6 @@ export const NAV_GROUPS: NavGroup[] = [
             label: 'Hierarquia e Parametrização',
             icon: 'Pyramid',
             route: 'documentos/hierarquia',
-            adminOnly: true,
           },
           {
             id: 'documentos/gerenciamento',

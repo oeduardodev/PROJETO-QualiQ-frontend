@@ -4,6 +4,8 @@ import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { DocumentSavePayload } from './document.mapper';
 import type {
   DocumentType,
+  DocumentLevel,
+  DocumentTypeHistory,
   GEDDocument,
   DocumentWorkflow,
   ControlledCopy,
@@ -44,35 +46,66 @@ export class DocumentRepository {
     );
   }
 
-  async createDocumentType(
-    input: Partial<Omit<DocumentType, 'id' | 'created_at'>>,
-  ): Promise<DocumentType> {
+  fetchDocumentLevels(): Promise<DocumentLevel[]> {
+    return fetchAllPages((from, to) =>
+      this.client.from('document_levels').select('*').order('level').range(from, to),
+    );
+  }
+
+  async saveDocumentLevel(level: number | null, name: string): Promise<DocumentLevel> {
     const { data, error } = await this.client
-      .from('document_types')
-      .insert(input)
-      .select('*')
+      .rpc('save_document_level', { p_level: level, p_name: name })
       .single();
     if (error) throw error;
     return data;
   }
 
-  async updateDocumentType(
-    id: string,
-    patch: Partial<Omit<DocumentType, 'id' | 'created_at'>>,
+  fetchDocumentTypeHistory(typeId: string): Promise<DocumentTypeHistory[]> {
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('document_type_history')
+        .select('*')
+        .eq('type_id', typeId)
+        .order('changed_at', { ascending: false })
+        .range(from, to),
+    );
+  }
+
+  async saveDocumentType(
+    id: string | null,
+    input: Pick<
+      DocumentType,
+      | 'name'
+      | 'acronym'
+      | 'hierarchy_level'
+      | 'validity_days'
+      | 'sla_review_days'
+      | 'sla_approval_days'
+      | 'sla_publication_days'
+      | 'print_allowed'
+      | 'public_panel'
+      | 'active'
+    >,
+    justification: string | null,
   ): Promise<DocumentType> {
     const { data, error } = await this.client
-      .from('document_types')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
+      .rpc('save_document_type', {
+        p_type_id: id,
+        p_name: input.name,
+        p_acronym: input.acronym,
+        p_level: input.hierarchy_level,
+        p_validity_days: input.validity_days,
+        p_review_days: input.sla_review_days,
+        p_approval_days: input.sla_approval_days,
+        p_publication_days: input.sla_publication_days,
+        p_print_allowed: input.print_allowed,
+        p_public_panel: input.public_panel,
+        p_active: input.active,
+        p_justification: justification,
+      })
       .single();
     if (error) throw error;
     return data;
-  }
-
-  async deleteDocumentType(id: string): Promise<void> {
-    const { error } = await this.client.from('document_types').delete().eq('id', id);
-    if (error) throw error;
   }
 
   fetchDocuments(): Promise<GEDDocument[]> {

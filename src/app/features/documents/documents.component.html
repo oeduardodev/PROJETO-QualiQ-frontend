@@ -25,11 +25,13 @@
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Documento
           </button>
         }
-        @if (mode === 'hierarchy') {
+        @if (mode === 'hierarchy' && canManageTypes()) {
+          <button class="ui-button-secondary" (click)="openLevel()">
+            <span appIcon="Plus" class="h-4 w-4"></span>Novo Nível
+          </button>
           <button
             class="ui-button-primary"
-            [class.ui-locked]="locked"
-            [attr.aria-disabled]="locked"
+            [disabled]="!store.levels().length"
             (click)="openType()"
           >
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Tipo
@@ -83,6 +85,16 @@
             <p class="mt-1 text-xs text-slate-400">
               {{ store.typeName(document.type_id) }} · {{ store.processName(document.process_id) }}
             </p>
+            @if (document.expires_at) {
+              <p
+                class="mt-2 text-xs"
+                [class.text-rose-600]="isExpired(document)"
+                [class.text-slate-500]="!isExpired(document)"
+              >
+                {{ isExpired(document) ? 'Vencido em' : 'Válido até' }}
+                {{ formatDateOnly(document.expires_at) }}
+              </p>
+            }
             <div class="mt-5 flex gap-2">
               @if (document.drive_link) {
                 <button
@@ -94,7 +106,7 @@
                   <span appIcon="ExternalLink" class="h-3.5 w-3.5"></span>Abrir
                 </button>
               }
-              @if (document.print_allowed) {
+              @if (canPrint(document)) {
                 <button
                   class="ui-button-secondary"
                   [class.ui-locked]="locked"
@@ -116,43 +128,71 @@
       </div>
     }
     @if (mode === 'hierarchy') {
-      <div class="space-y-4">
-        @for (level of levels; track level) {
-          <section class="ui-card">
+      <div class="space-y-5">
+        @if (!store.levels().length) {
+          <p
+            class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500"
+          >
+            Nenhum nível configurado. O administrador pode criar o primeiro nível da pirâmide.
+          </p>
+        }
+        <p class="text-sm text-slate-500">
+          A ordem dos níveis define a pirâmide documental, do topo à base. Tipos inativos permanecem
+          visíveis para consulta.
+        </p>
+        @for (level of store.levels(); track level.level; let index = $index) {
+          <section class="ui-card hierarchy-tier" [style.max-width.%]="tierWidth(index)">
             <div class="mb-4 flex items-center gap-3">
               <span
                 class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500"
-                ><span [appIcon]="levelIcon(level)" class="h-5 w-5"></span
+                ><span appIcon="Layers3" class="h-5 w-5"></span
               ></span>
               <div>
-                <h3 class="text-sm font-semibold text-slate-700">{{ levelLabel(level) }}</h3>
-                <p class="text-xs text-slate-400">{{ typesAt(level).length }} tipos documentais</p>
+                <h3 class="text-sm font-semibold text-slate-700">
+                  Nível {{ level.level }} · {{ level.name }}
+                </h3>
+                <p class="text-xs text-slate-400">
+                  {{ typesAt(level.level).length }} tipos documentais
+                </p>
               </div>
+              @if (canManageTypes()) {
+                <button class="ui-action-edit ml-auto text-xs" (click)="openLevel(level.level)">
+                  Renomear nível
+                </button>
+              }
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              @for (type of typesAt(level); track type.id) {
+              @for (type of typesAt(level.level); track type.id) {
                 <article class="rounded-lg border border-slate-200 p-4">
                   <div class="flex items-start justify-between">
-                    <strong class="text-sm text-slate-700">{{ type.name }}</strong>
                     <div>
-                      <button
-                        class="ui-action-edit text-xs"
-                        [class.ui-locked]="locked"
-                        [attr.aria-disabled]="locked"
-                        (click)="openType(type)"
-                      >
-                        Editar</button
-                      ><button
-                        class="ui-action-danger ml-2 text-xs"
-                        [class.ui-locked]="locked"
-                        [attr.aria-disabled]="locked"
-                        (click)="removeType(type)"
-                      >
-                        Excluir
+                      <strong class="text-sm text-slate-700">{{ type.name }}</strong>
+                      <span class="ml-2 font-mono text-xs text-slate-500">{{ type.acronym }}</span>
+                      @if (!type.active) {
+                        <span class="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500"
+                          >Inativo</span
+                        >
+                      }
+                    </div>
+                    <div class="flex gap-2">
+                      <button class="ui-action-history text-xs" (click)="openTypeHistory(type)">
+                        Histórico
                       </button>
+                      @if (canManageTypes()) {
+                        <button class="ui-action-edit text-xs" (click)="openType(type)">
+                          Editar
+                        </button>
+                      }
                     </div>
                   </div>
-                  <div class="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] text-slate-400">
+                  <div
+                    class="mt-3 grid grid-cols-2 gap-2 text-center text-[10px] text-slate-400 sm:grid-cols-3"
+                  >
+                    <span
+                      >Validade<strong class="block text-sm text-slate-700"
+                        >{{ type.validity_days }}d</strong
+                      ></span
+                    >
                     <span
                       >Revisão<strong class="block text-sm text-slate-700"
                         >{{ type.sla_review_days }}d</strong
@@ -162,8 +202,17 @@
                         >{{ type.sla_approval_days }}d</strong
                       ></span
                     ><span
+                      >Publicação<strong class="block text-sm text-slate-700"
+                        >{{ type.sla_publication_days }}d</strong
+                      ></span
+                    ><span
                       >Impressão<strong class="block text-sm text-slate-700">{{
                         type.print_allowed ? 'Sim' : 'Não'
+                      }}</strong></span
+                    >
+                    <span
+                      >Painel público<strong class="block text-sm text-slate-700">{{
+                        type.public_panel ? 'Sim' : 'Não'
                       }}</strong></span
                     >
                   </div>
@@ -315,6 +364,12 @@
     <div class="space-y-5">
       <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
         <p class="font-semibold text-slate-700">{{ document.title }}</p>
+        @if (document.code) {
+          <p class="mt-1 font-mono text-xs text-slate-500">{{ document.code }}</p>
+        }
+        @if (document.legacy_code && document.legacy_code !== document.code) {
+          <p class="mt-1 text-xs text-slate-500">Código anterior: {{ document.legacy_code }}</p>
+        }
         <p class="mt-1 text-xs text-slate-500">Status atual: {{ document.status }}</p>
         <p class="mt-1 text-xs text-slate-500">
           Tipo: {{ store.typeName(document.type_id) }} · Processo:
@@ -378,14 +433,16 @@
     }
     <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
     ><label class="ui-form-label"
-      >Tipo<select formControlName="type_id">
+      >Tipo *<select formControlName="type_id">
         <option value="">—</option>
         @for (type of store.types(); track type.id) {
-          <option [value]="type.id">{{ type.name }}</option>
+          @if (type.active || type.id === editingDocument()?.type_id) {
+            <option [value]="type.id">{{ type.name }}</option>
+          }
         }
       </select></label
     ><label class="ui-form-label"
-      >Processo<select formControlName="process_id">
+      >Processo *<select formControlName="process_id">
         <option value="">—</option>
         @for (process of store.processes(); track process.id) {
           <option [value]="process.id">{{ process.title }}</option>
@@ -421,38 +478,103 @@
 <app-side-drawer
   [open]="typeOpen()"
   [title]="editingType() ? 'Editar Tipo Documental' : 'Novo Tipo Documental'"
-  width="max-w-md"
+  width="max-w-lg"
   (closed)="typeOpen.set(false)"
   ><form [formGroup]="typeForm" (ngSubmit)="saveType()" class="space-y-4">
+    @if (typeError()) {
+      <p class="error">{{ typeError() }}</p>
+    }
     <label class="ui-form-label">Nome *<input formControlName="name" /></label
     ><label class="ui-form-label"
+      >Sigla do tipo *<input formControlName="acronym" maxlength="8" placeholder="POP" /></label
+    ><label class="ui-form-label"
       >Nível hierárquico<select formControlName="hierarchy_level">
-        @for (level of levels; track level) {
-          <option [value]="level">{{ levelLabel(level) }}</option>
+        @for (level of store.levels(); track level.level) {
+          <option [ngValue]="level.level">{{ level.level }} · {{ level.name }}</option>
         }
       </select></label
     >
+    <p class="text-xs text-slate-500">
+      Código gerado automaticamente: sigla do processo · sigla do tipo · número sequencial.
+    </p>
     <div class="grid grid-cols-2 gap-3">
+      <label class="ui-form-label"
+        >Validade (dias) *<input type="number" min="1" formControlName="validity_days"
+      /></label>
       <label class="ui-form-label"
         >SLA revisão (dias)<input type="number" min="0" formControlName="sla_review_days" /></label
       ><label class="ui-form-label"
         >SLA aprovação (dias)<input type="number" min="0" formControlName="sla_approval_days"
       /></label>
+      <label class="ui-form-label"
+        >SLA publicação (dias)<input type="number" min="0" formControlName="sla_publication_days"
+      /></label>
     </div>
     <label class="flex items-center gap-2 text-sm text-slate-600"
       ><input type="checkbox" formControlName="print_allowed" />Permitir impressão</label
     >
+    <label class="flex items-center gap-2 text-sm text-slate-600"
+      ><input type="checkbox" formControlName="public_panel" />Exibir documentos deste tipo no
+      painel público</label
+    >
+    @if (editingType()) {
+      <label class="flex items-center gap-2 text-sm text-slate-600"
+        ><input type="checkbox" formControlName="active" />Tipo ativo</label
+      >
+      <label class="ui-form-label"
+        >Justificativa da alteração *<textarea formControlName="justification" rows="3"></textarea>
+      </label>
+    }
     <div class="flex justify-end gap-2">
       <button type="button" class="ui-button-secondary" (click)="typeOpen.set(false)">
         Cancelar</button
-      ><button
-        type="submit"
-        class="ui-button-primary"
-        [class.ui-locked]="locked"
-        [attr.aria-disabled]="locked"
-      >
-        Salvar
-      </button>
+      ><button type="submit" class="ui-button-primary" [disabled]="typeSaving()">Salvar</button>
     </div>
   </form></app-side-drawer
 >
+<app-side-drawer
+  [open]="levelOpen()"
+  [title]="editingLevel() ? 'Renomear nível' : 'Novo nível da pirâmide'"
+  width="max-w-md"
+  (closed)="levelOpen.set(false)"
+>
+  <form (ngSubmit)="saveLevel()" class="space-y-4">
+    @if (levelError()) {
+      <p class="error">{{ levelError() }}</p>
+    }
+    <label class="ui-form-label">Nome do nível *<input [formControl]="levelName" /></label>
+    <p class="text-xs text-slate-500">Novos níveis são adicionados à base da pirâmide.</p>
+    <div class="flex justify-end gap-2">
+      <button type="button" class="ui-button-secondary" (click)="levelOpen.set(false)">
+        Cancelar</button
+      ><button type="submit" class="ui-button-primary" [disabled]="levelSaving()">Salvar</button>
+    </div>
+  </form>
+</app-side-drawer>
+<app-side-drawer
+  [open]="!!historyType()"
+  [title]="'Histórico · ' + (historyType()?.name || '')"
+  width="max-w-lg"
+  (closed)="historyType.set(null)"
+>
+  @if (typeHistoryLoading()) {
+    <p class="text-sm text-slate-500">Carregando histórico...</p>
+  } @else {
+    <div class="space-y-3">
+      @for (entry of typeHistory(); track entry.id) {
+        <article class="rounded-lg border border-slate-200 p-4 text-sm">
+          <div class="flex justify-between gap-2">
+            <strong class="text-slate-700">{{ typeActionLabel(entry.action) }}</strong
+            ><span class="text-xs text-slate-500">{{ formatDate(entry.changed_at) }}</span>
+          </div>
+          <p class="mt-1 text-xs text-slate-500">{{ store.profileName(entry.changed_by) }}</p>
+          @if (entry.justification) {
+            <p class="mt-2 text-slate-700">{{ entry.justification }}</p>
+          }
+        </article>
+      } @empty {
+        <p class="text-sm text-slate-500">Nenhuma alteração registrada.</p>
+      }
+    </div>
+  }
+</app-side-drawer>

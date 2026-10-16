@@ -17,7 +17,7 @@ const PERMISSIONS: Record<Exclude<AppRole, 'admin'>, Record<string, PermissionAc
     indicator_history: ['read', 'create', 'update', 'delete'],
     value_chain_categories: ['read'],
     documents: ['read', 'create', 'update', 'delete'],
-    document_types: ['read', 'create', 'update', 'delete'],
+    document_types: ['read'],
     controlled_copies: ['read', 'create', 'update', 'delete'],
     slas: ['read', 'create', 'update'],
   },

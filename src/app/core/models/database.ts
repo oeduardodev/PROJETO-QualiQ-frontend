@@ -53,6 +53,8 @@ export interface AppDatabase {
       risk_contingency_plans: TableDefinition<RiskContingencyPlan>;
       risk_contingency_plan_statuses: TableDefinition<RiskContingencyPlanStatusOption>;
       document_types: TableDefinition<DocumentType>;
+      document_levels: TableDefinition<DocumentLevel>;
+      document_type_history: TableDefinition<DocumentTypeHistory>;
       documents: TableDefinition<GEDDocument>;
       document_workflows: TableDefinition<DocumentWorkflow, 'changed_at'>;
       controlled_copies: TableDefinition<ControlledCopy>;
@@ -113,6 +115,27 @@ export interface AppDatabase {
           p_print_allowed: boolean;
         };
         Returns: GEDDocument;
+      };
+      save_document_level: {
+        Args: { p_level: number | null; p_name: string };
+        Returns: DocumentLevel;
+      };
+      save_document_type: {
+        Args: {
+          p_type_id: string | null;
+          p_name: string;
+          p_acronym: string;
+          p_level: number;
+          p_validity_days: number;
+          p_review_days: number;
+          p_approval_days: number;
+          p_publication_days: number;
+          p_print_allowed: boolean;
+          p_public_panel: boolean;
+          p_active: boolean;
+          p_justification: string | null;
+        };
+        Returns: DocumentType;
       };
       record_indicator_value: {
         Args: {
@@ -565,16 +588,40 @@ export type CopyStatus = GeneratedDatabase['public']['Enums']['copy_status'];
 export interface DocumentType {
   id: string;
   name: string;
+  acronym: string;
   hierarchy_level: number;
+  validity_days: number;
   sla_review_days: number;
   sla_approval_days: number;
+  sla_publication_days: number;
   print_allowed: boolean;
+  public_panel: boolean;
+  active: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentLevel {
+  level: number;
+  name: string;
+  created_at: string;
+}
+
+export interface DocumentTypeHistory {
+  id: string;
+  type_id: string;
+  action: 'created' | 'updated' | 'deactivated' | 'reactivated';
+  justification: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
 }
 
 export interface GEDDocument {
   id: string;
   code: string | null;
+  legacy_code: string | null;
   title: string;
   type_id: string | null;
   process_id: string | null;
@@ -582,6 +629,7 @@ export interface GEDDocument {
   status: DocumentStatus;
   owner_id: string | null;
   print_allowed: boolean;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
 }

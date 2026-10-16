@@ -5,6 +5,7 @@ import { computed, Injectable, signal, inject } from '@angular/core';
 import type {
   ControlledCopy,
   DocumentType,
+  DocumentLevel,
   GEDDocument,
   Process,
   Profile,
@@ -17,6 +18,7 @@ export class DocumentsStore {
   private readonly processService = inject(ProcessService);
   private readonly profileService = inject(ProfileService);
   readonly types = signal<DocumentType[]>([]);
+  readonly levels = signal<DocumentLevel[]>([]);
   readonly documents = signal<GEDDocument[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly profiles = signal<Profile[]>([]);
@@ -24,7 +26,11 @@ export class DocumentsStore {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly published = computed(() =>
-    this.documents().filter((document) => document.status === 'publicado'),
+    this.documents().filter(
+      (document) =>
+        document.status === 'publicado' &&
+        this.types().some((type) => type.id === document.type_id && type.public_panel),
+    ),
   );
   readonly pendingCopies = computed(
     () => this.copies().filter((copy) => copy.status === 'solicitada').length,
@@ -37,14 +43,16 @@ export class DocumentsStore {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [types, documents, processes, copies, profiles] = await Promise.all([
+      const [types, levels, documents, processes, copies, profiles] = await Promise.all([
         this.documentService.fetchDocumentTypes(),
+        this.documentService.fetchDocumentLevels(),
         this.documentService.fetchDocuments(),
         this.processService.fetchProcesses(),
         this.documentService.fetchControlledCopies(),
         this.profileService.findAll(),
       ]);
       this.types.set(types);
+      this.levels.set(levels);
       this.documents.set(documents);
       this.processes.set(processes);
       this.copies.set(copies);

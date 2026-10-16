@@ -7,6 +7,8 @@ import { DOCUMENT_STATUS_SEQUENCE } from './document-workflow.constants';
 import type { DocumentSavePayload } from './document.mapper';
 import type {
   DocumentType,
+  DocumentLevel,
+  DocumentTypeHistory,
   GEDDocument,
   DocumentWorkflow,
   ControlledCopy,
@@ -49,21 +51,36 @@ export class DocumentService {
     return this.repository.fetchDocumentTypes();
   }
 
-  createDocumentType(
-    input: Partial<Omit<DocumentType, 'id' | 'created_at'>>,
-  ): Promise<DocumentType> {
-    return this.repository.createDocumentType(input);
+  fetchDocumentLevels(): Promise<DocumentLevel[]> {
+    return this.repository.fetchDocumentLevels();
   }
 
-  updateDocumentType(
-    id: string,
-    patch: Partial<Omit<DocumentType, 'id' | 'created_at'>>,
-  ): Promise<DocumentType> {
-    return this.repository.updateDocumentType(id, patch);
+  saveDocumentLevel(level: number | null, name: string): Promise<DocumentLevel> {
+    return this.repository.saveDocumentLevel(level, name);
   }
 
-  deleteDocumentType(id: string): Promise<void> {
-    return this.repository.deleteDocumentType(id);
+  saveDocumentType(
+    id: string | null,
+    input: Pick<
+      DocumentType,
+      | 'name'
+      | 'acronym'
+      | 'hierarchy_level'
+      | 'validity_days'
+      | 'sla_review_days'
+      | 'sla_approval_days'
+      | 'sla_publication_days'
+      | 'print_allowed'
+      | 'public_panel'
+      | 'active'
+    >,
+    justification: string | null,
+  ): Promise<DocumentType> {
+    return this.repository.saveDocumentType(id, input, justification);
+  }
+
+  fetchDocumentTypeHistory(typeId: string): Promise<DocumentTypeHistory[]> {
+    return this.repository.fetchDocumentTypeHistory(typeId);
   }
 
   fetchDocuments(): Promise<GEDDocument[]> {

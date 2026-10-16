@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { GEDDocument } from '@core/models/database';
+import type { DocumentType, GEDDocument } from '@core/models/database';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { DocumentRepository } from './document.repository';
 
@@ -62,6 +62,48 @@ describe('DocumentRepository', () => {
       p_process_id: null,
       p_drive_link: null,
       p_print_allowed: false,
+    });
+  });
+
+  it('saves a document type and its required reason through the audited RPC', async () => {
+    const saved = { id: 'type-1', name: 'Procedimento', active: false } as DocumentType;
+    const single = vi.fn(() => Promise.resolve({ data: saved, error: null }));
+    const rpc = vi.fn(() => ({ single }));
+    TestBed.configureTestingModule({
+      providers: [{ provide: SupabaseService, useValue: { client: { rpc } } }],
+    });
+
+    const result = await TestBed.inject(DocumentRepository).saveDocumentType(
+      'type-1',
+      {
+        name: 'Procedimento',
+        acronym: 'POP',
+        hierarchy_level: 3,
+        validity_days: 365,
+        sla_review_days: 10,
+        sla_approval_days: 5,
+        sla_publication_days: 2,
+        print_allowed: true,
+        public_panel: false,
+        active: false,
+      },
+      'Substituído por outro tipo',
+    );
+
+    expect(result).toBe(saved);
+    expect(rpc).toHaveBeenCalledWith('save_document_type', {
+      p_type_id: 'type-1',
+      p_name: 'Procedimento',
+      p_acronym: 'POP',
+      p_level: 3,
+      p_validity_days: 365,
+      p_review_days: 10,
+      p_approval_days: 5,
+      p_publication_days: 2,
+      p_print_allowed: true,
+      p_public_panel: false,
+      p_active: false,
+      p_justification: 'Substituído por outro tipo',
     });
   });
 });

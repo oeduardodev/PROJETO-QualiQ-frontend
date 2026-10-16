@@ -12,6 +12,7 @@ import type {
   CopyStatus,
   DocumentStatus,
   DocumentType,
+  DocumentTypeHistory,
   DocumentWorkflow,
   GEDDocument,
 } from '@core/models/database';
@@ -20,6 +21,7 @@ import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.
 import { ToastService } from '@shared/services/toast.service';
 import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { DocumentsStore } from './documents.store';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'app-documents',
@@ -32,6 +34,7 @@ import { DocumentsStore } from './documents.store';
 })
 export class DocumentsComponent {
   private readonly documentService = inject(DocumentService);
+  readonly auth = inject(AuthService);
   readonly store = inject(DocumentsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
@@ -40,7 +43,7 @@ export class DocumentsComponent {
     'panel' | 'hierarchy' | 'management' | 'copies';
   readonly workflow = WORKFLOW;
   readonly locked = DOCUMENTS_LOCKED;
-  readonly levels = [1, 2, 3, 4];
+  readonly canManageTypes = computed(() => this.auth.isAdmin());
   readonly searchValue = signal('');
   readonly search = new FormControl('', { nonNullable: true });
   readonly documentOpen = signal(false);
@@ -51,21 +54,52 @@ export class DocumentsComponent {
   readonly workflowError = signal<string | null>(null);
   readonly typeOpen = signal(false);
   readonly editingType = signal<DocumentType | null>(null);
+  readonly typeSaving = signal(false);
+  readonly typeError = signal<string | null>(null);
+  readonly levelOpen = signal(false);
+  readonly editingLevel = signal<number | null>(null);
+  readonly levelError = signal<string | null>(null);
+  readonly levelSaving = signal(false);
+  readonly levelName = new FormControl('', { nonNullable: true, validators: Validators.required });
+  readonly historyType = signal<DocumentType | null>(null);
+  readonly typeHistory = signal<DocumentTypeHistory[]>([]);
+  readonly typeHistoryLoading = signal(false);
   readonly formError = signal<string | null>(null);
   readonly documentForm = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    type_id: new FormControl('', { nonNullable: true }),
-    process_id: new FormControl('', { nonNullable: true }),
+    type_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    process_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     drive_link: new FormControl('', { nonNullable: true }),
     status: new FormControl<DocumentStatus>('rascunho', { nonNullable: true }),
     print_allowed: new FormControl(false, { nonNullable: true }),
   });
   readonly typeForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    acronym: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.pattern(/^[A-Za-z0-9]{2,8}$/)],
+    }),
     hierarchy_level: new FormControl(1, { nonNullable: true }),
-    sla_review_days: new FormControl(0, { nonNullable: true }),
-    sla_approval_days: new FormControl(0, { nonNullable: true }),
+    validity_days: new FormControl(365, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(1)],
+    }),
+    sla_review_days: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    sla_approval_days: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    sla_publication_days: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
     print_allowed: new FormControl(false, { nonNullable: true }),
+    public_panel: new FormControl(true, { nonNullable: true }),
+    active: new FormControl(true, { nonNullable: true }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly panelDocuments = computed(() =>
     this.store
@@ -112,7 +146,7 @@ export class DocumentsComponent {
   }
 
   private blocked(): boolean {
-    if (!DOCUMENTS_LOCKED) return false;
+    if (!this.locked) return false;
     this.toast.error(DOCUMENTS_LOCKED_MESSAGE);
     return true;
   }
@@ -125,18 +159,36 @@ export class DocumentsComponent {
     return this.store.types().filter((type) => type.hierarchy_level === level);
   }
 
-  levelLabel(level: number): string {
-    return level === 1 ? 'Nível 1 — Topo' : level === 4 ? 'Nível 4 — Base' : `Nível ${level}`;
+  tierWidth(index: number): number {
+    const count = this.store.levels().length;
+    return count <= 1 ? 100 : 52 + (48 * index) / (count - 1);
   }
 
-  levelIcon(level: number): string {
-    return ({ 1: 'Triangle', 2: 'Pentagon', 3: 'Hexagon', 4: 'Square' } as Record<number, string>)[
-      level
-    ];
+  canPrint(document: GEDDocument): boolean {
+    return (
+      document.print_allowed &&
+      !!this.store.types().find((type) => type.id === document.type_id)?.print_allowed
+    );
+  }
+
+  isExpired(document: GEDDocument): boolean {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return !!document.expires_at && document.expires_at < today;
+  }
+
+  formatDateOnly(value: string): string {
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  levelLabel(level: number): string {
+    return this.store.levels().find((item) => item.level === level)?.name ?? `Nível ${level}`;
   }
 
   openDocument(document?: GEDDocument): void {
     if (this.blocked()) return;
+    this.formError.set(null);
     this.editingDocument.set(document ?? null);
     this.documentForm.reset(
       document
@@ -178,7 +230,7 @@ export class DocumentsComponent {
   async saveDocument(): Promise<void> {
     if (this.blocked()) return;
     if (this.documentForm.invalid) {
-      this.formError.set('Título é obrigatório.');
+      this.formError.set('Título, tipo e processo são obrigatórios.');
       return;
     }
     try {
@@ -219,48 +271,141 @@ export class DocumentsComponent {
   }
 
   openType(type?: DocumentType): void {
-    if (this.blocked()) return;
+    if (!this.canManageTypes()) return;
     this.editingType.set(type ?? null);
+    this.typeError.set(null);
     this.typeForm.reset(
       type
         ? {
             name: type.name,
+            acronym: type.acronym,
             hierarchy_level: type.hierarchy_level,
+            validity_days: type.validity_days,
             sla_review_days: type.sla_review_days,
             sla_approval_days: type.sla_approval_days,
+            sla_publication_days: type.sla_publication_days,
             print_allowed: type.print_allowed,
+            public_panel: type.public_panel,
+            active: type.active,
+            justification: '',
           }
         : {
             name: '',
-            hierarchy_level: 1,
+            acronym: '',
+            hierarchy_level: this.store.levels()[0]?.level ?? 1,
+            validity_days: 365,
             sla_review_days: 0,
             sla_approval_days: 0,
+            sla_publication_days: 0,
             print_allowed: false,
+            public_panel: true,
+            active: true,
+            justification: '',
           },
     );
     this.typeOpen.set(true);
   }
 
   async saveType(): Promise<void> {
-    if (this.blocked()) return;
-    if (this.typeForm.invalid) return;
+    if (!this.canManageTypes() || this.typeSaving()) return;
     const current = this.editingType();
-    const saved = current
-      ? await this.documentService.updateDocumentType(current.id, this.typeForm.getRawValue())
-      : await this.documentService.createDocumentType(this.typeForm.getRawValue());
-    this.store.types.update((items) =>
-      current ? items.map((item) => (item.id === saved.id ? saved : item)) : [...items, saved],
-    );
-    this.toast.success(current ? 'Tipo atualizado' : 'Tipo criado');
-    this.typeOpen.set(false);
+    const value = this.typeForm.getRawValue();
+    if (
+      this.typeForm.invalid ||
+      !value.name.trim() ||
+      !this.store.levels().some((level) => level.level === value.hierarchy_level)
+    ) {
+      this.typeError.set('Preencha nome, sigla, nível e prazos válidos.');
+      return;
+    }
+    if (current && !value.justification.trim()) {
+      this.typeError.set('Informe a justificativa para alterar ou inativar o tipo.');
+      return;
+    }
+    this.typeSaving.set(true);
+    this.typeError.set(null);
+    try {
+      const saved = await this.documentService.saveDocumentType(
+        current?.id ?? null,
+        {
+          name: value.name.trim(),
+          acronym: value.acronym.trim().toUpperCase(),
+          hierarchy_level: value.hierarchy_level,
+          validity_days: value.validity_days,
+          sla_review_days: value.sla_review_days,
+          sla_approval_days: value.sla_approval_days,
+          sla_publication_days: value.sla_publication_days,
+          print_allowed: value.print_allowed,
+          public_panel: value.public_panel,
+          active: value.active,
+        },
+        value.justification.trim() || null,
+      );
+      this.store.types.update((items) =>
+        current ? items.map((item) => (item.id === saved.id ? saved : item)) : [...items, saved],
+      );
+      this.toast.success(current ? 'Tipo atualizado' : 'Tipo criado');
+      this.typeOpen.set(false);
+    } catch (error) {
+      this.typeError.set(errorMessage(error, 'Erro ao salvar tipo documental'));
+    } finally {
+      this.typeSaving.set(false);
+    }
   }
 
-  async removeType(type: DocumentType): Promise<void> {
-    if (this.blocked()) return;
-    if (!(await this.alertDialog.confirm('Excluir este tipo documental?'))) return;
-    await this.documentService.deleteDocumentType(type.id);
-    this.store.types.update((items) => items.filter((item) => item.id !== type.id));
-    this.toast.success('Tipo excluído');
+  openLevel(level?: number): void {
+    if (!this.canManageTypes()) return;
+    this.editingLevel.set(level ?? null);
+    this.levelName.setValue(level ? this.levelLabel(level) : '');
+    this.levelError.set(null);
+    this.levelOpen.set(true);
+  }
+
+  async saveLevel(): Promise<void> {
+    if (!this.canManageTypes() || this.levelSaving()) return;
+    const name = this.levelName.value.trim();
+    if (name.length < 2) {
+      this.levelError.set('Informe um nome com pelo menos 2 caracteres.');
+      return;
+    }
+    this.levelSaving.set(true);
+    try {
+      const saved = await this.documentService.saveDocumentLevel(this.editingLevel(), name);
+      this.store.levels.update((items) =>
+        [...items.filter((item) => item.level !== saved.level), saved].sort(
+          (a, b) => a.level - b.level,
+        ),
+      );
+      this.levelOpen.set(false);
+      this.toast.success(this.editingLevel() ? 'Nível atualizado' : 'Nível criado');
+    } catch (error) {
+      this.levelError.set(errorMessage(error, 'Erro ao salvar nível'));
+    } finally {
+      this.levelSaving.set(false);
+    }
+  }
+
+  async openTypeHistory(type: DocumentType): Promise<void> {
+    this.historyType.set(type);
+    this.typeHistory.set([]);
+    this.typeHistoryLoading.set(true);
+    try {
+      const history = await this.documentService.fetchDocumentTypeHistory(type.id);
+      if (this.historyType()?.id === type.id) this.typeHistory.set(history);
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Erro ao carregar histórico'));
+    } finally {
+      this.typeHistoryLoading.set(false);
+    }
+  }
+
+  typeActionLabel(action: DocumentTypeHistory['action']): string {
+    return {
+      created: 'Criado',
+      updated: 'Atualizado',
+      deactivated: 'Inativado',
+      reactivated: 'Reativado',
+    }[action];
   }
 
   preview(document: GEDDocument): void {
