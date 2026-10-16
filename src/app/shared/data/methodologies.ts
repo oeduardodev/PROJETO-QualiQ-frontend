@@ -157,15 +157,15 @@ export const METHODOLOGIES: Record<string, MethodologyInfo> = {
     methodology: 'FMEA (Failure Mode and Effects Analysis) + Matriz de Riscos',
     reference: 'ISO 31000:2018 — Risk Management Guidelines; FMEA Manual (AIAG & VDA)',
     summary:
-      'A Gestão de Riscos segue a abordagem FMEA (Failure Mode and Effects Analysis), avaliando cada risco pela sua Probabilidade (1-5) e Impacto (1-5). O produto desses dois fatores gera o Score do Risco, classificado em Baixo (1-4), Moderado (5-9), Alto (10-15) e Crítico (16-25). Para cada risco, levantam-se os Fatores de Risco, as Ações Preventivas para reduzir a probabilidade, e os Planos de Contingência para responder caso o risco se materialize. Os riscos são vinculados a processos e subprocessos do SIPOC, garantindo rastreabilidade completa.',
+      'A Gestão de Riscos segue a abordagem FMEA (Failure Mode and Effects Analysis), avaliando cada risco pela sua Probabilidade (1-5) e Impacto (1-5). O produto desses dois fatores gera a pontuação do risco, classificada conforme as faixas configuradas na matriz. Para cada risco, levantam-se os Fatores de Risco, as Ações Preventivas para reduzir a probabilidade e os Planos de Contingência para responder caso o risco se materialize. Os riscos são vinculados a processos e subprocessos do SIPOC, garantindo rastreabilidade completa.',
     steps: [
       'Identificar o risco e vinculá-lo a um processo do SIPOC (e opcionalmente a um subprocesso)',
       'Avaliar a Probabilidade (1-5) e o Impacto (1-5) — o Score é calculado automaticamente',
-      'Classificar o risco pelo nível: Baixo, Moderado, Alto ou Crítico',
+      'Classificar o risco conforme as faixas configuradas na matriz',
       'Levantar os Fatores de Risco que contribuem para a ocorrência',
       'Definir Ações Preventivas para reduzir a probabilidade de ocorrência',
       'Estabelecer Planos de Contingência para responder se o risco se materializar',
-      'Visualizar todos os riscos na Matriz de Riscos (Probabilidade x Impacto)',
+      'Visualizar os riscos aprovados na Matriz de Riscos (Probabilidade x Impacto)',
       'Monitorar e atualizar o status: Identificado → Em Análise → Tratado → Monitorado',
     ],
     source: 'ISO 31000:2018 — Risk Management; AIAG & VDA FMEA Handbook (2019).',

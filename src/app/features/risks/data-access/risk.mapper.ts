@@ -10,15 +10,21 @@ export interface RiskFormValue {
   risk_type: RiskType;
   barriers: string;
   status: RiskStatus;
-  owner: string;
+  owner_id: string;
+  justification: string;
 }
 
 export function toRiskPayload(value: RiskFormValue): Partial<Risk> {
   return {
-    ...value,
+    title: value.title,
     description: value.description || null,
+    process_id: value.process_id,
     step_id: value.step_id || null,
+    probability: value.probability,
+    impact: value.impact,
+    risk_type: value.risk_type,
     barriers: value.barriers || null,
-    owner: value.owner || null,
+    status: value.status,
+    owner_id: value.owner_id && value.owner_id !== 'legacy' ? value.owner_id : null,
   };
 }

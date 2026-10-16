@@ -42,17 +42,21 @@ Por segurança e para evitar configurações específicas de ambiente no reposit
 
 As opções dos formulários são consultadas no banco ao abrir a tela. Para alterar nomes, ordem ou disponibilidade, edite as tabelas de referência no Supabase e recarregue a página:
 
-| Área           | Tabela                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| Notificações   | `ticket_statuses`, `notification_severities`, `analysis_tools`                                     |
-| Helpdesk       | `helpdesk_statuses`, `helpdesk_categories`, `helpdesk_priorities`                                  |
-| Planos de ação | `action_plan_statuses`                                                                             |
-| Riscos         | `risk_types`, `risk_statuses`, `risk_preventive_action_statuses`, `risk_contingency_plan_statuses` |
-| SLAs           | `sla_statuses`                                                                                     |
-| Dimensões      | `dimension_classifications`, `dimension_colors`                                                    |
-| Indicadores    | `indicator_statuses`                                                                               |
+| Área           | Tabela                                                                                                                            |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Notificações   | `ticket_statuses`, `notification_severities`, `analysis_tools`                                                                    |
+| Helpdesk       | `helpdesk_statuses`, `helpdesk_categories`, `helpdesk_priorities`                                                                 |
+| Planos de ação | `action_plan_statuses`                                                                                                            |
+| Riscos         | `risk_types`, `risk_statuses`, `risk_preventive_action_statuses`, `risk_contingency_plan_statuses`, `risk_matrix_classifications` |
+| SLAs           | `sla_statuses`                                                                                                                    |
+| Dimensões      | `dimension_classifications`, `dimension_colors`                                                                                   |
+| Indicadores    | `indicator_statuses`                                                                                                              |
 
 Nas tabelas de etapas (`ticket_statuses`, `helpdesk_statuses` e `action_plan_statuses`), `key` é o valor persistido, `label` é o texto exibido, `order_index` controla a ordem das colunas e `next_status_key` define o destino do botão **Avançar**. Marque uma etapa inicial com `is_initial = true` e uma final com `is_terminal = true`. Há apenas uma etapa inicial por fluxo. Uma etapa inativa continua visível para registros antigos, mas não aparece nas opções para novos registros.
+
+As faixas de `risk_matrix_classifications` são editadas em **Gerenciamento de Riscos → Classificações da matriz** por um administrador. Elas cobrem as pontuações de 1 a 25 sem lacunas e determinam o nível, as cores e a legenda da matriz. Riscos novos e históricos começam como rascunho; no gerenciamento, Admin ou Gestor envia para aprovação e um Admin aprova ou rejeita com motivo. Só riscos aprovados aparecem no painel. A edição de um risco aprovado o devolve ao rascunho.
+
+Ao editar um risco, o responsável é escolhido entre os usuários cadastrados e uma justificativa é obrigatória; ela aparece no histórico da alteração. Nomes antigos sem vínculo com usuário continuam disponíveis ao editar o registro. No gerenciamento, riscos podem ser desativados e reativados sem perder vínculos. O filtro mostra ativados, desativados ou todos; riscos desativados não aparecem no painel nem nas listas de seleção de outras áreas. O botão **Histórico** mostra alterações do risco, decisões de aprovação e inclusões ou remoções de fatores, ações preventivas e planos de contingência. Registros anteriores à auditoria têm um estado inicial e os eventos de aprovação cujas datas já estavam disponíveis.
 
 Exemplo para inserir uma etapa entre **Em Análise** e **Plano de Ação**:
 

@@ -413,13 +413,6 @@ export type Database = {
             referencedColumns: ['classification_key'];
           },
           {
-            foreignKeyName: 'dimensions_color_key_fkey';
-            columns: ['color_key'];
-            isOneToOne: false;
-            referencedRelation: 'dimension_colors';
-            referencedColumns: ['key'];
-          },
-          {
             foreignKeyName: 'dimensions_version_id_fkey';
             columns: ['version_id'];
             isOneToOne: false;
@@ -853,34 +846,171 @@ export type Database = {
           },
         ];
       };
+      indicator_definition_history: {
+        Row: {
+          action: string;
+          after_data: Json;
+          before_data: Json | null;
+          changed_at: string;
+          changed_by: string | null;
+          id: string;
+          indicator_id: string;
+          justification: string | null;
+        };
+        Insert: {
+          action: string;
+          after_data: Json;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          id?: string;
+          indicator_id: string;
+          justification?: string | null;
+        };
+        Update: {
+          action?: string;
+          after_data?: Json;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          id?: string;
+          indicator_id?: string;
+          justification?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'indicator_definition_history_indicator_id_fkey';
+            columns: ['indicator_id'];
+            isOneToOne: false;
+            referencedRelation: 'indicators';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      indicator_dependencies: {
+        Row: {
+          indicator_id: string;
+          source_indicator_id: string;
+        };
+        Insert: {
+          indicator_id: string;
+          source_indicator_id: string;
+        };
+        Update: {
+          indicator_id?: string;
+          source_indicator_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'indicator_dependencies_indicator_id_fkey';
+            columns: ['indicator_id'];
+            isOneToOne: false;
+            referencedRelation: 'indicators';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'indicator_dependencies_source_indicator_id_fkey';
+            columns: ['source_indicator_id'];
+            isOneToOne: false;
+            referencedRelation: 'indicators';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       indicator_history: {
         Row: {
           created_at: string | null;
+          created_by: string | null;
           goal: number;
           id: string;
           indicator_id: string;
+          late_justification: string | null;
           period: string;
+          period_date: string | null;
           value: number;
         };
         Insert: {
           created_at?: string | null;
+          created_by?: string | null;
           goal: number;
           id?: string;
           indicator_id: string;
+          late_justification?: string | null;
           period: string;
+          period_date?: string | null;
           value: number;
         };
         Update: {
           created_at?: string | null;
+          created_by?: string | null;
           goal?: number;
           id?: string;
           indicator_id?: string;
+          late_justification?: string | null;
           period?: string;
+          period_date?: string | null;
           value?: number;
         };
         Relationships: [
           {
             foreignKeyName: 'indicator_history_indicator_id_fkey';
+            columns: ['indicator_id'];
+            isOneToOne: false;
+            referencedRelation: 'indicators';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      indicator_result_analyses: {
+        Row: {
+          action_plan_ids: string[];
+          created_at: string;
+          created_by: string;
+          diagnostic: string;
+          history_id: string | null;
+          id: string;
+          indicator_id: string;
+          observed_goal: number;
+          observed_period: string;
+          observed_value: number;
+          suggestions: Json;
+        };
+        Insert: {
+          action_plan_ids?: string[];
+          created_at?: string;
+          created_by?: string;
+          diagnostic: string;
+          history_id?: string | null;
+          id?: string;
+          indicator_id: string;
+          observed_goal: number;
+          observed_period: string;
+          observed_value: number;
+          suggestions?: Json;
+        };
+        Update: {
+          action_plan_ids?: string[];
+          created_at?: string;
+          created_by?: string;
+          diagnostic?: string;
+          history_id?: string | null;
+          id?: string;
+          indicator_id?: string;
+          observed_goal?: number;
+          observed_period?: string;
+          observed_value?: number;
+          suggestions?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'indicator_result_analyses_history_id_fkey';
+            columns: ['history_id'];
+            isOneToOne: false;
+            referencedRelation: 'indicator_history';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'indicator_result_analyses_indicator_id_fkey';
             columns: ['indicator_id'];
             isOneToOne: false;
             referencedRelation: 'indicators';
@@ -935,51 +1065,97 @@ export type Database = {
       };
       indicators: {
         Row: {
+          acceptable_variation: number;
+          calculation_type: string;
           code: string;
           created_at: string | null;
           current_value: number;
+          decimal_places: number;
+          dimension_id: string | null;
+          formula_expression: string;
+          formula_tokens: Json;
           frequency: Database['public']['Enums']['indicator_frequency_type'] | null;
+          goal_direction: string;
           goal_value: number;
           id: string;
+          indicator_type: string;
+          objective: string;
+          obsolete: boolean;
           process_id: string;
           requires_critical_analysis: boolean;
+          result_source: string;
+          simple_formula: string;
           status: string;
           step_id: string | null;
+          strategic: boolean;
           title: string;
           unit: Database['public']['Enums']['indicator_unit_type'];
           updated_at: string | null;
         };
         Insert: {
+          acceptable_variation?: number;
+          calculation_type?: string;
           code?: string;
           created_at?: string | null;
           current_value: number;
+          decimal_places?: number;
+          dimension_id?: string | null;
+          formula_expression?: string;
+          formula_tokens?: Json;
           frequency?: Database['public']['Enums']['indicator_frequency_type'] | null;
+          goal_direction?: string;
           goal_value: number;
           id?: string;
+          indicator_type?: string;
+          objective?: string;
+          obsolete?: boolean;
           process_id: string;
           requires_critical_analysis?: boolean;
+          result_source?: string;
+          simple_formula?: string;
           status: string;
           step_id?: string | null;
+          strategic?: boolean;
           title: string;
           unit: Database['public']['Enums']['indicator_unit_type'];
           updated_at?: string | null;
         };
         Update: {
+          acceptable_variation?: number;
+          calculation_type?: string;
           code?: string;
           created_at?: string | null;
           current_value?: number;
+          decimal_places?: number;
+          dimension_id?: string | null;
+          formula_expression?: string;
+          formula_tokens?: Json;
           frequency?: Database['public']['Enums']['indicator_frequency_type'] | null;
+          goal_direction?: string;
           goal_value?: number;
           id?: string;
+          indicator_type?: string;
+          objective?: string;
+          obsolete?: boolean;
           process_id?: string;
           requires_critical_analysis?: boolean;
+          result_source?: string;
+          simple_formula?: string;
           status?: string;
           step_id?: string | null;
+          strategic?: boolean;
           title?: string;
           unit?: Database['public']['Enums']['indicator_unit_type'];
           updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'indicators_dimension_id_fkey';
+            columns: ['dimension_id'];
+            isOneToOne: false;
+            referencedRelation: 'dimensions';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'indicators_process_id_fkey';
             columns: ['process_id'];
@@ -1388,6 +1564,47 @@ export type Database = {
           },
         ];
       };
+      process_history: {
+        Row: {
+          action: string;
+          after_data: Json;
+          before_data: Json | null;
+          changed_at: string;
+          changed_by: string | null;
+          id: string;
+          justification: string | null;
+          process_id: string;
+        };
+        Insert: {
+          action: string;
+          after_data: Json;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          id?: string;
+          justification?: string | null;
+          process_id: string;
+        };
+        Update: {
+          action?: string;
+          after_data?: Json;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          id?: string;
+          justification?: string | null;
+          process_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'process_history_process_id_fkey';
+            columns: ['process_id'];
+            isOneToOne: false;
+            referencedRelation: 'processes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       processes: {
         Row: {
           category_id: string;
@@ -1395,11 +1612,16 @@ export type Database = {
           complexity_score: number;
           created_at: string | null;
           custom_fields: Json;
+          description: string;
           id: string;
           impact_score: number;
           maturity_level: number;
+          objective: string;
+          obsolete: boolean;
           order_index: number;
           owner: string | null;
+          owner_id: string | null;
+          participant_ids: string[];
           title: string;
           updated_at: string | null;
         };
@@ -1409,11 +1631,16 @@ export type Database = {
           complexity_score?: number;
           created_at?: string | null;
           custom_fields?: Json;
+          description?: string;
           id?: string;
           impact_score?: number;
           maturity_level?: number;
+          objective?: string;
+          obsolete?: boolean;
           order_index?: number;
           owner?: string | null;
+          owner_id?: string | null;
+          participant_ids?: string[];
           title: string;
           updated_at?: string | null;
         };
@@ -1423,11 +1650,16 @@ export type Database = {
           complexity_score?: number;
           created_at?: string | null;
           custom_fields?: Json;
+          description?: string;
           id?: string;
           impact_score?: number;
           maturity_level?: number;
+          objective?: string;
+          obsolete?: boolean;
           order_index?: number;
           owner?: string | null;
+          owner_id?: string | null;
+          participant_ids?: string[];
           title?: string;
           updated_at?: string | null;
         };
@@ -1437,6 +1669,13 @@ export type Database = {
             columns: ['category_id'];
             isOneToOne: false;
             referencedRelation: 'value_chain_categories';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'processes_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];
@@ -1580,6 +1819,80 @@ export type Database = {
           },
         ];
       };
+      risk_history: {
+        Row: {
+          action: string;
+          after_data: Json | null;
+          before_data: Json | null;
+          changed_at: string;
+          changed_by: string | null;
+          changed_by_name: string | null;
+          entity: string;
+          entity_id: string;
+          id: string;
+          justification: string | null;
+          risk_id: string;
+        };
+        Insert: {
+          action: string;
+          after_data?: Json | null;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          changed_by_name?: string | null;
+          entity: string;
+          entity_id: string;
+          id?: string;
+          justification?: string | null;
+          risk_id: string;
+        };
+        Update: {
+          action?: string;
+          after_data?: Json | null;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          changed_by_name?: string | null;
+          entity?: string;
+          entity_id?: string;
+          id?: string;
+          justification?: string | null;
+          risk_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'risk_history_risk_id_fkey';
+            columns: ['risk_id'];
+            isOneToOne: false;
+            referencedRelation: 'risks';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      risk_matrix_classifications: {
+        Row: {
+          background_color: string;
+          label: string;
+          max_score: number;
+          min_score: number;
+          text_color: string;
+        };
+        Insert: {
+          background_color: string;
+          label: string;
+          max_score: number;
+          min_score: number;
+          text_color: string;
+        };
+        Update: {
+          background_color?: string;
+          label?: string;
+          max_score?: number;
+          min_score?: number;
+          text_color?: string;
+        };
+        Relationships: [];
+      };
       risk_preventive_action_statuses: {
         Row: {
           created_at: string;
@@ -1718,6 +2031,9 @@ export type Database = {
       };
       risks: {
         Row: {
+          approval_state: string;
+          approved_at: string | null;
+          approved_by: string | null;
           barriers: string | null;
           code: string;
           created_at: string | null;
@@ -1725,18 +2041,26 @@ export type Database = {
           description: string | null;
           id: string;
           impact: number;
+          is_active: boolean;
           owner: string | null;
+          owner_id: string | null;
           probability: number;
           process_id: string;
-          risk_level: string | null;
+          rejection_reason: string | null;
+          risk_level: string;
           risk_score: number | null;
           risk_type: string;
           status: string;
           step_id: string | null;
+          submitted_at: string | null;
+          submitted_by: string | null;
           title: string;
           updated_at: string | null;
         };
         Insert: {
+          approval_state?: string;
+          approved_at?: string | null;
+          approved_by?: string | null;
           barriers?: string | null;
           code?: string;
           created_at?: string | null;
@@ -1744,18 +2068,26 @@ export type Database = {
           description?: string | null;
           id?: string;
           impact?: number;
+          is_active?: boolean;
           owner?: string | null;
+          owner_id?: string | null;
           probability?: number;
           process_id: string;
-          risk_level?: string | null;
+          rejection_reason?: string | null;
+          risk_level: string;
           risk_score?: number | null;
           risk_type: string;
           status: string;
           step_id?: string | null;
+          submitted_at?: string | null;
+          submitted_by?: string | null;
           title: string;
           updated_at?: string | null;
         };
         Update: {
+          approval_state?: string;
+          approved_at?: string | null;
+          approved_by?: string | null;
           barriers?: string | null;
           code?: string;
           created_at?: string | null;
@@ -1763,18 +2095,30 @@ export type Database = {
           description?: string | null;
           id?: string;
           impact?: number;
+          is_active?: boolean;
           owner?: string | null;
+          owner_id?: string | null;
           probability?: number;
           process_id?: string;
-          risk_level?: string | null;
+          rejection_reason?: string | null;
+          risk_level?: string;
           risk_score?: number | null;
           risk_type?: string;
           status?: string;
           step_id?: string | null;
+          submitted_at?: string | null;
+          submitted_by?: string | null;
           title?: string;
           updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'risks_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'risks_process_id_fkey';
             columns: ['process_id'];
@@ -1921,6 +2265,91 @@ export type Database = {
           },
         ];
       };
+      sla_approvals: {
+        Row: {
+          approver_id: string | null;
+          decided_at: string | null;
+          decision: string;
+          id: string;
+          process_ids: string[];
+          reason: string | null;
+          requested_at: string;
+          revision: number;
+          sla_id: string;
+        };
+        Insert: {
+          approver_id?: string | null;
+          decided_at?: string | null;
+          decision?: string;
+          id?: string;
+          process_ids: string[];
+          reason?: string | null;
+          requested_at?: string;
+          revision: number;
+          sla_id: string;
+        };
+        Update: {
+          approver_id?: string | null;
+          decided_at?: string | null;
+          decision?: string;
+          id?: string;
+          process_ids?: string[];
+          reason?: string | null;
+          requested_at?: string;
+          revision?: number;
+          sla_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'sla_approvals_sla_id_fkey';
+            columns: ['sla_id'];
+            isOneToOne: false;
+            referencedRelation: 'slas';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      sla_history: {
+        Row: {
+          action: string;
+          after_data: Json;
+          before_data: Json | null;
+          changed_at: string;
+          changed_by: string | null;
+          id: string;
+          justification: string | null;
+          sla_id: string;
+        };
+        Insert: {
+          action: string;
+          after_data: Json;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          id?: string;
+          justification?: string | null;
+          sla_id: string;
+        };
+        Update: {
+          action?: string;
+          after_data?: Json;
+          before_data?: Json | null;
+          changed_at?: string;
+          changed_by?: string | null;
+          id?: string;
+          justification?: string | null;
+          sla_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'sla_history_sla_id_fkey';
+            columns: ['sla_id'];
+            isOneToOne: false;
+            referencedRelation: 'slas';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       sla_statuses: {
         Row: {
           badge_background: string;
@@ -1956,46 +2385,64 @@ export type Database = {
       };
       slas: {
         Row: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
           client_process_id: string | null;
           code: string | null;
           created_at: string | null;
           criticality: Database['public']['Enums']['sla_criticality_level'] | null;
           custom_fields: Json | null;
+          description: string | null;
           id: string;
           lead_time_hours: number;
           quality_criteria: string | null;
           sipoc_input_id: string | null;
           status: string;
+          submitted_at: string | null;
           supplier_process_id: string | null;
           title: string;
           updated_at: string | null;
         };
         Insert: {
+          approval_revision?: number;
+          approval_state?: string;
+          approved_at?: string | null;
+          business_rules?: string | null;
           client_process_id?: string | null;
           code?: string | null;
           created_at?: string | null;
           criticality?: Database['public']['Enums']['sla_criticality_level'] | null;
           custom_fields?: Json | null;
+          description?: string | null;
           id?: string;
           lead_time_hours?: number;
           quality_criteria?: string | null;
           sipoc_input_id?: string | null;
           status: string;
+          submitted_at?: string | null;
           supplier_process_id?: string | null;
           title: string;
           updated_at?: string | null;
         };
         Update: {
+          approval_revision?: number;
+          approval_state?: string;
+          approved_at?: string | null;
+          business_rules?: string | null;
           client_process_id?: string | null;
           code?: string | null;
           created_at?: string | null;
           criticality?: Database['public']['Enums']['sla_criticality_level'] | null;
           custom_fields?: Json | null;
+          description?: string | null;
           id?: string;
           lead_time_hours?: number;
           quality_criteria?: string | null;
           sipoc_input_id?: string | null;
           status?: string;
+          submitted_at?: string | null;
           supplier_process_id?: string | null;
           title?: string;
           updated_at?: string | null;
@@ -2339,6 +2786,36 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      activate_sla: {
+        Args: { p_id: string };
+        Returns: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
+          client_process_id: string | null;
+          code: string | null;
+          created_at: string | null;
+          criticality: Database['public']['Enums']['sla_criticality_level'] | null;
+          custom_fields: Json | null;
+          description: string | null;
+          id: string;
+          lead_time_hours: number;
+          quality_criteria: string | null;
+          sipoc_input_id: string | null;
+          status: string;
+          submitted_at: string | null;
+          supplier_process_id: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'slas';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       advance_document: {
         Args: {
           p_document_id: string;
@@ -2364,6 +2841,10 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      calculate_composite_indicator: {
+        Args: { p_indicator_id: string; p_period: string };
+        Returns: number;
       };
       consume_ai_quota: { Args: never; Returns: boolean };
       create_action_plans_from_suggestions: {
@@ -2407,6 +2888,31 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_plans_for_indicator_analysis: {
+        Args: { p_analysis_id: string; p_ticket_id: string };
+        Returns: {
+          code: string;
+          created_at: string | null;
+          how: string | null;
+          how_much: string | null;
+          id: string;
+          status: string;
+          ticket_id: string;
+          title: string;
+          updated_at: string | null;
+          what: string | null;
+          when: string | null;
+          where: string | null;
+          who: string | null;
+          why: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'action_plans';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       create_sipoc_node_with_steps: {
         Args: {
           p_description: string;
@@ -2433,6 +2939,96 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_sla_draft: {
+        Args: { p_payload: Json };
+        Returns: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
+          client_process_id: string | null;
+          code: string | null;
+          created_at: string | null;
+          criticality: Database['public']['Enums']['sla_criticality_level'] | null;
+          custom_fields: Json | null;
+          description: string | null;
+          id: string;
+          lead_time_hours: number;
+          quality_criteria: string | null;
+          sipoc_input_id: string | null;
+          status: string;
+          submitted_at: string | null;
+          supplier_process_id: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'slas';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      deactivate_sla: {
+        Args: { p_id: string; p_reason: string };
+        Returns: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
+          client_process_id: string | null;
+          code: string | null;
+          created_at: string | null;
+          criticality: Database['public']['Enums']['sla_criticality_level'] | null;
+          custom_fields: Json | null;
+          description: string | null;
+          id: string;
+          lead_time_hours: number;
+          quality_criteria: string | null;
+          sipoc_input_id: string | null;
+          status: string;
+          submitted_at: string | null;
+          supplier_process_id: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'slas';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      decide_sla_approval: {
+        Args: { p_approve: boolean; p_id: string; p_reason: string };
+        Returns: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
+          client_process_id: string | null;
+          code: string | null;
+          created_at: string | null;
+          criticality: Database['public']['Enums']['sla_criticality_level'] | null;
+          custom_fields: Json | null;
+          description: string | null;
+          id: string;
+          lead_time_hours: number;
+          quality_criteria: string | null;
+          sipoc_input_id: string | null;
+          status: string;
+          submitted_at: string | null;
+          supplier_process_id: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'slas';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       get_indicator_frequency_options: {
         Args: never;
         Returns: {
@@ -2452,20 +3048,50 @@ export type Database = {
         Args: never;
         Returns: Database['public']['Enums']['user_role'];
       };
+      indicator_result_actors: {
+        Args: never;
+        Returns: {
+          id: string;
+          name: string;
+        }[];
+      };
       is_admin_or_gestor: { Args: never; Returns: boolean };
+      record_indicator_result: {
+        Args: {
+          p_analysis?: string;
+          p_indicator_id: string;
+          p_late_justification?: string;
+          p_period: string;
+          p_value: number;
+        };
+        Returns: Json;
+      };
       record_indicator_value: {
         Args: { p_indicator_id: string; p_period: string; p_value: number };
         Returns: {
+          acceptable_variation: number;
+          calculation_type: string;
           code: string;
           created_at: string | null;
           current_value: number;
+          decimal_places: number;
+          dimension_id: string | null;
+          formula_expression: string;
+          formula_tokens: Json;
           frequency: Database['public']['Enums']['indicator_frequency_type'] | null;
+          goal_direction: string;
           goal_value: number;
           id: string;
+          indicator_type: string;
+          objective: string;
+          obsolete: boolean;
           process_id: string;
           requires_critical_analysis: boolean;
+          result_source: string;
+          simple_formula: string;
           status: string;
           step_id: string | null;
+          strategic: boolean;
           title: string;
           unit: Database['public']['Enums']['indicator_unit_type'];
           updated_at: string | null;
@@ -2476,6 +3102,10 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      refresh_composite_indicator: {
+        Args: { p_indicator_id: string; p_period: string };
+        Returns: undefined;
       };
       save_dimension_with_links: {
         Args: {
@@ -2539,6 +3169,206 @@ export type Database = {
         SetofOptions: {
           from: '*';
           to: 'documents';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      save_indicator_definition: {
+        Args: {
+          p_acceptable_variation: number;
+          p_calculation_type: string;
+          p_decimal_places: number;
+          p_dimension_id: string;
+          p_formula_expression: string;
+          p_formula_tokens: Json;
+          p_frequency: Database['public']['Enums']['indicator_frequency_type'];
+          p_goal_direction: string;
+          p_goal_value: number;
+          p_id: string;
+          p_indicator_type: string;
+          p_justification: string;
+          p_objective: string;
+          p_obsolete: boolean;
+          p_process_id: string;
+          p_requires_critical_analysis: boolean;
+          p_result_source: string;
+          p_simple_formula: string;
+          p_step_id: string;
+          p_strategic: boolean;
+          p_title: string;
+          p_unit: Database['public']['Enums']['indicator_unit_type'];
+        };
+        Returns: {
+          acceptable_variation: number;
+          calculation_type: string;
+          code: string;
+          created_at: string | null;
+          current_value: number;
+          decimal_places: number;
+          dimension_id: string | null;
+          formula_expression: string;
+          formula_tokens: Json;
+          frequency: Database['public']['Enums']['indicator_frequency_type'] | null;
+          goal_direction: string;
+          goal_value: number;
+          id: string;
+          indicator_type: string;
+          objective: string;
+          obsolete: boolean;
+          process_id: string;
+          requires_critical_analysis: boolean;
+          result_source: string;
+          simple_formula: string;
+          status: string;
+          step_id: string | null;
+          strategic: boolean;
+          title: string;
+          unit: Database['public']['Enums']['indicator_unit_type'];
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'indicators';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      save_risk_matrix_classifications: {
+        Args: { p_items: Json };
+        Returns: {
+          background_color: string;
+          label: string;
+          max_score: number;
+          min_score: number;
+          text_color: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'risk_matrix_classifications';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      submit_sla_for_approval: {
+        Args: { p_id: string };
+        Returns: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
+          client_process_id: string | null;
+          code: string | null;
+          created_at: string | null;
+          criticality: Database['public']['Enums']['sla_criticality_level'] | null;
+          custom_fields: Json | null;
+          description: string | null;
+          id: string;
+          lead_time_hours: number;
+          quality_criteria: string | null;
+          sipoc_input_id: string | null;
+          status: string;
+          submitted_at: string | null;
+          supplier_process_id: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'slas';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      update_process_with_reason: {
+        Args: { p_id: string; p_justification: string; p_patch: Json };
+        Returns: {
+          category_id: string;
+          code: string;
+          complexity_score: number;
+          created_at: string | null;
+          custom_fields: Json;
+          description: string;
+          id: string;
+          impact_score: number;
+          maturity_level: number;
+          objective: string;
+          obsolete: boolean;
+          order_index: number;
+          owner: string | null;
+          owner_id: string | null;
+          participant_ids: string[];
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'processes';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      update_risk_with_reason: {
+        Args: { p_id: string; p_justification: string; p_patch: Json };
+        Returns: {
+          approval_state: string;
+          approved_at: string | null;
+          approved_by: string | null;
+          barriers: string | null;
+          code: string;
+          created_at: string | null;
+          custom_fields: Json;
+          description: string | null;
+          id: string;
+          impact: number;
+          is_active: boolean;
+          owner: string | null;
+          owner_id: string | null;
+          probability: number;
+          process_id: string;
+          rejection_reason: string | null;
+          risk_level: string;
+          risk_score: number | null;
+          risk_type: string;
+          status: string;
+          step_id: string | null;
+          submitted_at: string | null;
+          submitted_by: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'risks';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      update_sla_with_reason: {
+        Args: { p_id: string; p_justification: string; p_patch: Json };
+        Returns: {
+          approval_revision: number;
+          approval_state: string;
+          approved_at: string | null;
+          business_rules: string | null;
+          client_process_id: string | null;
+          code: string | null;
+          created_at: string | null;
+          criticality: Database['public']['Enums']['sla_criticality_level'] | null;
+          custom_fields: Json | null;
+          description: string | null;
+          id: string;
+          lead_time_hours: number;
+          quality_criteria: string | null;
+          sipoc_input_id: string | null;
+          status: string;
+          submitted_at: string | null;
+          supplier_process_id: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'slas';
           isOneToOne: true;
           isSetofReturn: false;
         };

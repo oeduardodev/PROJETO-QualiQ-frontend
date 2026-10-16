@@ -2,6 +2,10 @@ import { inject, Injectable } from '@angular/core';
 import { RiskRepository } from './risk.repository';
 import type {
   Risk,
+  RiskHistory,
+  RiskApprovalState,
+  RiskMatrixClassification,
+  RiskMatrixClassificationInput,
   RiskTypeOption,
   RiskStatusOption,
   RiskFactor,
@@ -14,6 +18,20 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class RiskService {
   private readonly repository = inject(RiskRepository);
+
+  fetchMatrixClassifications(): Promise<RiskMatrixClassification[]> {
+    return this.repository.fetchMatrixClassifications();
+  }
+
+  saveMatrixClassifications(
+    items: RiskMatrixClassificationInput[],
+  ): Promise<RiskMatrixClassification[]> {
+    return this.repository.saveMatrixClassifications(items);
+  }
+
+  changeApprovalState(id: string, state: RiskApprovalState, reason?: string | null): Promise<Risk> {
+    return this.repository.changeApprovalState(id, state, reason);
+  }
 
   fetchRiskStatuses(): Promise<RiskStatusOption[]> {
     return this.repository.fetchRiskStatuses();
@@ -83,8 +101,8 @@ export class RiskService {
     });
   }
 
-  fetchRisks(): Promise<Risk[]> {
-    return this.repository.fetchRisks();
+  fetchRisks(includeInactive = false): Promise<Risk[]> {
+    return this.repository.fetchRisks(includeInactive);
   }
 
   fetchRisksByProcess(processId: string): Promise<Risk[]> {
@@ -100,12 +118,13 @@ export class RiskService {
   updateRisk(
     id: string,
     patch: Partial<Omit<Risk, 'id' | 'created_at' | 'updated_at' | 'risk_score' | 'risk_level'>>,
+    justification?: string,
   ): Promise<Risk> {
-    return this.repository.updateRisk(id, patch);
+    return this.repository.updateRisk(id, patch, justification);
   }
 
-  deleteRisk(id: string): Promise<void> {
-    return this.repository.deleteRisk(id);
+  fetchRiskHistory(riskId: string): Promise<RiskHistory[]> {
+    return this.repository.fetchRiskHistory(riskId);
   }
 
   fetchRiskFactors(riskId: string): Promise<RiskFactor[]> {

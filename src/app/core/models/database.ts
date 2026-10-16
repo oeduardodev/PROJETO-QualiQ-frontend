@@ -43,6 +43,8 @@ export interface AppDatabase {
       dimension_colors: TableDefinition<DimensionColorOption>;
       dimension_links: TableDefinition<DimensionLink>;
       risks: TableDefinition<Risk, 'risk_score' | 'risk_level'>;
+      risk_history: TableDefinition<RiskHistory>;
+      risk_matrix_classifications: TableDefinition<RiskMatrixClassification>;
       risk_statuses: TableDefinition<RiskStatusOption>;
       risk_types: TableDefinition<RiskTypeOption>;
       risk_factors: TableDefinition<RiskFactor>;
@@ -64,6 +66,14 @@ export interface AppDatabase {
     };
     Views: Record<string, never>;
     Functions: {
+      update_risk_with_reason: {
+        Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
+        Returns: Risk;
+      };
+      save_risk_matrix_classifications: {
+        Args: { p_items: RiskMatrixClassificationInput[] };
+        Returns: RiskMatrixClassification[];
+      };
       update_process_with_reason: {
         Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
         Returns: Process;
@@ -605,6 +615,41 @@ export type RiskLevel = NonNullable<
 >;
 export type RiskType = GeneratedDatabase['public']['Tables']['risks']['Row']['risk_type'];
 export type RiskTypeOption = GeneratedDatabase['public']['Tables']['risk_types']['Row'];
+export type RiskApprovalState = 'draft' | 'pending' | 'approved' | 'rejected';
+
+export interface RiskHistory {
+  id: string;
+  risk_id: string;
+  entity: 'risk' | 'factor' | 'action' | 'plan';
+  entity_id: string;
+  action:
+    | 'baseline'
+    | 'created'
+    | 'updated'
+    | 'deactivated'
+    | 'reactivated'
+    | 'submitted'
+    | 'approved'
+    | 'rejected'
+    | 'added'
+    | 'removed';
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown> | null;
+  changed_by: string | null;
+  changed_by_name: string | null;
+  justification: string | null;
+  changed_at: string;
+}
+
+export interface RiskMatrixClassification {
+  min_score: number;
+  max_score: number;
+  label: string;
+  background_color: string;
+  text_color: string;
+}
+
+export type RiskMatrixClassificationInput = Omit<RiskMatrixClassification, 'min_score'>;
 
 export interface Risk {
   id: string;
@@ -621,7 +666,15 @@ export interface Risk {
   barriers: string | null;
   status: RiskStatus;
   owner: string | null;
+  owner_id: string | null;
   custom_fields: Record<string, unknown> | null;
+  approval_state: RiskApprovalState;
+  submitted_at: string | null;
+  submitted_by: string | null;
+  approved_at: string | null;
+  approved_by: string | null;
+  rejection_reason: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

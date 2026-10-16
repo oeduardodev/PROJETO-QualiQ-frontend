@@ -18,7 +18,9 @@
         <h2 class="ui-page-title">
           {{ management ? 'Gerenciamento de Riscos' : 'Painel de Riscos' }}
         </h2>
-        <p class="ui-page-subtitle">{{ risks().length }} riscos cadastrados</p>
+        <p class="ui-page-subtitle">
+          {{ visibleRisks().length }} {{ management ? 'riscos cadastrados' : 'riscos aprovados' }}
+        </p>
       </div>
       <div class="flex gap-2">
         @if (!management) {
@@ -29,7 +31,12 @@
             <span appIcon="Info" class="h-4 w-4"></span>Metodologia
           </button>
         }
-        @if (canManage()) {
+        @if (management && canApprove()) {
+          <button type="button" class="ui-button-secondary" (click)="openMatrixConfig()">
+            Classificações da matriz
+          </button>
+        }
+        @if (management && canManage()) {
           <button
             class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
             [disabled]="!activeTypes().length || !activeStatuses().length"
@@ -54,6 +61,16 @@
           <option [value]="process.id">{{ process.title }}</option>
         }
       </select>
+      @if (management) {
+        <select
+          [formControl]="activityFilter"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="active">Ativados</option>
+          <option value="inactive">Desativados</option>
+          <option value="all">Todos</option>
+        </select>
+      }
     </div>
     @if (!management) {
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
@@ -74,21 +91,23 @@
                 >
                 @for (impact of scoreAxis; track impact) {
                   <div
-                    role="button"
-                    tabindex="0"
-                    class="min-h-24 rounded-lg border p-2 text-left transition hover:ring-2 hover:ring-slate-300"
-                    [class]="matrixClass(probability * impact)"
-                    (click)="selectCell(probability, impact)"
-                    (keydown.enter)="selectCell(probability, impact)"
+                    class="min-h-24 rounded-lg border p-2 text-left"
+                    [style.background-color]="
+                      classificationFor(probability * impact)?.background_color
+                    "
+                    [style.border-color]="classificationFor(probability * impact)?.text_color"
                   >
-                    <span class="block text-right text-[10px] font-bold opacity-60">{{
-                      probability * impact
-                    }}</span>
+                    <span
+                      class="block text-right text-[10px] font-bold"
+                      [style.color]="classificationFor(probability * impact)?.text_color"
+                      >{{ probability * impact }}</span
+                    >
                     @for (risk of risksInCell(probability, impact); track risk.id) {
                       <button
                         type="button"
-                        class="mt-1 block truncate rounded bg-white/80 px-1.5 py-1 text-[10px] font-medium text-slate-700 shadow-sm"
+                        class="mt-1 block w-full truncate rounded bg-white/80 px-1.5 py-1 text-left text-[10px] font-medium text-slate-700 shadow-sm"
                         (click)="$event.stopPropagation(); openDetail(risk)"
+                        [attr.aria-label]="'Ver resumo do risco ' + risk.title"
                       >
                         {{ risk.title }}
                       </button>
@@ -111,10 +130,17 @@
           <div class="rounded-xl border border-slate-200 bg-white p-4">
             <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Legenda</p>
             <div class="grid grid-cols-2 gap-2 text-xs">
-              <span class="rounded bg-emerald-100 p-2 text-emerald-700">Baixo</span
-              ><span class="rounded bg-amber-100 p-2 text-amber-700">Moderado</span
-              ><span class="rounded bg-orange-100 p-2 text-orange-700">Alto</span
-              ><span class="rounded bg-rose-100 p-2 text-rose-700">Crítico</span>
+              @for (classification of matrixClassifications(); track classification.min_score) {
+                <span
+                  class="rounded p-2"
+                  [style.background-color]="classification.background_color"
+                  [style.color]="classification.text_color"
+                >
+                  {{ classification.label }} ({{ classification.min_score }}–{{
+                    classification.max_score
+                  }})
+                </span>
+              }
             </div>
           </div>
         </aside>
@@ -145,6 +171,9 @@
                 >
                   Status
                 </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
+                  Aprovação
+                </th>
                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">
                   Ações
                 </th>
@@ -163,6 +192,12 @@
                     ><span class="block text-xs text-slate-400">{{
                       riskTypeLabel(risk.risk_type)
                     }}</span>
+                    @if (!risk.is_active) {
+                      <span
+                        class="mt-1 inline-block rounded bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500"
+                        >Desativado</span
+                      >
+                    }
                   </td>
                   <td class="px-4 py-3 text-sm text-slate-500">
                     {{ processName(risk.process_id) }}
@@ -173,24 +208,120 @@
                   <td class="px-4 py-3">
                     <span
                       class="rounded-full px-2 py-1 text-xs font-medium"
-                      [class]="levelClass(risk.risk_score)"
+                      [style.background-color]="
+                        classificationFor(risk.risk_score)?.background_color
+                      "
+                      [style.color]="classificationFor(risk.risk_score)?.text_color"
                       >{{ levelLabel(risk.risk_score) }}</span
                     >
                   </td>
                   <td class="hidden px-4 py-3 text-sm text-slate-500 md:table-cell">
                     {{ statusLabel(risk.status) }}
                   </td>
+                  <td class="px-4 py-3 text-xs text-slate-600">
+                    {{ approvalLabel(risk.approval_state) }}
+                    @if (risk.rejection_reason) {
+                      <span class="block text-rose-600">{{ risk.rejection_reason }}</span>
+                    }
+                  </td>
                   <td class="px-4 py-3 text-right">
-                    <button class="ui-action-edit px-2 py-1 text-xs" (click)="openEditRisk(risk)">
-                      Editar</button
-                    ><button class="ui-action-danger px-2 py-1 text-xs" (click)="deleteRisk(risk)">
-                      Excluir
-                    </button>
+                    <div class="inline-flex flex-nowrap items-center justify-end gap-1">
+                      @if (risk.approval_state === 'draft' || risk.approval_state === 'rejected') {
+                        <button
+                          type="button"
+                          class="ui-action-edit px-2 py-1 text-xs"
+                          [disabled]="!!approvalSaving()"
+                          (click)="changeApproval(risk, 'pending')"
+                        >
+                          Enviar para aprovação
+                        </button>
+                      }
+                      @if (risk.approval_state === 'pending' && canApprove()) {
+                        <button
+                          type="button"
+                          class="ui-action-edit px-2 py-1 text-xs"
+                          [disabled]="!!approvalSaving()"
+                          (click)="changeApproval(risk, 'approved')"
+                        >
+                          Aprovar
+                        </button>
+                        <button
+                          type="button"
+                          class="ui-action-danger px-2 py-1 text-xs"
+                          [disabled]="!!approvalSaving()"
+                          (click)="openReject(risk)"
+                        >
+                          Rejeitar
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="ui-action-edit px-2 py-1 text-xs"
+                        [disabled]="risk.approval_state === 'pending'"
+                        (click)="openEditRisk(risk)"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        class="ui-action-history px-2 py-1 text-xs"
+                        (click)="toggleHistory(risk)"
+                      >
+                        {{ historyRiskId() === risk.id ? 'Ocultar histórico' : 'Histórico' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="px-2 py-1 text-xs"
+                        [class.ui-action-activate]="!risk.is_active"
+                        [class.ui-action-danger]="risk.is_active"
+                        [disabled]="!!activationSaving()"
+                        (click)="setActive(risk, !risk.is_active)"
+                      >
+                        {{ risk.is_active ? 'Desativar' : 'Reativar' }}
+                      </button>
+                    </div>
                   </td>
                 </tr>
+                @if (historyRiskId() === risk.id) {
+                  <tr>
+                    <td colspan="8" class="bg-slate-50 px-5 py-4">
+                      <h4 class="mb-2 text-sm font-semibold text-slate-700">Histórico do risco</h4>
+                      @if (historyLoading()) {
+                        <p class="text-xs text-slate-500">Carregando...</p>
+                      } @else if (historyError()) {
+                        <p class="text-xs text-rose-600">{{ historyError() }}</p>
+                      } @else {
+                        <ol class="space-y-3">
+                          @for (entry of history(); track entry.id) {
+                            <li class="text-xs text-slate-600">
+                              <strong>{{ historyActionLabel(entry) }}</strong>
+                              · {{ formatHistoryDate(entry.changed_at) }} ·
+                              {{ entry.changed_by_name || 'Sistema' }}
+                              @if (entry.justification) {
+                                <p class="ml-4 text-slate-500">
+                                  Justificativa: {{ entry.justification }}
+                                </p>
+                              }
+                              @if (historyDescription(entry)) {
+                                <p class="ml-4 text-slate-500">{{ historyDescription(entry) }}</p>
+                              }
+                              @for (change of historyChanges(entry); track change.label) {
+                                <p class="ml-4 text-slate-500">
+                                  {{ change.label }}: {{ change.before }} → {{ change.after }}
+                                </p>
+                              }
+                            </li>
+                          } @empty {
+                            <li class="text-xs text-slate-500">Sem registros de alteração.</li>
+                          }
+                        </ol>
+                      }
+                    </td>
+                  </tr>
+                }
               } @empty {
                 <tr>
-                  <td colspan="7" class="ui-table-empty">Nenhum risco encontrado.</td>
+                  <td colspan="8" class="ui-table-empty">Nenhum risco encontrado.</td>
                 </tr>
               }
             </tbody>
@@ -213,8 +344,9 @@
       <p class="rounded-lg bg-rose-50 p-3 text-xs text-rose-600 sm:col-span-2">{{ formError() }}</p>
     }
     <label class="text-xs font-medium text-slate-500 sm:col-span-2"
-      >Título *<input formControlName="title" class="ui-form-control" /></label
-    ><label class="text-xs font-medium text-slate-500 sm:col-span-2"
+      >Título *<input formControlName="title" class="ui-form-control"
+    /></label>
+    <label class="text-xs font-medium text-slate-500 sm:col-span-2"
       >Descrição<textarea
         formControlName="description"
         rows="3"
@@ -265,10 +397,29 @@
         }
       </select></label
     ><label class="ui-form-label-inline"
-      >Responsável<input formControlName="owner" class="ui-form-control" /></label
+      >Responsável<select formControlName="owner_id" class="ui-form-control bg-white">
+        <option value="">Sem responsável</option>
+        @if (editing()?.owner && !editing()?.owner_id) {
+          <option value="legacy">{{ editing()!.owner }} (responsável anterior)</option>
+        }
+        @for (user of users(); track user.id) {
+          <option [value]="user.id">{{ user.name }} · {{ user.role }}</option>
+        }
+      </select></label
     ><label class="text-xs font-medium text-slate-500 sm:col-span-2"
       >Barreiras<textarea formControlName="barriers" rows="2" class="ui-form-control"></textarea>
     </label>
+    @if (editing()) {
+      <label class="text-xs font-medium text-slate-500 sm:col-span-2"
+        >Justificativa da alteração *
+        <textarea
+          formControlName="justification"
+          rows="3"
+          placeholder="Descreva o motivo desta alteração"
+          class="ui-form-control"
+        ></textarea>
+      </label>
+    }
     <div class="ui-form-actions">
       <button type="button" class="px-4 py-2 text-sm text-slate-500" (click)="formOpen.set(false)">
         Cancelar</button
@@ -321,6 +472,11 @@
           >{{ selectedRisk()!.owner || '—' }}
         </div>
       </div>
+      @if (management) {
+        <p class="text-xs text-slate-500">
+          Aprovação: {{ approvalLabel(selectedRisk()!.approval_state) }}
+        </p>
+      }
       <div class="rounded-lg border border-slate-200 p-4 text-sm">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -338,7 +494,7 @@
               </p>
             }
           </div>
-          @if (canManage()) {
+          @if (management && canManage() && selectedRisk()!.approval_state !== 'pending') {
             <button
               type="button"
               class="ui-action-edit text-xs font-medium"
@@ -361,12 +517,14 @@
         <section>
           <div class="mb-2 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-slate-700">{{ section.label }}</h3>
-            <button
-              class="text-xs font-medium text-blue-600"
-              (click)="openDetailEntry(section.key)"
-            >
-              + Adicionar
-            </button>
+            @if (management && canManage()) {
+              <button
+                class="text-xs font-medium text-blue-600"
+                (click)="openDetailEntry(section.key)"
+              >
+                + Adicionar
+              </button>
+            }
           </div>
           <div class="space-y-2">
             @for (item of section.items; track item.id) {
@@ -377,13 +535,16 @@
                     <small class="mt-1 block text-xs text-slate-400">{{
                       detailMeta(section.key, item)
                     }}</small>
-                  }</span
-                ><button
-                  class="ui-action-danger text-xs"
-                  (click)="removeDetail(section.key, item.id)"
-                >
-                  Excluir
-                </button>
+                  }
+                </span>
+                @if (management && canManage()) {
+                  <button
+                    class="ui-action-danger text-xs"
+                    (click)="removeDetail(section.key, item.id)"
+                  >
+                    Excluir
+                  </button>
+                }
               </div>
             } @empty {
               <p
@@ -410,8 +571,161 @@
           }
         </div>
       </section>
+      <section>
+        <button
+          type="button"
+          class="ui-action-history text-sm font-semibold"
+          (click)="toggleHistory(selectedRisk()!)"
+        >
+          {{
+            historyRiskId() === selectedRisk()!.id
+              ? 'Ocultar histórico do risco'
+              : 'Ver histórico do risco'
+          }}
+        </button>
+        @if (historyRiskId() === selectedRisk()!.id) {
+          <div class="mt-3 rounded-lg border border-slate-200 p-3">
+            @if (historyLoading()) {
+              <p class="text-xs text-slate-500">Carregando...</p>
+            } @else if (historyError()) {
+              <p class="text-xs text-rose-600">{{ historyError() }}</p>
+            } @else {
+              <ol class="space-y-3">
+                @for (entry of history(); track entry.id) {
+                  <li class="text-xs text-slate-600">
+                    <strong>{{ historyActionLabel(entry) }}</strong>
+                    · {{ formatHistoryDate(entry.changed_at) }} ·
+                    {{ entry.changed_by_name || 'Sistema' }}
+                    @if (entry.justification) {
+                      <p class="ml-4 text-slate-500">Justificativa: {{ entry.justification }}</p>
+                    }
+                    @if (historyDescription(entry)) {
+                      <p class="ml-4 text-slate-500">{{ historyDescription(entry) }}</p>
+                    }
+                    @for (change of historyChanges(entry); track change.label) {
+                      <p class="ml-4 text-slate-500">
+                        {{ change.label }}: {{ change.before }} → {{ change.after }}
+                      </p>
+                    }
+                  </li>
+                } @empty {
+                  <li class="text-xs text-slate-500">Sem registros de alteração.</li>
+                }
+              </ol>
+            }
+          </div>
+        }
+      </section>
     </div>
   }
+</app-side-drawer>
+<app-side-drawer
+  [open]="rejectOpen()"
+  title="Rejeitar risco"
+  [subtitle]="rejectingRisk()?.title || ''"
+  (closed)="rejectOpen.set(false)"
+>
+  <form (submit)="$event.preventDefault(); submitRejection()" class="space-y-4">
+    <label class="ui-form-label"
+      >Motivo da rejeição *
+      <textarea [formControl]="rejectionReason" rows="4" class="ui-form-control"></textarea>
+    </label>
+    <div class="ui-form-actions">
+      <button type="button" class="ui-button-secondary" (click)="rejectOpen.set(false)">
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="ui-button-primary"
+        [disabled]="!rejectionReason.value.trim() || !!approvalSaving()"
+      >
+        Confirmar rejeição
+      </button>
+    </div>
+  </form>
+</app-side-drawer>
+<app-side-drawer
+  [open]="matrixConfigOpen()"
+  title="Classificações da matriz"
+  subtitle="Defina as faixas para pontuações de 1 a 25"
+  width="max-w-xl"
+  (closed)="matrixConfigOpen.set(false)"
+>
+  <div class="space-y-4">
+    @for (item of matrixDraft(); track $index; let index = $index) {
+      <div
+        class="grid grid-cols-[1fr_80px_44px_44px_36px] items-end gap-2 rounded-lg border border-slate-200 p-3"
+      >
+        <label class="ui-form-label"
+          >Classificação
+          <input
+            class="ui-form-control"
+            [value]="item.label"
+            (input)="updateMatrixDraft(index, 'label', $any($event.target).value)"
+          />
+        </label>
+        <label class="ui-form-label"
+          >Até
+          <input
+            type="number"
+            min="1"
+            max="25"
+            class="ui-form-control"
+            [value]="item.max_score"
+            (input)="updateMatrixDraft(index, 'max_score', $any($event.target).value)"
+          />
+        </label>
+        <label class="text-xs text-slate-500"
+          >Fundo
+          <input
+            type="color"
+            class="h-10 w-full"
+            [value]="item.background_color"
+            (input)="updateMatrixDraft(index, 'background_color', $any($event.target).value)"
+          />
+        </label>
+        <label class="text-xs text-slate-500"
+          >Texto
+          <input
+            type="color"
+            class="h-10 w-full"
+            [value]="item.text_color"
+            (input)="updateMatrixDraft(index, 'text_color', $any($event.target).value)"
+          />
+        </label>
+        <button
+          type="button"
+          class="ui-action-danger pb-2 text-lg"
+          [disabled]="matrixDraft().length === 1"
+          [attr.aria-label]="'Remover ' + item.label"
+          (click)="removeMatrixClassification(index)"
+        >
+          ×
+        </button>
+      </div>
+    }
+    <p class="text-xs text-slate-500">
+      Cada faixa começa após o limite da anterior. A última deve terminar em 25.
+    </p>
+    @if (matrixError()) {
+      <p role="alert" class="rounded-lg bg-rose-50 p-3 text-sm text-rose-600">
+        {{ matrixError() }}
+      </p>
+    }
+    <div class="flex justify-between border-t border-slate-100 pt-4">
+      <button type="button" class="ui-button-secondary" (click)="addMatrixClassification()">
+        + Classificação
+      </button>
+      <button
+        type="button"
+        class="ui-button-primary"
+        [disabled]="matrixSaving()"
+        (click)="saveMatrixConfig()"
+      >
+        {{ matrixSaving() ? 'Salvando...' : 'Salvar matriz' }}
+      </button>
+    </div>
+  </div>
 </app-side-drawer>
 <app-side-drawer
   [open]="detailEntryOpen()"
