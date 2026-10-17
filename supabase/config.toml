@@ -1,2 +1,5 @@
 [functions.ai-analysis]
 verify_jwt = true
+
+[functions.document-integration]
+verify_jwt = true

@@ -15,7 +15,7 @@
         <p class="ui-page-subtitle">{{ subtitle }}</p>
       </div>
       <div class="flex gap-2">
-        @if (mode === 'management') {
+        @if (mode === 'management' && auth.isAdmin()) {
           <button
             class="ui-button-primary"
             [class.ui-locked]="locked"
@@ -58,7 +58,7 @@
         <span appIcon="Search" class="ui-search-icon"></span
         ><input
           [formControl]="search"
-          placeholder="Buscar documento publicado..."
+          placeholder="Buscar por nome, código ou processo..."
           class="ui-search-input"
         />
       </div>
@@ -96,34 +96,18 @@
               </p>
             }
             <div class="mt-5 flex gap-2">
-              @if (document.drive_link) {
-                <button
-                  class="ui-button-secondary flex-1"
-                  [class.ui-locked]="locked"
-                  [attr.aria-disabled]="locked"
-                  (click)="preview(document)"
-                >
-                  <span appIcon="ExternalLink" class="h-3.5 w-3.5"></span>Abrir
-                </button>
-              }
-              @if (canPrint(document)) {
-                <button
-                  class="ui-button-secondary"
-                  [class.ui-locked]="locked"
-                  [attr.aria-disabled]="locked"
-                  (click)="requestCopy(document)"
-                >
-                  <span appIcon="Printer" class="h-3.5 w-3.5"></span>Cópia
+              <button class="ui-button-secondary flex-1" (click)="preview(document)">
+                Visualizar
+              </button>
+              @if (!canPrint(document)) {
+                <button class="ui-button-secondary" (click)="requestCopy(document)">
+                  Solicitar cópia
                 </button>
               }
             </div>
           </article>
         } @empty {
-          <p
-            class="col-span-full rounded-xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-400"
-          >
-            Nenhum documento publicado.
-          </p>
+          <p class="ui-empty-state col-span-full">Nenhum documento publicado.</p>
         }
       </div>
     }
@@ -268,24 +252,63 @@
                     >
                       Histórico
                     </button>
-                    @if (column.value !== 'obsoleto') {
+                    @if (canEdit(document)) {
                       <button
-                        class="text-[11px] font-medium text-blue-600"
-                        [class.ui-locked]="locked"
-                        [attr.aria-disabled]="locked"
-                        (click)="advance(document)"
+                        class="text-xs text-blue-600"
+                        [disabled]="busy()"
+                        (click)="syncGoogle(document)"
                       >
-                        Avançar
+                        Sincronizar Docs
+                      </button>
+                      <button
+                        class="text-xs text-blue-600"
+                        (click)="begin(document, 'submit', 'Enviar para validação')"
+                      >
+                        Enviar
                       </button>
                     }
-                    <button
-                      class="ui-action-danger text-[11px]"
-                      [class.ui-locked]="locked"
-                      [attr.aria-disabled]="locked"
-                      (click)="removeDocument(document)"
-                    >
-                      Excluir
-                    </button>
+                    @if (canDecide(document)) {
+                      <button
+                        class="text-xs text-emerald-600"
+                        (click)="begin(document, 'approve', 'Validar e aprovar documento')"
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        class="text-xs text-rose-600"
+                        (click)="begin(document, 'reject', 'Reprovar documento')"
+                      >
+                        Reprovar
+                      </button>
+                    }
+                    @if (auth.isAdmin()) {
+                      @if (document.status === 'aprovado') {
+                        <button
+                          class="text-xs text-blue-600"
+                          (click)="begin(document, 'publish', 'Publicar documento')"
+                        >
+                          Publicar
+                        </button>
+                      }
+                      @if (
+                        document.status === 'publicado' ||
+                        document.status === 'aprovado' ||
+                        document.status === 'em_validacao'
+                      ) {
+                        <button
+                          class="text-xs text-amber-600"
+                          (click)="begin(document, 'revise', 'Iniciar nova revisão')"
+                        >
+                          Revisar
+                        </button>
+                      }
+                      <button
+                        class="ui-action-danger text-xs"
+                        (click)="begin(document, 'deactivate', 'Inativar documento')"
+                      >
+                        Inativar
+                      </button>
+                    }
                   </div>
                 </article>
               } @empty {
@@ -296,59 +319,121 @@
         }
       </div>
     }
+    @if (mode === 'management') {
+      <button class="ui-button-secondary" (click)="showInactive.set(!showInactive())">
+        Documentos inativos ({{ inactiveDocuments().length }})
+      </button>
+      @if (showInactive()) {
+        @for (document of inactiveDocuments(); track document.id) {
+          <article class="ui-card flex justify-between">
+            <span>{{ document.code }} · {{ document.title }}</span
+            ><button class="ui-action-history" (click)="openWorkflow(document)">Histórico</button>
+          </article>
+        }
+      }
+    }
     @if (mode === 'copies') {
-      <div class="ui-table-panel">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="ui-table-header">
-                <th class="ui-table-heading">Documento</th>
-                <th class="ui-table-heading">Solicitante</th>
-                <th class="ui-table-heading">Solicitação</th>
-                <th class="ui-table-heading">Status</th>
-                <th class="ui-table-heading text-right">Ações</th>
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <article class="stat">
+          <span>Cópias controladas</span><strong>{{ store.copies().length }}</strong>
+        </article>
+        <article class="stat">
+          <span>Solicitações pendentes</span><strong>{{ store.pendingCopies() }}</strong>
+        </article>
+        <article class="stat">
+          <span>Entregues</span><strong>{{ deliveredCopies() }}</strong>
+        </article>
+        <article class="stat">
+          <span>Devoluções atrasadas</span><strong>{{ overdueCopies() }}</strong>
+        </article>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <input
+          class="ui-search-input max-w-md"
+          [formControl]="search"
+          placeholder="Documento, código ou solicitante"
+          aria-label="Buscar cópias"
+        />
+        <select
+          #copyStatus
+          (change)="copyFilter.set(copyStatus.value)"
+          aria-label="Status das cópias"
+        >
+          <option value="">Todos os status</option>
+          <option value="solicitada">Solicitadas</option>
+          <option value="aprovada">Aprovadas</option>
+          <option value="entregue">Entregues</option>
+          <option value="recolhida">Recolhidas</option>
+          <option value="recusada">Recusadas</option>
+          <option value="atrasada">Atrasadas</option>
+        </select>
+      </div>
+      <div class="ui-table-panel overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="ui-table-header">
+              <th class="ui-table-heading">Documento / versão</th>
+              <th class="ui-table-heading">Solicitante</th>
+              <th class="ui-table-heading">Justificativa</th>
+              <th class="ui-table-heading">Prazo / devolução</th>
+              <th class="ui-table-heading">Status</th>
+              <th class="ui-table-heading">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (copy of filteredCopies(); track copy.id) {
+              <tr>
+                <td class="ui-table-cell">
+                  {{ documentName(copy.document_id) }} · v{{ copy.document_version }}
+                </td>
+                <td class="ui-table-cell">{{ store.profileName(copy.user_id) }}</td>
+                <td class="ui-table-cell">{{ copy.justification }}</td>
+                <td class="ui-table-cell" [class.text-rose-600]="copyOverdue(copy)">
+                  {{ copy.due_date ? formatDateOnly(copy.due_date) : '—' }} /
+                  {{ copy.return_date ? formatDateOnly(copy.return_date) : 'Não devolvida' }}
+                </td>
+                <td class="ui-table-cell">
+                  {{ copy.status }}{{ copyOverdue(copy) ? ' · Atrasada' : '' }}
+                </td>
+                <td class="ui-table-cell">
+                  @if (auth.isAdmin()) {
+                    @if (copy.status === 'solicitada') {
+                      <button class="ui-action-edit mr-2" (click)="beginCopy(copy, 'aprovada')">
+                        Aprovar</button
+                      ><button class="ui-action-danger" (click)="beginCopy(copy, 'recusada')">
+                        Recusar
+                      </button>
+                    }
+                    @if (copy.status === 'aprovada') {
+                      <button class="ui-action-edit mr-2" (click)="beginCopy(copy, 'entregue')">
+                        Registrar entrega
+                      </button>
+                    }
+                    @if (copy.status === 'entregue') {
+                      <button class="ui-action-edit mr-2" (click)="beginCopy(copy, 'recolhida')">
+                        Registrar devolução
+                      </button>
+                    }
+                    @if (
+                      (copy.status === 'aprovada' || copy.status === 'entregue') && !copy.emailed_at
+                    ) {
+                      <button class="ui-action-edit" [disabled]="busy()" (click)="emailCopy(copy)">
+                        Enviar PDF por e-mail
+                      </button>
+                    }
+                  }
+                  @if (copy.emailed_at) {
+                    <span class="text-xs text-emerald-600">E-mail enviado</span>
+                  }
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              @for (copy of store.copies(); track copy.id) {
-                <tr class="border-b border-slate-50">
-                  <td class="ui-table-cell font-medium text-slate-700">
-                    {{ documentName(copy.document_id) }}
-                  </td>
-                  <td class="ui-table-cell">{{ store.profileName(copy.user_id) }}</td>
-                  <td class="ui-table-cell">{{ formatDate(copy.request_date) }}</td>
-                  <td class="ui-table-cell">
-                    <select
-                      [value]="copy.status"
-                      [attr.aria-disabled]="locked"
-                      (change)="locked ? $event.preventDefault() : changeCopyStatus(copy, $event)"
-                      class="rounded-full border-0 bg-slate-100 px-2 py-1 text-xs"
-                      [class.ui-locked]="locked"
-                    >
-                      <option value="solicitada">Solicitada</option>
-                      <option value="entregue">Entregue</option>
-                      <option value="recolhida">Recolhida</option>
-                    </select>
-                  </td>
-                  <td class="ui-table-cell text-right">
-                    <button
-                      class="ui-action-danger text-xs"
-                      [class.ui-locked]="locked"
-                      [attr.aria-disabled]="locked"
-                      (click)="removeCopy(copy)"
-                    >
-                      Excluir
-                    </button>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="5" class="ui-table-empty">Nenhuma cópia controlada.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+            } @empty {
+              <tr>
+                <td colspan="6" class="ui-table-empty">Nenhuma cópia encontrada.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     }
   </div>
@@ -388,6 +473,14 @@
           >
         }
       </div>
+      <section class="space-y-2">
+        <h3 class="text-sm font-semibold">Versões preservadas</h3>
+        @for (version of versions(); track version.id) {
+          <button class="ui-button-secondary w-full" (click)="preview(version.snapshot)">
+            Versão {{ version.version }} · {{ formatDate(version.recorded_at) }}
+          </button>
+        }
+      </section>
       <section>
         <h3 class="mb-3 text-sm font-semibold text-slate-700">Histórico de alterações</h3>
         @if (workflowLoading()) {
@@ -399,7 +492,7 @@
             @for (entry of workflowEntries(); track entry.id) {
               <article class="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
                 <p class="font-medium text-slate-700">
-                  {{ entry.from_status || 'Início' }} → {{ entry.to_status }}
+                  v{{ entry.version }} · {{ entry.from_status || 'Início' }} → {{ entry.to_status }}
                 </p>
                 <p class="mt-1 text-slate-400">
                   {{ store.profileName(entry.changed_by) }} · {{ formatDate(entry.changed_at) }}
@@ -442,7 +535,10 @@
         }
       </select></label
     ><label class="ui-form-label"
-      >Processo *<select formControlName="process_id">
+      >Processo *<select
+        formControlName="process_id"
+        (change)="documentForm.controls.step_id.setValue('')"
+      >
         <option value="">—</option>
         @for (process of store.processes(); track process.id) {
           <option [value]="process.id">{{ process.title }}</option>
@@ -451,16 +547,47 @@
     ><label class="ui-form-label sm:col-span-2"
       >Link do documento<input
         formControlName="drive_link"
-        placeholder="https://docs.google.com/..." /></label
-    ><label class="ui-form-label"
-      >Status<select formControlName="status">
-        @for (item of workflow; track item.value) {
-          <option [value]="item.value">{{ item.label }}</option>
+        placeholder="https://docs.google.com/..."
+    /></label>
+    <label class="ui-form-label"
+      >Etapa SIPOC *<select formControlName="step_id">
+        <option value="">Selecionar...</option>
+        @for (step of steps(); track step.id) {
+          <option [value]="step.id">{{ step.title }}</option>
         }
       </select></label
-    ><label class="mt-6 flex items-center gap-2 text-sm text-slate-600"
-      ><input type="checkbox" formControlName="print_allowed" />Permitir impressão</label
     >
+    <label class="ui-form-label"
+      >Responsável *<select formControlName="owner_id">
+        <option value="">Selecionar...</option>
+        @for (profile of store.profiles(); track profile.id) {
+          <option [value]="profile.id">{{ profile.name }}</option>
+        }
+      </select></label
+    >
+    <label class="ui-form-label sm:col-span-2"
+      >Aprovadores *<select multiple formControlName="approver_ids">
+        @for (profile of store.profiles(); track profile.id) {
+          <option [value]="profile.id">{{ profile.name }}</option>
+        }
+      </select></label
+    >
+    <label class="ui-form-label sm:col-span-2"
+      >Justificativa *<textarea formControlName="justification" rows="3"></textarea>
+    </label>
+    @if (editingDocument()?.drive_link) {
+      <a
+        class="text-sm text-blue-600"
+        [href]="editingDocument()!.drive_link"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Editar no Google Docs</a
+      >
+    }
+    <p class="text-xs text-slate-500 sm:col-span-2">
+      Edite o arquivo no Google Docs com uma conta autorizada. Ao enviar para validação, o Orbis
+      sincroniza a versão e o PDF automaticamente. A impressão segue a parametrização do tipo.
+    </p>
     <div class="ui-form-actions">
       <button type="button" class="ui-button-secondary" (click)="documentOpen.set(false)">
         Cancelar</button
@@ -576,5 +703,36 @@
         <p class="text-sm text-slate-500">Nenhuma alteração registrada.</p>
       }
     </div>
+  }
+</app-side-drawer>
+
+<app-side-drawer
+  [open]="!!operation()"
+  [title]="operation()?.title || ''"
+  (closed)="operation.set(null)"
+>
+  @if (formError()) {
+    <p class="text-sm text-rose-600 mb-3">{{ formError() }}</p>
+  }
+  <label class="ui-form-label"
+    >Justificativa ou comentário *<textarea rows="4" [formControl]="reason"></textarea>
+  </label>
+  @if (operation()?.action === 'request') {
+    <label class="ui-form-label mt-4"
+      >Data limite de utilização *<input type="date" [min]="today" [formControl]="copyDue"
+    /></label>
+  }
+  <button class="ui-button-primary mt-4" [disabled]="busy()" (click)="confirmOperation()">
+    Confirmar
+  </button>
+</app-side-drawer>
+<app-side-drawer
+  [open]="!!previewDocument()"
+  [title]="previewDocument()?.title || 'Visualizar documento'"
+  width="max-w-4xl"
+  (closed)="previewDocument.set(null)"
+>
+  @if (previewDocument(); as document) {
+    <app-document-viewer [document]="document" [printAllowed]="canPrint(document)" />
   }
 </app-side-drawer>

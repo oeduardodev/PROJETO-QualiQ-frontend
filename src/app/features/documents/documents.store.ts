@@ -9,6 +9,7 @@ import type {
   GEDDocument,
   Process,
   Profile,
+  SipocNode,
 } from '@core/models/database';
 import { ProfileService } from '@core/services/profile.service';
 
@@ -17,6 +18,7 @@ export class DocumentsStore {
   private readonly documentService = inject(DocumentService);
   private readonly processService = inject(ProcessService);
   private readonly profileService = inject(ProfileService);
+  readonly nodes = signal<SipocNode[]>([]);
   readonly types = signal<DocumentType[]>([]);
   readonly levels = signal<DocumentLevel[]>([]);
   readonly documents = signal<GEDDocument[]>([]);
@@ -43,14 +45,16 @@ export class DocumentsStore {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [types, levels, documents, processes, copies, profiles] = await Promise.all([
+      const [types, levels, documents, processes, copies, profiles, nodes] = await Promise.all([
         this.documentService.fetchDocumentTypes(),
         this.documentService.fetchDocumentLevels(),
         this.documentService.fetchDocuments(),
         this.processService.fetchProcesses(),
         this.documentService.fetchControlledCopies(),
         this.profileService.findAll(),
+        this.processService.fetchSipocNodes(),
       ]);
+      this.nodes.set(nodes);
       this.types.set(types);
       this.levels.set(levels);
       this.documents.set(documents);

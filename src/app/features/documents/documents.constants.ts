@@ -27,6 +27,13 @@ export const WORKFLOW: {
     border: 'border-blue-200',
   },
   {
+    value: 'em_validacao',
+    label: 'Em validação',
+    color: 'text-violet-600',
+    bg: 'bg-violet-50',
+    border: 'border-violet-200',
+  },
+  {
     value: 'aprovado',
     label: 'Aprovado',
     color: 'text-amber-600',

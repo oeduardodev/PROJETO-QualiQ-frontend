@@ -4,50 +4,30 @@ import { DocumentRepository } from './document.repository';
 import { DocumentService } from './document.service';
 
 describe('DocumentService', () => {
-  it('advances the document and its history through one database operation', async () => {
+  it('requires a reason for an audited transition', async () => {
     const document = { id: 'document-1', status: 'rascunho' } as GEDDocument;
-    const savedDocument = { ...document, status: 'em_revisao' } as GEDDocument;
-    const repository = {
-      advanceDocument: vi.fn(() => Promise.resolve(savedDocument)),
-    };
+    const repository = { transition: vi.fn(() => Promise.resolve(document)) };
     TestBed.configureTestingModule({
       providers: [{ provide: DocumentRepository, useValue: repository }],
     });
+    const service = TestBed.inject(DocumentService);
 
-    const result = await TestBed.inject(DocumentService).advanceDocument(document);
-
-    expect(result).toEqual({ savedDocument, nextStatus: 'em_revisao' });
-    expect(repository.advanceDocument).toHaveBeenCalledWith('document-1', 'rascunho', 'em_revisao');
+    expect(() => service.transition(document, 'submit', ' ')).toThrow('Informe a justificativa.');
+    expect(repository.transition).not.toHaveBeenCalled();
+    await service.transition(document, 'submit', ' Revisado ');
+    expect(repository.transition).toHaveBeenCalledWith(document, 'submit', 'Revisado');
   });
 
-  it('lets the database assign the requester, dates and initial copy state', async () => {
-    const copy = { id: 'copy-1', document_id: 'document-1' };
-    const repository = { createControlledCopy: vi.fn(() => Promise.resolve(copy)) };
+  it('passes reason and due date to the controlled-copy request', async () => {
+    const repository = { requestCopy: vi.fn(() => Promise.resolve({ id: 'copy-1' })) };
     TestBed.configureTestingModule({
       providers: [{ provide: DocumentRepository, useValue: repository }],
     });
-
-    await TestBed.inject(DocumentService).requestCopy('document-1');
-    expect(repository.createControlledCopy).toHaveBeenCalledWith({ document_id: 'document-1' });
-  });
-
-  it('passes a chosen status through the audited save operation', async () => {
-    const current = { id: 'document-1', status: 'rascunho' } as GEDDocument;
-    const saved = { ...current, status: 'publicado' } as GEDDocument;
-    const payload = {
-      title: 'Manual',
-      type_id: null,
-      process_id: null,
-      drive_link: null,
-      status: 'publicado' as const,
-      print_allowed: false,
-    };
-    const repository = { saveDocument: vi.fn(() => Promise.resolve(saved)) };
-    TestBed.configureTestingModule({
-      providers: [{ provide: DocumentRepository, useValue: repository }],
-    });
-
-    expect(await TestBed.inject(DocumentService).saveDocument(current, payload)).toEqual(saved);
-    expect(repository.saveDocument).toHaveBeenCalledWith(current, payload);
+    await TestBed.inject(DocumentService).requestControlledCopy(
+      'document-1',
+      'Uso externo',
+      '2030-01-01',
+    );
+    expect(repository.requestCopy).toHaveBeenCalledWith('document-1', 'Uso externo', '2030-01-01');
   });
 });

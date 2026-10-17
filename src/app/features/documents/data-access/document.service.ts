@@ -1,9 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { DocumentRepository } from './document.repository';
-import type { CopyStatus, DocumentStatus } from '@core/models/database';
-import { nextWorkflowStatus } from '@shared/utils/workflow.utils';
-import { todayUtc } from '@shared/utils/date.utils';
-import { DOCUMENT_STATUS_SEQUENCE } from './document-workflow.constants';
+import type { CopyStatus } from '@core/models/database';
 import type { DocumentSavePayload } from './document.mapper';
 import type {
   DocumentType,
@@ -18,33 +15,33 @@ import type {
 export class DocumentService {
   private readonly repository = inject(DocumentRepository);
 
+  transition(document: GEDDocument, action: string, reason: string) {
+    if (!reason.trim()) throw new Error('Informe a justificativa.');
+    return this.repository.transition(document, action, reason.trim());
+  }
+
+  versions(id: string) {
+    return this.repository.versions(id);
+  }
+
+  syncGoogle(document: GEDDocument) {
+    return this.repository.syncGoogle(document);
+  }
+
+  emailCopy(id: string) {
+    return this.repository.emailCopy(id);
+  }
+
+  requestControlledCopy(id: string, reason: string, due: string) {
+    return this.repository.requestCopy(id, reason, due);
+  }
+
+  transitionCopy(copy: ControlledCopy, status: CopyStatus, reason: string) {
+    return this.repository.transitionCopy(copy, status, reason);
+  }
+
   saveDocument(current: GEDDocument | null, payload: DocumentSavePayload): Promise<GEDDocument> {
     return this.repository.saveDocument(current, payload);
-  }
-
-  async advanceDocument(
-    document: GEDDocument,
-  ): Promise<{ savedDocument: GEDDocument; nextStatus: DocumentStatus }> {
-    const status = nextWorkflowStatus(document.status, DOCUMENT_STATUS_SEQUENCE);
-    const savedDocument = await this.repository.advanceDocument(
-      document.id,
-      document.status,
-      status,
-    );
-    return { savedDocument, nextStatus: status };
-  }
-
-  requestCopy(documentId: string): Promise<ControlledCopy> {
-    return this.repository.createControlledCopy({ document_id: documentId });
-  }
-
-  changeCopyStatus(copy: ControlledCopy, status: CopyStatus): Promise<ControlledCopy> {
-    const today = todayUtc();
-    return this.repository.updateControlledCopy(copy.id, {
-      status,
-      delivery_date: status === 'entregue' ? today : copy.delivery_date,
-      return_date: status === 'recolhida' ? today : copy.return_date,
-    });
   }
 
   fetchDocumentTypes(): Promise<DocumentType[]> {
@@ -87,33 +84,12 @@ export class DocumentService {
     return this.repository.fetchDocuments();
   }
 
-  deleteDocument(id: string): Promise<void> {
-    return this.repository.deleteDocument(id);
-  }
-
   fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
     return this.repository.fetchDocumentWorkflows(documentId);
   }
 
   fetchControlledCopies(): Promise<ControlledCopy[]> {
     return this.repository.fetchControlledCopies();
-  }
-
-  createControlledCopy(
-    input: Partial<Omit<ControlledCopy, 'id' | 'created_at'>>,
-  ): Promise<ControlledCopy> {
-    return this.repository.createControlledCopy(input);
-  }
-
-  updateControlledCopy(
-    id: string,
-    patch: Partial<Omit<ControlledCopy, 'id' | 'created_at'>>,
-  ): Promise<ControlledCopy> {
-    return this.repository.updateControlledCopy(id, patch);
-  }
-
-  deleteControlledCopy(id: string): Promise<void> {
-    return this.repository.deleteControlledCopy(id);
   }
 
   fetchDocumentsByProcess(processId: string): Promise<GEDDocument[]> {

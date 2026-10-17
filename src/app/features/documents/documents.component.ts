@@ -1,3 +1,4 @@
+import { DocumentViewerComponent } from './document-viewer.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { formatDate } from '@shared/utils/date.utils';
 import { errorMessage } from '@shared/utils/error.utils';
@@ -14,19 +15,19 @@ import type {
   DocumentType,
   DocumentTypeHistory,
   DocumentWorkflow,
+  DocumentVersion,
   GEDDocument,
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { ToastService } from '@shared/services/toast.service';
-import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { DocumentsStore } from './documents.store';
 import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent],
+  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, DocumentViewerComponent],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -38,10 +39,51 @@ export class DocumentsComponent {
   readonly store = inject(DocumentsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
-  private readonly alertDialog = inject(AlertDialogService);
   readonly mode = this.route.snapshot.data['mode'] as
     'panel' | 'hierarchy' | 'management' | 'copies';
-  readonly workflow = WORKFLOW;
+  readonly workflow = WORKFLOW.filter((c) => c.value !== 'obsoleto');
+  readonly versions = signal<DocumentVersion[]>([]);
+  readonly previewDocument = signal<GEDDocument | null>(null);
+  readonly operation = signal<{
+    document?: GEDDocument;
+    copy?: ControlledCopy;
+    action: string;
+    title: string;
+  } | null>(null);
+  readonly reason = new FormControl('', { nonNullable: true, validators: Validators.required });
+  readonly copyDue = new FormControl('', { nonNullable: true });
+  readonly busy = signal(false);
+  readonly showInactive = signal(false);
+  readonly copyFilter = signal('');
+  readonly filteredCopies = computed(() =>
+    this.store
+      .copies()
+      .filter(
+        (c) =>
+          (!this.copyFilter() ||
+            (this.copyFilter() === 'atrasada'
+              ? this.copyOverdue(c)
+              : c.status === this.copyFilter())) &&
+          [
+            this.documentName(c.document_id),
+            this.store.profileName(c.user_id),
+            this.store.documents().find((d) => d.id === c.document_id)?.code,
+          ]
+            .join(' ')
+            .toLowerCase()
+            .includes(this.searchValue().toLowerCase()),
+      ),
+  );
+  readonly overdueCopies = computed(
+    () => this.store.copies().filter((c) => this.copyOverdue(c)).length,
+  );
+  readonly deliveredCopies = computed(
+    () => this.store.copies().filter((c) => c.status === 'entregue').length,
+  );
+  readonly inactiveDocuments = computed(() =>
+    this.store.documents().filter((d) => d.status === 'obsoleto'),
+  );
+  readonly today = new Date().toLocaleDateString('en-CA');
   readonly locked = DOCUMENTS_LOCKED;
   readonly canManageTypes = computed(() => this.auth.isAdmin());
   readonly searchValue = signal('');
@@ -69,9 +111,14 @@ export class DocumentsComponent {
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     type_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
     process_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    step_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    owner_id: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    approver_ids: new FormControl<string[]>([], {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
+    justification: new FormControl('', { nonNullable: true, validators: Validators.required }),
     drive_link: new FormControl('', { nonNullable: true }),
-    status: new FormControl<DocumentStatus>('rascunho', { nonNullable: true }),
-    print_allowed: new FormControl(false, { nonNullable: true }),
   });
   readonly typeForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
@@ -107,7 +154,10 @@ export class DocumentsComponent {
       .filter(
         (document) =>
           !this.searchValue() ||
-          document.title.toLowerCase().includes(this.searchValue().toLowerCase()),
+          [document.title, document.code, this.store.processName(document.process_id)]
+            .join(' ')
+            .toLowerCase()
+            .includes(this.searchValue().toLowerCase()),
       ),
   );
   readonly publishedProcessCount = computed(
@@ -188,25 +238,33 @@ export class DocumentsComponent {
 
   openDocument(document?: GEDDocument): void {
     if (this.blocked()) return;
+    if (!this.canEdit(document)) {
+      this.preview(document!);
+      return;
+    }
     this.formError.set(null);
     this.editingDocument.set(document ?? null);
     this.documentForm.reset(
       document
         ? {
+            step_id: document.step_id ?? '',
+            owner_id: document.owner_id ?? '',
+            approver_ids: document.approver_ids ?? [],
+            justification: '',
             title: document.title,
             type_id: document.type_id ?? '',
             process_id: document.process_id ?? '',
             drive_link: document.drive_link ?? '',
-            status: document.status,
-            print_allowed: document.print_allowed,
           }
         : {
+            step_id: '',
+            owner_id: this.auth.user()?.id ?? '',
+            approver_ids: [],
+            justification: '',
             title: '',
             type_id: '',
             process_id: '',
             drive_link: '',
-            status: 'rascunho',
-            print_allowed: false,
           },
     );
     this.documentOpen.set(true);
@@ -218,7 +276,11 @@ export class DocumentsComponent {
     this.workflowError.set(null);
     this.workflowLoading.set(true);
     try {
-      const entries = await this.documentService.fetchDocumentWorkflows(document.id);
+      const [entries, versions] = await Promise.all([
+        this.documentService.fetchDocumentWorkflows(document.id),
+        this.documentService.versions(document.id),
+      ]);
+      this.versions.set(versions);
       if (this.workflowDocument()?.id === document.id) this.workflowEntries.set(entries);
     } catch (error) {
       this.workflowError.set(errorMessage(error, 'Erro ao carregar histórico do documento'));
@@ -230,7 +292,9 @@ export class DocumentsComponent {
   async saveDocument(): Promise<void> {
     if (this.blocked()) return;
     if (this.documentForm.invalid) {
-      this.formError.set('Título, tipo e processo são obrigatórios.');
+      this.formError.set(
+        'Preencha título, tipo, processo, etapa, responsável, aprovadores e justificativa.',
+      );
       return;
     }
     try {
@@ -247,27 +311,130 @@ export class DocumentsComponent {
     }
   }
 
-  async advance(document: GEDDocument): Promise<void> {
-    if (this.blocked()) return;
+  canEdit(document?: GEDDocument): boolean {
+    return document
+      ? ['rascunho', 'em_revisao'].includes(document.status) &&
+          (this.auth.isAdmin() || document.owner_id === this.auth.user()?.id)
+      : this.auth.isAdmin();
+  }
+
+  steps() {
+    return this.store
+      .nodes()
+      .filter(
+        (n) => n.node_type === 'P' && n.process_id === this.documentForm.controls.process_id.value,
+      );
+  }
+
+  canDecide(document: GEDDocument): boolean {
+    return (
+      document.status === 'em_validacao' &&
+      document.approver_ids.includes(this.auth.user()?.id ?? '')
+    );
+  }
+
+  begin(document: GEDDocument, action: string, title: string): void {
+    this.reason.reset();
+    this.formError.set(null);
+    this.operation.set({ document, action, title });
+  }
+
+  beginCopy(copy: ControlledCopy, status: string): void {
+    this.reason.reset();
+    this.formError.set(null);
+    this.operation.set({ copy, action: status, title: 'Atualizar cópia controlada' });
+  }
+
+  async confirmOperation(): Promise<void> {
+    const operation = this.operation();
+    if (!operation || this.busy() || !this.reason.value.trim()) {
+      this.formError.set('Informe a justificativa.');
+      return;
+    }
+    if (
+      operation.action === 'request' &&
+      (!this.copyDue.value || this.copyDue.value < this.today)
+    ) {
+      this.formError.set('Informe uma data limite válida.');
+      return;
+    }
+    this.busy.set(true);
+    this.formError.set(null);
     try {
-      const { savedDocument, nextStatus } = await this.documentService.advanceDocument(document);
-      this.store.documents.update((items) =>
-        items.map((item) => (item.id === savedDocument.id ? savedDocument : item)),
-      );
-      this.toast.success(
-        `Documento movido para ${WORKFLOW.find((item) => item.value === nextStatus)?.label}`,
-      );
+      if (operation.copy) {
+        const saved = await this.documentService.transitionCopy(
+          operation.copy,
+          operation.action as CopyStatus,
+          this.reason.value,
+        );
+        this.store.copies.update((items) => items.map((c) => (c.id === saved.id ? saved : c)));
+      } else if (operation.document && operation.action === 'request') {
+        const saved = await this.documentService.requestControlledCopy(
+          operation.document.id,
+          this.reason.value,
+          this.copyDue.value,
+        );
+        this.store.copies.update((items) => [saved, ...items]);
+      } else if (operation.document) {
+        let current = operation.document;
+        if (operation.action === 'submit') {
+          current = await this.documentService.syncGoogle(current);
+          this.store.documents.update((items) =>
+            items.map((d) => (d.id === current.id ? current : d)),
+          );
+        }
+        const saved = await this.documentService.transition(
+          current,
+          operation.action,
+          this.reason.value,
+        );
+        this.store.documents.update((items) => items.map((d) => (d.id === saved.id ? saved : d)));
+      }
+      this.operation.set(null);
+      this.toast.success('Operação registrada com sucesso');
     } catch (error) {
-      this.toast.error(errorMessage(error, 'Erro ao avançar documento'));
+      this.formError.set(errorMessage(error, 'Não foi possível concluir a operação'));
+    } finally {
+      this.busy.set(false);
     }
   }
 
-  async removeDocument(document: GEDDocument): Promise<void> {
-    if (this.blocked()) return;
-    if (!(await this.alertDialog.confirm('Excluir este documento?'))) return;
-    await this.documentService.deleteDocument(document.id);
-    this.store.documents.update((items) => items.filter((item) => item.id !== document.id));
-    this.toast.success('Documento excluído');
+  copyOverdue(copy: ControlledCopy): boolean {
+    return (
+      !!copy.due_date &&
+      copy.due_date < this.today &&
+      ['aprovada', 'entregue'].includes(copy.status)
+    );
+  }
+
+  async syncGoogle(document: GEDDocument): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      const saved = await this.documentService.syncGoogle(document);
+      this.store.documents.update((items) => items.map((d) => (d.id === saved.id ? saved : d)));
+      this.toast.success('Conteúdo sincronizado');
+    } catch (error) {
+      this.toast.error(
+        errorMessage(error, 'Configure a integração Google Docs no servidor para sincronizar.'),
+      );
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async emailCopy(copy: ControlledCopy): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.documentService.emailCopy(copy.id);
+      this.toast.success('Cópia enviada por e-mail');
+      await this.store.load(true);
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Não foi possível enviar o e-mail'));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   openType(type?: DocumentType): void {
@@ -409,39 +576,12 @@ export class DocumentsComponent {
   }
 
   preview(document: GEDDocument): void {
-    if (this.blocked()) return;
-    if (!document.drive_link) return;
-    let url: URL;
-    try {
-      url = new URL(document.drive_link);
-    } catch {
-      this.toast.error('Link do documento inválido');
-      return;
-    }
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-      this.toast.error('Use um link HTTP ou HTTPS para o documento');
-      return;
-    }
-    const match =
-      url.hostname === 'docs.google.com'
-        ? url.pathname.match(/^\/document\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/)
-        : null;
-    window.open(
-      match ? `https://docs.google.com/document/d/${match[1]}/preview` : url.href,
-      '_blank',
-      'noopener,noreferrer',
-    );
+    this.previewDocument.set(document);
   }
 
-  async requestCopy(document: GEDDocument): Promise<void> {
-    if (this.blocked()) return;
-    try {
-      const saved = await this.documentService.requestCopy(document.id);
-      this.store.copies.update((items) => [saved, ...items]);
-      this.toast.success('Cópia controlada solicitada');
-    } catch (e) {
-      this.toast.error(errorMessage(e, 'Erro ao solicitar cópia'));
-    }
+  requestCopy(document: GEDDocument): void {
+    this.copyDue.reset();
+    this.begin(document, 'request', 'Solicitar cópia controlada');
   }
 
   documentName(id: string): string {
@@ -450,21 +590,5 @@ export class DocumentsComponent {
 
   formatDate(value: string | null): string {
     return formatDate(value);
-  }
-
-  async changeCopyStatus(copy: ControlledCopy, event: Event): Promise<void> {
-    if (this.blocked()) return;
-    const status = (event.target as HTMLSelectElement).value as CopyStatus;
-    const saved = await this.documentService.changeCopyStatus(copy, status);
-    this.store.copies.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-    this.toast.success('Status atualizado');
-  }
-
-  async removeCopy(copy: ControlledCopy): Promise<void> {
-    if (this.blocked()) return;
-    if (!(await this.alertDialog.confirm('Excluir este registro de cópia?'))) return;
-    await this.documentService.deleteControlledCopy(copy.id);
-    this.store.copies.update((items) => items.filter((item) => item.id !== copy.id));
-    this.toast.success('Cópia excluída');
   }
 }

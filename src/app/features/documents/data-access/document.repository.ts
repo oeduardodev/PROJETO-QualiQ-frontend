@@ -20,19 +20,80 @@ export class DocumentRepository {
     payload: DocumentSavePayload,
   ): Promise<GEDDocument> {
     const { data, error } = await this.client
-      .rpc('save_document', {
-        p_document_id: current?.id ?? null,
-        p_expected_status: current?.status ?? null,
-        p_status: payload.status,
-        p_title: payload.title,
-        p_type_id: payload.type_id,
-        p_process_id: payload.process_id,
-        p_drive_link: payload.drive_link,
-        p_print_allowed: payload.print_allowed,
+      .rpc('save_operation_document', {
+        p_id: current?.id ?? null,
+        p_expected_updated_at: current?.updated_at ?? null,
+        p_payload: { ...payload },
+        p_reason: payload.justification?.trim() ?? '',
       })
       .single();
     if (error) throw error;
     return data;
+  }
+
+  async transition(document: GEDDocument, action: string, reason: string): Promise<GEDDocument> {
+    const { data, error } = await this.client
+      .rpc('transition_operation_document', {
+        p_id: document.id,
+        p_expected_updated_at: document.updated_at,
+        p_action: action,
+        p_reason: reason,
+      })
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async requestCopy(id: string, reason: string, due: string): Promise<ControlledCopy> {
+    const { data, error } = await this.client
+      .rpc('request_operation_copy', { p_document_id: id, p_reason: reason, p_due_date: due })
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async transitionCopy(
+    copy: ControlledCopy,
+    status: ControlledCopy['status'],
+    reason: string,
+  ): Promise<ControlledCopy> {
+    const { data, error } = await this.client
+      .rpc('transition_operation_copy', {
+        p_id: copy.id,
+        p_expected_status: copy.status,
+        p_status: status,
+        p_reason: reason,
+      })
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async versions(id: string) {
+    const { data, error } = await this.client
+      .from('document_versions')
+      .select('*')
+      .eq('document_id', id)
+      .order('version', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+
+  async syncGoogle(document: GEDDocument): Promise<GEDDocument> {
+    const { data, error } = await this.client.functions.invoke('document-integration', {
+      body: { action: 'sync', document_id: document.id, expected_updated_at: document.updated_at },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data.document;
+  }
+
+  async emailCopy(id: string): Promise<void> {
+    const { data, error } = await this.client.functions.invoke('document-integration', {
+      body: { action: 'email', copy_id: id },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
   }
 
   fetchDocumentTypes(): Promise<DocumentType[]> {
@@ -119,27 +180,6 @@ export class DocumentRepository {
     );
   }
 
-  async advanceDocument(
-    id: string,
-    expectedStatus: GEDDocument['status'],
-    nextStatus: GEDDocument['status'],
-  ): Promise<GEDDocument> {
-    const { data, error } = await this.client
-      .rpc('advance_document', {
-        p_document_id: id,
-        p_expected_status: expectedStatus,
-        p_next_status: nextStatus,
-      })
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async deleteDocument(id: string): Promise<void> {
-    const { error } = await this.client.from('documents').delete().eq('id', id);
-    if (error) throw error;
-  }
-
   fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
     return fetchAllPages((from, to) =>
       this.client
@@ -161,37 +201,6 @@ export class DocumentRepository {
         .order('id')
         .range(from, to),
     );
-  }
-
-  async createControlledCopy(
-    input: Partial<Omit<ControlledCopy, 'id' | 'created_at'>>,
-  ): Promise<ControlledCopy> {
-    const { data, error } = await this.client
-      .from('controlled_copies')
-      .insert(input)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async updateControlledCopy(
-    id: string,
-    patch: Partial<Omit<ControlledCopy, 'id' | 'created_at'>>,
-  ): Promise<ControlledCopy> {
-    const { data, error } = await this.client
-      .from('controlled_copies')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async deleteControlledCopy(id: string): Promise<void> {
-    const { error } = await this.client.from('controlled_copies').delete().eq('id', id);
-    if (error) throw error;
   }
 
   fetchDocumentsByProcess(processId: string): Promise<GEDDocument[]> {
