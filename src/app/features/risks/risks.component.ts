@@ -5,7 +5,7 @@ import { toRiskPayload } from './data-access/risk.mapper';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { ProfileRepository } from '@core/data-access/profile.repository';
-import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -48,7 +48,7 @@ export class RisksComponent {
   private readonly riskService = inject(RiskService);
   private readonly processService = inject(ProcessService);
   private readonly profilesRepository = inject(ProfileRepository);
-  private readonly ticketService = inject(TicketService);
+  private readonly ticketService = inject(IncidentTicketService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);

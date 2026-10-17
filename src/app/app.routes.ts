@@ -79,28 +79,38 @@ export const routes: Routes = [
       import('@features/documents/documents.component').then((m) => m.DocumentsComponent),
   },
   {
-    path: 'notificacoes/realizacao',
+    path: 'incidentes/realizacao',
     data: { mode: 'realize' },
     loadComponent: () =>
-      import('@features/notifications/notifications.component').then(
-        (m) => m.NotificationsComponent,
-      ),
+      import('@features/incidents/incidents.component').then((m) => m.IncidentsComponent),
+  },
+  {
+    path: 'incidentes/painel',
+    data: { mode: 'panel' },
+    loadComponent: () =>
+      import('@features/incidents/incidents.component').then((m) => m.IncidentsComponent),
+  },
+  {
+    path: 'incidentes/parametrizacao',
+    data: { mode: 'settings' },
+    loadComponent: () =>
+      import('@features/incidents/incidents.component').then((m) => m.IncidentsComponent),
+  },
+  // Preserve bookmarked links and routes stored in the operation inbox.
+  {
+    path: 'notificacoes/realizacao',
+    redirectTo: 'incidentes/realizacao',
+    pathMatch: 'full',
   },
   {
     path: 'notificacoes/painel',
-    data: { mode: 'panel' },
-    loadComponent: () =>
-      import('@features/notifications/notifications.component').then(
-        (m) => m.NotificationsComponent,
-      ),
+    redirectTo: 'incidentes/painel',
+    pathMatch: 'full',
   },
   {
     path: 'notificacoes/parametrizacao',
-    data: { mode: 'settings' },
-    loadComponent: () =>
-      import('@features/notifications/notifications.component').then(
-        (m) => m.NotificationsComponent,
-      ),
+    redirectTo: 'incidentes/parametrizacao',
+    pathMatch: 'full',
   },
   {
     path: 'helpdesk',

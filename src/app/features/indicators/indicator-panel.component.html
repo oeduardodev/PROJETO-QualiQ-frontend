@@ -415,7 +415,7 @@
             ) {
               <div class="mt-5 flex flex-wrap items-end gap-3">
                 <label class="ui-form-label min-w-64"
-                  >Notificação vinculada
+                  >Incidente vinculado
                   <select
                     [value]="selectedTicketId()"
                     (change)="selectedTicketId.set($any($event.target).value)"
@@ -436,7 +436,7 @@
               </div>
             } @else if (!relatedTickets().length) {
               <p class="mt-3 text-xs text-slate-500">
-                Para criar planos, vincule uma notificação a este processo.
+                Para criar planos, vincule um incidente a este processo.
               </p>
             }
           } @else {

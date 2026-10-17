@@ -162,27 +162,27 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       {
-        id: 'notificacoes-group',
-        label: 'Gestão de Notificações',
-        icon: 'Bell',
+        id: 'incidentes-group',
+        label: 'Incidentes',
+        icon: 'TriangleAlert',
         leaves: [
           {
-            id: 'notificacoes/realizacao',
-            label: 'Realizar Notificação',
-            icon: 'Bell',
-            route: 'notificacoes/realizacao',
+            id: 'incidentes/realizacao',
+            label: 'Registrar Incidente',
+            icon: 'ClipboardList',
+            route: 'incidentes/realizacao',
           },
           {
-            id: 'notificacoes/painel',
-            label: 'Painel de Notificações',
+            id: 'incidentes/painel',
+            label: 'Painel de Incidentes',
             icon: 'TriangleAlert',
-            route: 'notificacoes/painel',
+            route: 'incidentes/painel',
           },
           {
-            id: 'notificacoes/parametrizacao',
+            id: 'incidentes/parametrizacao',
             label: 'Parametrização e Tipos (Admin)',
             icon: 'SlidersHorizontal',
-            route: 'notificacoes/parametrizacao',
+            route: 'incidentes/parametrizacao',
             adminOnly: true,
           },
         ],
@@ -230,12 +230,11 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'documentos/hierarquia': 'Pirâmide documental, SLAs e matriz de responsabilidades',
   'documentos/gerenciamento': 'Workflow de documentos — rascunho, revisão, aprovação e obsoletos',
   'documentos/copias': 'Gestão de cópias controladas (impressão)',
-  'notificacoes/realizacao':
-    'Preencha o formulário parametrizado para registrar uma nova notificação',
-  'notificacoes/painel':
-    'Acompanhamento de notificações registradas — fluxo de trabalho e análise de causa raiz',
-  'notificacoes/parametrizacao':
-    'Criação de tipos de notificação, vínculos com SLAs e riscos, e construção de formulários dinâmicos',
+  'incidentes/realizacao': 'Preencha o formulário parametrizado para registrar um novo incidente',
+  'incidentes/painel':
+    'Acompanhamento de incidentes registrados — fluxo de trabalho e análise de causa raiz',
+  'incidentes/parametrizacao':
+    'Criação de tipos de incidente, vínculos com SLAs e riscos, e construção de formulários dinâmicos',
   helpdesk: 'Chamados de TI, Manutenção e Almoxarifado',
   'riscos/painel': 'Gestão de riscos com matriz de probabilidade x impacto (FMEA)',
   'riscos/gerenciamento':

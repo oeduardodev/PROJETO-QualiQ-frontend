@@ -1,9 +1,9 @@
-import { toNotificationTypePayload } from './notification-type.mapper';
-import { toNotificationClassificationPayload } from './notification-classification.mapper';
+import { toIncidentTypePayload } from './incident-type.mapper';
+import { toIncidentClassificationPayload } from './incident-classification.mapper';
 
-describe('notification configuration payloads', () => {
+describe('incident configuration payloads', () => {
   it('does not erase a type schema when changing editable metadata', () => {
-    const payload = toNotificationTypePayload(
+    const payload = toIncidentTypePayload(
       {
         name: 'Incidente',
         code: 'INC',
@@ -23,7 +23,7 @@ describe('notification configuration payloads', () => {
   });
 
   it('does not erase a classification schema when changing editable metadata', () => {
-    const payload = toNotificationClassificationPayload({
+    const payload = toIncidentClassificationPayload({
       name: 'Ocorrências',
       code: 'OCO',
       default_severity: 'media',

@@ -13,7 +13,7 @@ import { IndicatorService } from './data-access/indicator.service';
 import { IndicatorResultAnalysisRepository } from './data-access/indicator-result-analysis.repository';
 import { ActionPlanService } from '@features/actions/data-access/action-plan.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
-import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { ToastService } from '@shared/services/toast.service';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { METHODOLOGIES } from '@shared/data/methodologies';
@@ -56,7 +56,7 @@ export class IndicatorPanelComponent {
   private readonly analysesRepository = inject(IndicatorResultAnalysisRepository);
   private readonly actionPlanService = inject(ActionPlanService);
   private readonly processService = inject(ProcessService);
-  private readonly ticketService = inject(TicketService);
+  private readonly ticketService = inject(IncidentTicketService);
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   readonly methodology = METHODOLOGIES['indicadores'];

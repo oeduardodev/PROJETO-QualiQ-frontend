@@ -29,6 +29,10 @@ export interface AppDatabase {
       helpdesk_statuses: TableDefinition<HelpdeskStatusOption>;
       helpdesk_categories: TableDefinition<HelpdeskCategoryOption>;
       helpdesk_priorities: TableDefinition<HelpdeskPriorityOption>;
+      operation_inbox: TableDefinition<OperationInbox>;
+      action_plan_comments: TableDefinition<ActionPlanComment>;
+      action_plan_evidence: TableDefinition<ActionPlanEvidence>;
+      action_plan_history: TableDefinition<ActionPlanHistory>;
       action_plans: TableDefinition<ActionPlan>;
       action_plan_statuses: TableDefinition<ActionPlanStatusOption>;
       indicators: TableDefinition<Indicator>;
@@ -52,6 +56,8 @@ export interface AppDatabase {
       risk_preventive_action_statuses: TableDefinition<RiskPreventiveActionStatusOption>;
       risk_contingency_plans: TableDefinition<RiskContingencyPlan>;
       risk_contingency_plan_statuses: TableDefinition<RiskContingencyPlanStatusOption>;
+      document_versions: TableDefinition<DocumentVersion>;
+      document_decisions: TableDefinition<DocumentDecision>;
       document_types: TableDefinition<DocumentType>;
       document_levels: TableDefinition<DocumentLevel>;
       document_type_history: TableDefinition<DocumentTypeHistory>;
@@ -60,14 +66,100 @@ export interface AppDatabase {
       controlled_copies: TableDefinition<ControlledCopy>;
       slas: TableDefinition<SLA>;
       sla_statuses: TableDefinition<SlaStatusOption>;
-      notification_types: TableDefinition<NotificationType>;
-      notification_classifications: TableDefinition<NotificationClassification>;
-      notification_severities: TableDefinition<NotificationSeverityOption>;
+      // Legacy Supabase names for Incidents; these are not user notifications.
+      notification_types: TableDefinition<IncidentType>;
+      notification_classifications: TableDefinition<IncidentClassification>;
+      notification_severities: TableDefinition<IncidentSeverityOption>;
       analysis_tools: TableDefinition<AnalysisToolOption>;
       form_field_types: TableDefinition<FormFieldTypeOption>;
     };
     Views: Record<string, never>;
     Functions: {
+      save_operation_plan: {
+        Args: {
+          p_id: string | null;
+          p_expected_updated_at: string | null;
+          p_payload: Record<string, unknown>;
+          p_reason: string;
+        };
+        Returns: ActionPlan;
+      };
+      update_operation_task: {
+        Args: {
+          p_id: string;
+          p_expected_updated_at: string;
+          p_task: string;
+          p_completed: boolean;
+          p_reason: string;
+        };
+        Returns: ActionPlan;
+      };
+      transition_operation_plan: {
+        Args: { p_id: string; p_expected_updated_at: string; p_action: string; p_reason: string };
+        Returns: ActionPlan;
+      };
+      save_operation_ticket: {
+        Args: {
+          p_id: string | null;
+          p_expected_updated_at: string | null;
+          p_payload: Record<string, unknown>;
+          p_reason: string;
+        };
+        Returns: Ticket;
+      };
+      transition_operation_ticket: {
+        Args: {
+          p_id: string;
+          p_expected_updated_at: string;
+          p_action: string;
+          p_manager: string | null;
+          p_reason: string;
+        };
+        Returns: Ticket;
+      };
+      create_public_notification_link: {
+        Args: { p_classification: string; p_process: string };
+        Returns: string;
+      };
+      read_public_notification_form: {
+        Args: { p_token: string };
+        Returns: {
+          classification: string;
+          process: string;
+          schema: FormFieldSchema[];
+          types: { id: string; name: string }[];
+        };
+      };
+      submit_public_notification: {
+        Args: { p_token: string; p_payload: Record<string, unknown> };
+        Returns: string;
+      };
+      save_operation_document: {
+        Args: {
+          p_id: string | null;
+          p_expected_updated_at: string | null;
+          p_payload: Record<string, unknown>;
+          p_reason: string;
+        };
+        Returns: GEDDocument;
+      };
+      transition_operation_document: {
+        Args: { p_id: string; p_expected_updated_at: string; p_action: string; p_reason: string };
+        Returns: GEDDocument;
+      };
+      request_operation_copy: {
+        Args: { p_document_id: string; p_reason: string; p_due_date: string };
+        Returns: ControlledCopy;
+      };
+      transition_operation_copy: {
+        Args: {
+          p_id: string;
+          p_expected_status: CopyStatus;
+          p_status: CopyStatus;
+          p_reason: string;
+        };
+        Returns: ControlledCopy;
+      };
       update_risk_with_reason: {
         Args: { p_id: string; p_patch: Record<string, unknown>; p_justification: string };
         Returns: Risk;
@@ -336,6 +428,13 @@ export type TicketStatusOption = GeneratedDatabase['public']['Tables']['ticket_s
 export type TicketSeverity = GeneratedDatabase['public']['Tables']['tickets']['Row']['severity'];
 
 export interface Ticket {
+  created_by: string | null;
+  assigned_to: string | null;
+  due_at: string | null;
+  treatment: string | null;
+  classification_id: string | null;
+  analysis_tool_snapshot: string | null;
+  requires_root_cause_snapshot: boolean;
   id: string;
   code: string;
   title: string;
@@ -402,11 +501,63 @@ export type ActionPlanStatus =
 export type ActionPlanStatusOption =
   GeneratedDatabase['public']['Tables']['action_plan_statuses']['Row'];
 
+export interface ActionPlanTask {
+  id: string;
+  title: string;
+  due_date: string;
+  completed: boolean;
+}
+export interface OperationInbox {
+  id: string;
+  user_id: string;
+  title: string;
+  route: string;
+  record_id: string;
+  created_at: string;
+  read_at: string | null;
+}
+export interface ActionPlanComment {
+  id: string;
+  plan_id: string;
+  body: string;
+  created_by: string;
+  created_at: string;
+}
+export interface ActionPlanEvidence {
+  id: string;
+  plan_id: string;
+  name: string;
+  storage_path: string;
+  mime_type: string;
+  created_by: string;
+  created_at: string;
+}
+export interface ActionPlanHistory {
+  id: string;
+  plan_id: string;
+  action: string;
+  justification: string;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
+}
 export interface ActionPlan {
+  process_id: string | null;
+  origin: 'manual' | 'notification' | 'critical_analysis' | 'system';
+  owner_id: string | null;
+  controller_id: string | null;
+  participant_ids: string[];
+  how_mode: 'text' | 'tasks';
+  tasks: ActionPlanTask[];
+  progress: number;
+  approved_progress: number;
+  review_state: 'none' | 'pending' | 'approved' | 'rejected';
+  active: boolean;
   id: string;
   code: string;
   title: string;
-  ticket_id: string;
+  ticket_id: string | null;
   what: string | null;
   why: string | null;
   where: string | null;
@@ -582,8 +733,10 @@ export interface DimensionLink {
 // =====================================================
 // Document Management (GED)
 // =====================================================
-export type DocumentStatus = GeneratedDatabase['public']['Enums']['document_status'];
-export type CopyStatus = GeneratedDatabase['public']['Enums']['copy_status'];
+export type DocumentStatus =
+  GeneratedDatabase['public']['Enums']['document_status'] | 'em_validacao';
+export type CopyStatus =
+  GeneratedDatabase['public']['Enums']['copy_status'] | 'aprovada' | 'recusada';
 
 export interface DocumentType {
   id: string;
@@ -618,7 +771,29 @@ export interface DocumentTypeHistory {
   changed_at: string;
 }
 
+export interface DocumentVersion {
+  id: string;
+  document_id: string;
+  version: number;
+  snapshot: GEDDocument;
+  recorded_at: string;
+  recorded_by: string | null;
+  justification: string;
+}
+export interface DocumentDecision {
+  id: string;
+  document_id: string;
+  version: number;
+  approver_id: string;
+  approved: boolean;
+  comment: string;
+  decided_at: string;
+}
 export interface GEDDocument {
+  step_id: string | null;
+  approver_ids: string[];
+  version: number;
+  content_html: string | null;
   id: string;
   code: string | null;
   legacy_code: string | null;
@@ -635,6 +810,7 @@ export interface GEDDocument {
 }
 
 export interface DocumentWorkflow {
+  version: number;
   id: string;
   document_id: string;
   from_status: DocumentStatus | null;
@@ -646,6 +822,12 @@ export interface DocumentWorkflow {
 }
 
 export interface ControlledCopy {
+  justification: string | null;
+  due_date: string | null;
+  document_version: number | null;
+  decision_reason: string | null;
+  approved_by: string | null;
+  emailed_at: string | null;
   id: string;
   document_id: string;
   user_id: string | null;
@@ -796,23 +978,23 @@ export interface SLA {
 }
 
 // =====================================================
-// Notification Types — configurable incident/notif types
+// Incident configuration — severity and analysis tools
 // =====================================================
-export type NotificationSeverity = TicketSeverity;
-export type NotificationSeverityOption =
+export type IncidentSeverity = TicketSeverity;
+export type IncidentSeverityOption =
   GeneratedDatabase['public']['Tables']['notification_severities']['Row'];
 export type AnalysisTool = GeneratedDatabase['public']['Tables']['analysis_tools']['Row']['key'];
 export type AnalysisToolOption = GeneratedDatabase['public']['Tables']['analysis_tools']['Row'];
 
 // =====================================================
-// Notification Classifications — form template + treatment rules
+// Incident Classifications — form template + treatment rules
 // =====================================================
-export interface NotificationClassification {
+export interface IncidentClassification {
   id: string;
   name: string;
   code: string | null;
   description: string | null;
-  default_severity: NotificationSeverity;
+  default_severity: IncidentSeverity;
   sla_hours: number | null;
   analysis_tool: AnalysisTool;
   requires_root_cause: boolean;
@@ -823,15 +1005,15 @@ export interface NotificationClassification {
 }
 
 // =====================================================
-// Notification Types — specific named notifications within a classification
+// Incident Types — specific named incidents within a classification
 // =====================================================
-export interface NotificationType {
+export interface IncidentType {
   id: string;
   name: string;
   code: string | null;
   description: string | null;
   classification_id: string | null;
-  default_severity: NotificationSeverity;
+  default_severity: IncidentSeverity;
   requires_root_cause: boolean;
   analysis_tool: AnalysisTool;
   sla_hours: number | null;

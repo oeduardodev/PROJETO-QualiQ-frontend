@@ -558,7 +558,7 @@
       }
       <section>
         <h3 class="mb-2 text-sm font-semibold text-slate-700">
-          Histórico de notificações ({{ riskTickets().length }})
+          Histórico de incidentes ({{ riskTickets().length }})
         </h3>
         <div class="space-y-2">
           @for (ticket of riskTickets(); track ticket.id) {
@@ -567,7 +567,7 @@
               <p class="mt-1 text-slate-500">{{ ticket.status }} · {{ ticket.severity }}</p>
             </div>
           } @empty {
-            <p class="ui-empty-state">Nenhuma notificação vinculada.</p>
+            <p class="ui-empty-state">Nenhum incidente vinculado.</p>
           }
         </div>
       </section>

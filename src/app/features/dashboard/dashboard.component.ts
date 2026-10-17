@@ -1,7 +1,7 @@
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { errorMessage } from '@shared/utils/error.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
-import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
@@ -19,7 +19,7 @@ import type { Process, Ticket } from '@core/models/database';
 export class DashboardComponent {
   private readonly indicatorService = inject(IndicatorService);
   private readonly processService = inject(ProcessService);
-  private readonly ticketService = inject(TicketService);
+  private readonly ticketService = inject(IncidentTicketService);
   readonly methodology = METHODOLOGIES['dashboard'];
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);

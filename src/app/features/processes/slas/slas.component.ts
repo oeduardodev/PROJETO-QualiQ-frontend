@@ -4,8 +4,8 @@ import { toSlaPayload } from '../data-access/sla.mapper';
 import { processTag } from '../data-access/process-code.utils';
 import { SlaService } from '@features/processes/data-access/sla.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
-import { TicketService } from '@features/notifications/data-access/ticket.service';
-import { NotificationService } from '@features/notifications/data-access/notification.service';
+import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
+import { IncidentService } from '@features/incidents/data-access/incident.service';
 import { RiskService } from '@features/risks/data-access/risk.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
@@ -16,7 +16,7 @@ import type {
   Profile,
   Process,
   Risk,
-  NotificationType,
+  IncidentType,
   SLA,
   SlaApproval,
   SlaHistory,
@@ -41,8 +41,8 @@ import { ToastService } from '@shared/services/toast.service';
 export class SlasComponent {
   private readonly slaService = inject(SlaService);
   private readonly processService = inject(ProcessService);
-  private readonly ticketService = inject(TicketService);
-  private readonly notificationService = inject(NotificationService);
+  private readonly ticketService = inject(IncidentTicketService);
+  private readonly incidentService = inject(IncidentService);
   private readonly riskService = inject(RiskService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
@@ -56,7 +56,7 @@ export class SlasComponent {
   readonly nodes = signal<SipocNode[]>([]);
   readonly associations = signal<SipocNodeAssociation[]>([]);
   readonly tickets = signal<Ticket[]>([]);
-  readonly notificationTypes = signal<NotificationType[]>([]);
+  readonly incidentTypes = signal<IncidentType[]>([]);
   readonly risks = signal<Risk[]>([]);
   readonly users = signal<Profile[]>([]);
   readonly history = signal<SlaHistory[]>([]);
@@ -119,8 +119,8 @@ export class SlasComponent {
           )),
     ),
   );
-  readonly availableNotificationTypes = computed(() =>
-    this.notificationTypes().filter(
+  readonly availableIncidentTypes = computed(() =>
+    this.incidentTypes().filter(
       (type) =>
         (type.active || type.sla_id === this.editing()?.id) &&
         (type.sla_id === null || type.sla_id === this.editing()?.id),
@@ -162,7 +162,7 @@ export class SlasComponent {
     const ids = new Set(this.filtered().map((sla) => sla.id));
     return this.ticketsInPeriod().filter((ticket) => ticket.sla_id && ids.has(ticket.sla_id));
   });
-  readonly slasWithNotifications = computed(
+  readonly slasWithIncidents = computed(
     () => new Set(this.filteredTickets().map((ticket) => ticket.sla_id)).size,
   );
   readonly chartRows = computed(() =>
@@ -181,7 +181,7 @@ export class SlasComponent {
   readonly selectedRisks = computed(() => {
     const ids = new Set([
       ...this.selectedTickets().map((ticket) => ticket.risk_id),
-      ...this.notificationTypes()
+      ...this.incidentTypes()
         .filter((type) => type.sla_id === this.selectedId())
         .map((type) => type.risk_id),
     ]);
@@ -190,14 +190,14 @@ export class SlasComponent {
   readonly summary = computed(() => [
     { label: 'SLAs encontrados', value: this.filtered().length, icon: 'Gauge', color: '#2563eb' },
     {
-      label: 'Notificações no período',
+      label: 'Incidentes no período',
       value: this.filteredTickets().length,
-      icon: 'Bell',
+      icon: 'TriangleAlert',
       color: '#e11d48',
     },
     {
-      label: 'SLAs com notificações',
-      value: this.slasWithNotifications(),
+      label: 'SLAs com incidentes',
+      value: this.slasWithIncidents(),
       icon: 'TriangleAlert',
       color: '#d97706',
     },
@@ -247,7 +247,7 @@ export class SlasComponent {
         statuses,
         tickets,
         risks,
-        notificationTypes,
+        incidentTypes,
         approvals,
         users,
       ] = await Promise.all([
@@ -258,7 +258,7 @@ export class SlasComponent {
         this.slaService.fetchStatuses(),
         this.ticketService.fetchTickets(),
         this.riskService.fetchRisks(),
-        this.notificationService.fetchNotificationTypes(),
+        this.incidentService.fetchIncidentTypes(),
         this.management ? this.slaService.fetchApprovals() : Promise.resolve([]),
         this.management ? this.profilesRepository.findAssignableUsers() : Promise.resolve([]),
       ]);
@@ -269,7 +269,7 @@ export class SlasComponent {
       this.statuses.set(statuses);
       this.tickets.set(tickets);
       this.risks.set(risks);
-      this.notificationTypes.set(notificationTypes);
+      this.incidentTypes.set(incidentTypes);
       this.approvals.set(approvals);
       this.users.set(users);
     } catch (e) {
@@ -310,7 +310,7 @@ export class SlasComponent {
       description: sla.description ?? '',
       business_rules: sla.business_rules ?? '',
       criticality: sla.criticality ?? '',
-      notification_type_ids: this.notificationTypes()
+      notification_type_ids: this.incidentTypes()
         .filter((type) => type.sla_id === sla.id)
         .map((type) => type.id),
       justification: '',
@@ -439,7 +439,7 @@ export class SlasComponent {
     return approval.process_ids.map((id) => this.processName(id)).join(', ');
   }
 
-  toggleNotificationType(id: string, checked: boolean): void {
+  toggleIncidentType(id: string, checked: boolean): void {
     const control = this.form.controls.notification_type_ids;
     control.setValue(
       checked ? [...control.value, id] : control.value.filter((item) => item !== id),
@@ -507,7 +507,7 @@ export class SlasComponent {
       title: 'Nome',
       description: 'Descrição',
       business_rules: 'Regras de negócio',
-      notification_type_ids: 'Tipos de notificação',
+      notification_type_ids: 'Tipos de incidente',
       approval_state: 'Etapa de ativação',
       approval_revision: 'Versão de ativação',
       submitted_at: 'Enviado em',
@@ -553,9 +553,7 @@ export class SlasComponent {
     if (key === 'submitted_at' || key === 'approved_at')
       return this.formatHistoryDate(String(value));
     if (key === 'notification_type_ids' && Array.isArray(value))
-      return value.length
-        ? value.map((id) => this.notificationTypeLabel(String(id))).join(', ')
-        : '—';
+      return value.length ? value.map((id) => this.incidentTypeLabel(String(id))).join(', ') : '—';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   }
@@ -564,8 +562,8 @@ export class SlasComponent {
     return this.ticketsInPeriod().filter((ticket) => ticket.sla_id === slaId).length;
   }
 
-  notificationTypeLabel(id: string | null): string {
-    return this.notificationTypes().find((type) => type.id === id)?.name ?? 'Não informado';
+  incidentTypeLabel(id: string | null): string {
+    return this.incidentTypes().find((type) => type.id === id)?.name ?? 'Não informado';
   }
 
   formatDate(value: string | null): string {

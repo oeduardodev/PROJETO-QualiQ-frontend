@@ -8,7 +8,7 @@ import { displayPeriod, isOnTarget, periodDate, sortedHistory } from './indicato
 import { submissionDueDate, todayInSaoPaulo } from './indicator-deadline.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { DimensionService } from '@features/strategy/data-access/dimension.service';
-import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -57,7 +57,7 @@ export class IndicatorsComponent {
   private readonly resultAnalysisRepository = inject(IndicatorResultAnalysisRepository);
   private readonly processService = inject(ProcessService);
   private readonly dimensionService = inject(DimensionService);
-  private readonly ticketService = inject(TicketService);
+  private readonly ticketService = inject(IncidentTicketService);
   readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);

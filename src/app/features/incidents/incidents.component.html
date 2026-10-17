@@ -1,0 +1,498 @@
+﻿@if (loading()) {
+  <div class="ui-page-loading">Carregando...</div>
+} @else if (error()) {
+  <div class="ui-page-error">
+    <p>{{ error() }}</p>
+    <button class="ui-button-secondary" (click)="load()">Tentar novamente</button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <header class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">{{ title }}</h2>
+        <p class="ui-page-subtitle">Registro, encaminhamento e acompanhamento das ocorrências</p>
+      </div>
+    </header>
+    @if (mode === 'realize') {
+      <section class="ui-card max-w-3xl">
+        <ng-container [ngTemplateOutlet]="ticketFields" />
+      </section>
+    }
+    @if (mode === 'panel') {
+      <div class="flex flex-wrap gap-3">
+        <input
+          #searchInput
+          class="ui-search-input max-w-sm"
+          placeholder="Buscar por código ou nome"
+          aria-label="Buscar incidentes"
+          (input)="search.set(searchInput.value)"
+        />
+        <select
+          #processSelect
+          aria-label="Filtrar por processo"
+          (change)="processFilter.set(processSelect.value)"
+        >
+          <option value="">Todos os processos</option>
+          @for (p of processes(); track p.id) {
+            <option [value]="p.id">{{ p.title }}</option>
+          }
+        </select>
+        <select
+          #classSelect
+          aria-label="Filtrar por classificação"
+          (change)="classFilter.set(classSelect.value)"
+        >
+          <option value="">Todas as classificações</option>
+          @for (c of classifications(); track c.id) {
+            <option [value]="c.id">{{ c.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        @for (column of columns(); track column.key) {
+          <section>
+            <header
+              class="ui-kanban-column-header"
+              [style.background-color]="column.header_background"
+            >
+              <strong>{{ column.label }}</strong
+              ><span class="ml-auto">{{ byStatus(column.key).length }}</span>
+            </header>
+            <div class="min-h-48 space-y-3 rounded-b-xl border bg-slate-50 p-3">
+              @for (ticket of byStatus(column.key); track ticket.id) {
+                <article class="ui-kanban-card">
+                  <button class="w-full text-left" (click)="openTicket(ticket)">
+                    <span class="block font-mono text-xs text-slate-500">{{ ticket.code }}</span
+                    ><strong class="block text-sm">{{ ticket.title }}</strong
+                    ><span class="text-xs text-slate-500"
+                      >{{ className(ticket.classification_id) }} ·
+                      {{ processName(ticket.process_id) }}</span
+                    >
+                  </button>
+                  <p class="mt-2 text-xs text-slate-500">
+                    Gestor: {{ profileName(ticket.assigned_to) }}
+                  </p>
+                  @if (ticket.due_at) {
+                    <p class="text-xs text-slate-500">
+                      Prazo: {{ ticket.due_at | date: 'dd/MM/yyyy HH:mm' }}
+                    </p>
+                  }
+                  <div class="mt-3 flex flex-wrap gap-3 text-xs">
+                    @if (
+                      auth.isAdmin() &&
+                      ticket.status !== 'concluido' &&
+                      ticket.status !== 'arquivado'
+                    ) {
+                      @if (
+                        ticket.status === 'aberto' ||
+                        ticket.status === 'analise' ||
+                        ticket.status === 'plano'
+                      ) {
+                        <button
+                          class="ui-action-edit"
+                          (click)="begin(ticket, 'forward', 'Encaminhar ao gestor')"
+                        >
+                          Encaminhar
+                        </button>
+                      }
+                      <button
+                        class="ui-action-danger"
+                        (click)="begin(ticket, 'archive', 'Arquivar registro não pertinente')"
+                      >
+                        Arquivar
+                      </button>
+                    }
+                    @if (canTreat(ticket)) {
+                      <button
+                        class="ui-action-edit"
+                        (click)="begin(ticket, 'submit', 'Enviar tratativa para validação')"
+                      >
+                        Enviar para validação
+                      </button>
+                    }
+                    @if (auth.isAdmin() && ticket.status === 'validacao') {
+                      <button
+                        class="ui-action-edit"
+                        (click)="
+                          begin(ticket, 'accept', 'Aceitar tratativa e concluir investigação')
+                        "
+                      >
+                        Aceitar</button
+                      ><button
+                        class="ui-action-danger"
+                        (click)="begin(ticket, 'return', 'Devolver tratativa ao gestor')"
+                      >
+                        Devolver
+                      </button>
+                    }
+                  </div>
+                </article>
+              } @empty {
+                <p class="ui-empty-state">Nenhum incidente.</p>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    }
+    @if (mode === 'settings') {
+      @if (!auth.isAdmin()) {
+        <p class="ui-page-error">A parametrização é exclusiva dos administradores.</p>
+      } @else {
+        <label class="ui-form-label max-w-sm"
+          >Configurar<select
+            #sectionSelect
+            [value]="section()"
+            (change)="section.set(sectionSelect.value)"
+          >
+            <option value="classifications">Classificações</option>
+            <option value="types">Tipos de incidente</option>
+            <option value="forms">Questionários e links públicos</option>
+          </select></label
+        >
+        @if (section() === 'classifications' || section() === 'forms') {
+          <section class="ui-card space-y-4">
+            <header class="flex items-center justify-between">
+              <h3 class="font-semibold">
+                {{ section() === 'forms' ? 'Questionários por classificação' : 'Classificações' }}
+              </h3>
+              <button class="ui-button-primary" (click)="openClassification()">
+                Nova classificação
+              </button>
+            </header>
+            @for (c of classifications(); track c.id) {
+              <article class="flex items-center justify-between border-t border-slate-100 py-3">
+                <div>
+                  <strong class="text-sm">{{ c.code }} · {{ c.name }}</strong>
+                  <p class="text-xs text-slate-500">
+                    Prazo: {{ c.sla_hours }}h · {{ c.analysis_tool }} ·
+                    {{ c.form_schema?.length || 0 }} campos · {{ c.active ? 'Ativa' : 'Inativa' }}
+                  </p>
+                </div>
+                <button class="ui-action-edit text-sm" (click)="openClassification(c)">
+                  {{ section() === 'forms' ? 'Editar questionário' : 'Editar' }}
+                </button>
+              </article>
+            } @empty {
+              <p class="ui-empty-state">Nenhuma classificação cadastrada.</p>
+            }
+          </section>
+        }
+        @if (section() === 'types') {
+          <section class="ui-card space-y-4">
+            <header class="flex items-center justify-between">
+              <h3 class="font-semibold">Tipos de incidente</h3>
+              <button class="ui-button-primary" (click)="openType()">Novo tipo</button>
+            </header>
+            @for (t of types(); track t.id) {
+              <article class="flex items-center justify-between border-t border-slate-100 py-3">
+                <div>
+                  <strong class="text-sm">{{ t.code }} · {{ t.name }}</strong>
+                  <p class="text-xs text-slate-500">
+                    {{ className(t.classification_id) }} · {{ t.active ? 'Ativo' : 'Inativo' }}
+                  </p>
+                </div>
+                <button class="ui-action-edit text-sm" (click)="openType(t)">Editar</button>
+              </article>
+            } @empty {
+              <p class="ui-empty-state">Nenhum tipo cadastrado.</p>
+            }
+          </section>
+        }
+        @if (section() === 'forms') {
+          <section class="ui-card grid gap-4 sm:grid-cols-2">
+            <h3 class="font-semibold sm:col-span-2">Link para pessoas sem cadastro</h3>
+            <label class="ui-form-label"
+              >Classificação<select [formControl]="linkClass">
+                <option value="">Selecionar...</option>
+                @for (c of activeClasses(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select></label
+            >
+            <label class="ui-form-label"
+              >Processo<select [formControl]="linkProcess">
+                <option value="">Selecionar...</option>
+                @for (p of processes(); track p.id) {
+                  <option [value]="p.id">{{ p.title }}</option>
+                }
+              </select></label
+            >
+            <p class="text-xs text-slate-500 sm:col-span-2">
+              O link permite apenas registrar ocorrências neste processo. Validade: 30 dias.
+            </p>
+            <button
+              class="ui-button-primary"
+              [disabled]="saving() || !linkClass.value || !linkProcess.value"
+              (click)="generateLink()"
+            >
+              Gerar link público
+            </button>
+            @if (publicLink()) {
+              <label class="ui-form-label sm:col-span-2"
+                >Link gerado<input [value]="publicLink()" readonly
+              /></label>
+            }
+          </section>
+        }
+      }
+    }
+  </div>
+}
+<ng-template #ticketFields>
+  <form [formGroup]="form" (ngSubmit)="saveTicket()" class="grid gap-4 sm:grid-cols-2">
+    <fieldset class="contents" [disabled]="!canEdit()">
+      <label class="ui-form-label"
+        >Classificação *<select
+          #selectedClassification
+          [value]="selectedClass()"
+          (change)="selectClass(selectedClassification.value)"
+          [disabled]="!!editing() && !auth.isAdmin()"
+        >
+          <option value="">Selecionar...</option>
+          @for (c of classifications(); track c.id) {
+            @if (c.active || c.id === selectedClass()) {
+              <option [value]="c.id">{{ c.name }}</option>
+            }
+          }
+        </select></label
+      >
+      <div class="ui-form-label">
+        <label for="incident-type">Tipo *</label>
+        <select
+          id="incident-type"
+          formControlName="notification_type_id"
+          (change)="selectType()"
+          [attr.aria-describedby]="
+            selectedClass() && !availableTypes().length ? 'incident-type-help' : null
+          "
+        >
+          <option value="">
+            {{
+              !selectedClass()
+                ? 'Selecione a classificação primeiro'
+                : availableTypes().length
+                  ? 'Selecionar...'
+                  : 'Nenhum tipo ativo nesta classificação'
+            }}
+          </option>
+          @for (t of availableTypes(); track t.id) {
+            <option [value]="t.id">{{ t.name }}</option>
+          }
+        </select>
+        @if (selectedClass() && !availableTypes().length) {
+          <p id="incident-type-help" role="status" class="mt-1 text-xs font-normal text-slate-500">
+            A classificação {{ className(selectedClass()) }} não possui tipos ativos vinculados.
+            @if (!auth.isAdmin()) {
+              Solicite o cadastro ou a ativação de um tipo ao administrador.
+            }
+          </p>
+          @if (auth.isAdmin()) {
+            <button type="button" class="ui-action-edit mt-2 text-xs" (click)="openType()">
+              Cadastrar tipo nesta classificação
+            </button>
+          }
+        }
+      </div>
+      <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label>
+      <label class="ui-form-label sm:col-span-2"
+        >Descrição<textarea rows="3" formControlName="description"></textarea>
+      </label>
+      <label class="ui-form-label"
+        >Processo *<select
+          formControlName="process_id"
+          (change)="form.controls.step_id.setValue('')"
+        >
+          <option value="">Selecionar...</option>
+          @for (p of processes(); track p.id) {
+            <option [value]="p.id">{{ p.title }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Etapa SIPOC<select formControlName="step_id">
+          <option value="">Selecionar...</option>
+          @for (n of steps(); track n.id) {
+            <option [value]="n.id">{{ n.title }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Data da ocorrência<input type="datetime-local" formControlName="incident_datetime"
+      /></label>
+      @for (field of dynamicFields(); track field.name) {
+        <div class="ui-form-label">
+          <label [for]="'incident-field-' + field.name"
+            >{{ field.label }}{{ field.required ? ' *' : '' }}</label
+          >
+          @if (field.type === 'select') {
+            <select [id]="'incident-field-' + field.name" [formControl]="control(field.name)">
+              <option value="">Selecionar...</option>
+              @for (o of field.options || []; track o) {
+                <option [value]="o">{{ o }}</option>
+              }
+            </select>
+          } @else {
+            <input
+              [id]="'incident-field-' + field.name"
+              [type]="field.type"
+              [formControl]="control(field.name)"
+            />
+          }
+        </div>
+      }
+      @if (editing()) {
+        <label class="ui-form-label sm:col-span-2"
+          >Tratativa<textarea rows="4" formControlName="treatment"></textarea>
+        </label>
+        @if (analysisKind() === 'ishikawa') {
+          @for (c of causeControls; track c.label) {
+            <label class="ui-form-label"
+              >{{ c.label }}<textarea [formControl]="c.control"></textarea>
+            </label>
+          }
+        }
+        @if (analysisKind() === 'five_whys') {
+          @for (c of whyControls; track $index) {
+            <label class="ui-form-label">{{ $index + 1 }}º porquê<input [formControl]="c" /></label>
+          }
+        }
+        @if (analysisKind() !== 'none') {
+          <label class="flex items-center gap-2 text-sm sm:col-span-2"
+            ><input type="checkbox" formControlName="analysis_completed" />Análise de causa
+            concluída</label
+          >
+        }
+        <label class="ui-form-label sm:col-span-2"
+          >Justificativa da alteração *<textarea formControlName="reason"></textarea>
+        </label>
+      }
+    </fieldset>
+    @if (editing(); as ticket) {
+      <section class="space-y-3 border-t pt-4 sm:col-span-2">
+        <h3 class="font-semibold text-sm">Planos de ação</h3>
+        @for (plan of linkedPlans(); track plan.id) {
+          <p class="text-sm">{{ plan.title }} · {{ plan.status }}</p>
+        } @empty {
+          <p class="text-xs text-slate-500">Nenhum plano vinculado.</p>
+        }
+        @if (canTreat(ticket) || auth.isAdmin()) {
+          <a
+            class="ui-button-secondary"
+            routerLink="/planos-acao"
+            [queryParams]="{ ticket: ticket.id }"
+            >Estruturar plano de ação</a
+          >
+        }
+      </section>
+    }
+    @if (canEdit()) {
+      <div class="flex justify-end sm:col-span-2">
+        <button type="submit" class="ui-button-primary" [disabled]="saving()">
+          {{ editing() ? 'Salvar alterações' : 'Registrar incidente' }}
+        </button>
+      </div>
+    }
+  </form>
+</ng-template>
+<app-side-drawer
+  [open]="ticketOpen()"
+  [title]="editing()?.title || 'Incidente'"
+  width="max-w-2xl"
+  (closed)="ticketOpen.set(false)"
+  ><ng-container [ngTemplateOutlet]="ticketFields"
+/></app-side-drawer>
+<app-side-drawer
+  [open]="configOpen()"
+  [title]="configKind() === 'classification' ? 'Classificação e questionário' : 'Tipo de incidente'"
+  width="max-w-2xl"
+  (closed)="configOpen.set(false)"
+>
+  <form [formGroup]="config" (ngSubmit)="saveConfig()" class="space-y-4">
+    <label class="ui-form-label">Nome *<input formControlName="name" /></label>
+    @if (configKind() === 'classification') {
+      <label class="ui-form-label"
+        >Sigla *<input formControlName="code" placeholder="FP" maxlength="8"
+      /></label>
+      <label class="ui-form-label"
+        >Prazo de tratativa (horas) *<input type="number" min="1" formControlName="sla_hours"
+      /></label>
+      <label class="ui-form-label"
+        >Análise de causa<select formControlName="analysis_tool">
+          @for (tool of analysisTools(); track tool.key) {
+            @if (tool.is_active || tool.key === config.controls.analysis_tool.value) {
+              <option [value]="tool.key">{{ tool.label }}</option>
+            }
+          }
+        </select></label
+      >
+      <label class="flex items-center gap-2 text-sm"
+        ><input type="checkbox" formControlName="requires_root_cause" />Exigir análise de
+        causa</label
+      >
+      <h3 class="font-semibold text-sm">Questionário da classificação</h3>
+      <app-form-schema-editor [fields]="schema()" (fieldsChange)="schema.set($event)" />
+    } @else {
+      <p class="text-sm text-slate-500">
+        Código: {{ editingType()?.code || 'Gerado automaticamente ao salvar' }}
+      </p>
+      <label class="ui-form-label"
+        >Classificação *<select formControlName="classification_id">
+          <option value="">Selecionar...</option>
+          @for (c of activeClasses(); track c.id) {
+            <option [value]="c.id">{{ c.name }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Risco vinculado<select formControlName="risk_id">
+          <option value="">Nenhum</option>
+          @for (r of risks(); track r.id) {
+            @if (r.is_active || r.id === config.controls.risk_id.value) {
+              <option [value]="r.id">{{ r.title }}</option>
+            }
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >SLA vinculado<select formControlName="sla_id">
+          <option value="">Nenhum</option>
+          @for (sla of slas(); track sla.id) {
+            @if (sla.status === 'Ativo' || sla.id === config.controls.sla_id.value) {
+              <option [value]="sla.id">{{ sla.title }}</option>
+            }
+          }
+        </select></label
+      >
+      <p class="text-xs text-slate-500">
+        O questionário, o método de análise e o prazo são definidos pela classificação.
+      </p>
+    }
+    <label class="flex items-center gap-2 text-sm"
+      ><input type="checkbox" formControlName="active" />Ativo</label
+    >
+    <button type="submit" class="ui-button-primary" [disabled]="saving()">Salvar</button>
+  </form>
+</app-side-drawer>
+<app-side-drawer
+  [open]="!!operation()"
+  [title]="operation()?.label || ''"
+  (closed)="operation.set(null)"
+>
+  @if (operation()?.action === 'forward') {
+    <label class="ui-form-label mb-4"
+      >Gestor responsável *<select [formControl]="manager">
+        <option value="">Selecionar...</option>
+        @for (p of managers(); track p.id) {
+          <option [value]="p.id">{{ p.name }}</option>
+        }
+      </select></label
+    >
+  }
+  <label class="ui-form-label"
+    >Justificativa *<textarea rows="4" [formControl]="reason"></textarea>
+  </label>
+  <button class="ui-button-primary mt-4" [disabled]="saving()" (click)="confirmOperation()">
+    Confirmar
+  </button>
+</app-side-drawer>

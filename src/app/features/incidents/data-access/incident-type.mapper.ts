@@ -1,24 +1,20 @@
-import type {
-  NotificationSeverity,
-  NotificationClassification,
-  NotificationType,
-} from '@core/models/database';
+import type { IncidentSeverity, IncidentClassification, IncidentType } from '@core/models/database';
 
-export interface NotificationTypeFormValue {
+export interface IncidentTypeFormValue {
   name: string;
   code: string;
   classification_id: string;
-  default_severity: NotificationSeverity;
+  default_severity: IncidentSeverity;
   sla_hours: number | null;
   sla_id: string;
   risk_id: string;
   active: boolean;
 }
 
-export function toNotificationTypePayload(
-  value: NotificationTypeFormValue,
-  classification: NotificationClassification | undefined,
-): Partial<NotificationType> {
+export function toIncidentTypePayload(
+  value: IncidentTypeFormValue,
+  classification: IncidentClassification | undefined,
+): Partial<IncidentType> {
   return {
     ...value,
     code: value.code || null,

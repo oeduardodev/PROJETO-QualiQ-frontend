@@ -3,13 +3,13 @@ import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type {
   AnalysisToolOption,
-  NotificationClassification,
-  NotificationSeverityOption,
-  NotificationType,
+  IncidentClassification,
+  IncidentSeverityOption,
+  IncidentType,
 } from '@core/models/database';
 
 @Injectable({ providedIn: 'root' })
-export class NotificationRepository {
+export class IncidentRepository {
   private readonly client = inject(SupabaseService).client;
 
   async fetchAnalysisTools(): Promise<AnalysisToolOption[]> {
@@ -22,7 +22,7 @@ export class NotificationRepository {
     return data;
   }
 
-  async fetchNotificationSeverities(): Promise<NotificationSeverityOption[]> {
+  async fetchIncidentSeverities(): Promise<IncidentSeverityOption[]> {
     const { data, error } = await this.client
       .from('notification_severities')
       .select('*')
@@ -32,7 +32,7 @@ export class NotificationRepository {
     return data;
   }
 
-  fetchNotificationClassifications(): Promise<NotificationClassification[]> {
+  fetchIncidentClassifications(): Promise<IncidentClassification[]> {
     return fetchAllPages((from, to) =>
       this.client
         .from('notification_classifications')
@@ -43,9 +43,9 @@ export class NotificationRepository {
     );
   }
 
-  async createNotificationClassification(
-    input: Partial<Omit<NotificationClassification, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<NotificationClassification> {
+  async createIncidentClassification(
+    input: Partial<Omit<IncidentClassification, 'id' | 'created_at' | 'updated_at'>>,
+  ): Promise<IncidentClassification> {
     const { data, error } = await this.client
       .from('notification_classifications')
       .insert(input)
@@ -55,10 +55,10 @@ export class NotificationRepository {
     return data;
   }
 
-  async updateNotificationClassification(
+  async updateIncidentClassification(
     id: string,
-    patch: Partial<Omit<NotificationClassification, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<NotificationClassification> {
+    patch: Partial<Omit<IncidentClassification, 'id' | 'created_at' | 'updated_at'>>,
+  ): Promise<IncidentClassification> {
     const { data, error } = await this.client
       .from('notification_classifications')
       .update(patch)
@@ -69,12 +69,12 @@ export class NotificationRepository {
     return data;
   }
 
-  async deleteNotificationClassification(id: string): Promise<void> {
+  async deleteIncidentClassification(id: string): Promise<void> {
     const { error } = await this.client.from('notification_classifications').delete().eq('id', id);
     if (error) throw error;
   }
 
-  fetchNotificationTypes(): Promise<NotificationType[]> {
+  fetchIncidentTypes(): Promise<IncidentType[]> {
     return fetchAllPages((from, to) =>
       this.client
         .from('notification_types')
@@ -85,9 +85,9 @@ export class NotificationRepository {
     );
   }
 
-  async createNotificationType(
-    input: Partial<Omit<NotificationType, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<NotificationType> {
+  async createIncidentType(
+    input: Partial<Omit<IncidentType, 'id' | 'created_at' | 'updated_at'>>,
+  ): Promise<IncidentType> {
     const { data, error } = await this.client
       .from('notification_types')
       .insert(input)
@@ -97,10 +97,10 @@ export class NotificationRepository {
     return data;
   }
 
-  async updateNotificationType(
+  async updateIncidentType(
     id: string,
-    patch: Partial<Omit<NotificationType, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<NotificationType> {
+    patch: Partial<Omit<IncidentType, 'id' | 'created_at' | 'updated_at'>>,
+  ): Promise<IncidentType> {
     const { data, error } = await this.client
       .from('notification_types')
       .update(patch)
@@ -111,7 +111,7 @@ export class NotificationRepository {
     return data;
   }
 
-  async deleteNotificationType(id: string): Promise<void> {
+  async deleteIncidentType(id: string): Promise<void> {
     const { error } = await this.client.from('notification_types').delete().eq('id', id);
     if (error) throw error;
   }

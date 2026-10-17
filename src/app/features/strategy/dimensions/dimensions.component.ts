@@ -4,7 +4,7 @@ import { ActionPlanService } from '@features/actions/data-access/action-plan.ser
 import { IndicatorService } from '@features/indicators/data-access/indicator.service';
 import { formatIndicatorValue } from '@features/indicators/data-access/indicator-unit.utils';
 import { ProcessService } from '@features/processes/data-access/process.service';
-import { TicketService } from '@features/notifications/data-access/ticket.service';
+import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { AuthService } from '@core/services/auth.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -54,7 +54,7 @@ export class DimensionsComponent {
   private readonly actionPlanService = inject(ActionPlanService);
   private readonly indicatorService = inject(IndicatorService);
   private readonly processService = inject(ProcessService);
-  private readonly ticketService = inject(TicketService);
+  private readonly ticketService = inject(IncidentTicketService);
   private readonly toast = inject(ToastService);
   private readonly alertDialog = inject(AlertDialogService);
   readonly auth = inject(AuthService);
@@ -454,9 +454,12 @@ export class DimensionsComponent {
   }
 
   itemProcessId(item: Indicator | ActionPlan): string | null {
-    return 'process_id' in item
-      ? item.process_id
-      : (this.tickets().find((ticket) => ticket.id === item.ticket_id)?.process_id ?? null);
+    return (
+      item.process_id ??
+      ('ticket_id' in item
+        ? (this.tickets().find((ticket) => ticket.id === item.ticket_id)?.process_id ?? null)
+        : null)
+    );
   }
 
   history(id: string): IndicatorHistoryEntry[] {

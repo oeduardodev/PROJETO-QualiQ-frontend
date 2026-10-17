@@ -1,7 +1,7 @@
-import type { NotificationType, Ticket } from '@core/models/database';
-import { toNotificationTicketPayload } from './notification-ticket.mapper';
+import type { IncidentType, Ticket } from '@core/models/database';
+import { toIncidentTicketPayload } from './incident-ticket.mapper';
 
-describe('toNotificationTicketPayload', () => {
+describe('toIncidentTicketPayload', () => {
   const form = {
     title: 'Ocorrência',
     description: '',
@@ -14,15 +14,15 @@ describe('toNotificationTicketPayload', () => {
     sla_id: '',
     notification_type_id: 'type-1',
   };
-  const notificationType = {
+  const incidentType = {
     id: 'type-1',
     name: 'Incidente',
     risk_id: 'risk-default',
     sla_id: 'sla-default',
-  } as NotificationType;
+  } as IncidentType;
 
-  it('applies the notification type defaults and nullable fields', () => {
-    expect(toNotificationTicketPayload(form, notificationType, {}, 'Incidentes')).toMatchObject({
+  it('applies the incident type defaults and nullable fields', () => {
+    expect(toIncidentTicketPayload(form, incidentType, {}, 'Incidentes')).toMatchObject({
       description: null,
       step_id: null,
       risk_id: 'risk-default',
@@ -39,9 +39,9 @@ describe('toNotificationTicketPayload', () => {
 
   it('keeps explicit selections and dynamic field values', () => {
     expect(
-      toNotificationTicketPayload(
+      toIncidentTicketPayload(
         { ...form, risk_id: 'risk-selected', sla_id: 'sla-selected' },
-        notificationType,
+        incidentType,
         { origem: 'Portal' },
         'Incidentes',
       ),
@@ -54,8 +54,9 @@ describe('toNotificationTicketPayload', () => {
 
   it('preserves an existing analysis when editing a ticket', () => {
     const existing = { analysis_completed: true } as Ticket;
-    expect(
-      toNotificationTicketPayload(form, notificationType, {}, 'Incidentes', existing),
-    ).toMatchObject({ analysis_completed: true, custom_fields: {} });
+    expect(toIncidentTicketPayload(form, incidentType, {}, 'Incidentes', existing)).toMatchObject({
+      analysis_completed: true,
+      custom_fields: {},
+    });
   });
 });
