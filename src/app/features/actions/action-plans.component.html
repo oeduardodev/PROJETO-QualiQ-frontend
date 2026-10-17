@@ -1,89 +1,134 @@
-@if (loading()) {
-  <div class="ui-page-loading">
-    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
-  </div>
+﻿@if (loading()) {
+  <div class="ui-page-loading">Carregando planos...</div>
 } @else if (error()) {
   <div class="ui-page-error">
-    <p class="text-sm text-slate-500">{{ error() }}</p>
-    <button class="mt-3 text-sm underline" (click)="loadActionPlans()">Tentar novamente</button>
+    <p>{{ error() }}</p>
+    <button (click)="load()">Tentar novamente</button>
   </div>
 } @else {
   <div class="space-y-6">
-    <div class="ui-page-header">
+    <header class="ui-page-header">
       <div>
         <h2 class="ui-page-title">Planos de Ação</h2>
-        <p class="ui-page-subtitle">{{ plans().length }} planos estruturados pelo método 5W2H</p>
+        <p class="ui-page-subtitle">Planos de todas as origens · 5W2H, tarefas e aprovação</p>
       </div>
-      <div class="flex gap-2">
-        <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
-          <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
-        ><button
-          class="ui-button-primary"
-          [disabled]="!activeStatuses().length"
-          (click)="openCreateActionPlan()"
-        >
-          <span appIcon="Plus" class="h-4 w-4"></span>Novo Plano
-        </button>
-      </div>
+      @if (auth.isAdmin() || auth.isGestor()) {
+        <button class="ui-button-primary" (click)="open()">Novo plano</button>
+      }
+    </header>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <article class="ui-card">
+        <span class="text-sm text-slate-500">Planos atrasados</span
+        ><strong class="block text-2xl">{{ overduePlans() }}</strong>
+      </article>
+      <article class="ui-card">
+        <span class="text-sm text-slate-500">Tarefas atrasadas</span
+        ><strong class="block text-2xl">{{ overdueTasks() }}</strong>
+      </article>
+      <article class="ui-card">
+        <span class="text-sm text-slate-500">Aguardando minha aprovação</span
+        ><strong class="block text-2xl">{{ pendingReviews() }}</strong>
+      </article>
     </div>
-    <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
+    <div class="flex flex-wrap items-center gap-3">
+      <input
+        #query
+        class="ui-search-input max-w-xs"
+        placeholder="Nome ou código"
+        aria-label="Buscar planos"
+        (input)="search.set(query.value)"
+      /><select #origin aria-label="Origem" (change)="originFilter.set(origin.value)">
+        <option value="">Todas as origens</option>
+        <option value="manual">Criado no módulo</option>
+        <option value="notification">Incidente</option>
+        <option value="critical_analysis">Análise crítica</option>
+        <option value="system">Outro módulo</option></select
+      ><label class="flex gap-2 text-sm"
+        ><input #mine type="checkbox" (change)="onlyMine.set(mine.checked)" />Meus planos</label
+      ><label class="flex gap-2 text-sm"
+        ><input
+          #inactive
+          type="checkbox"
+          (change)="showInactive.set(inactive.checked)"
+        />Inativos</label
+      >
+    </div>
+    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       @for (column of columns(); track column.key) {
         <section>
           <header
             class="ui-kanban-column-header"
             [style.background-color]="column.header_background"
-            [style.border-color]="column.header_border"
           >
-            <strong class="text-sm" [style.color]="column.header_foreground">{{
-              column.label
-            }}</strong
-            ><span class="ml-auto text-xs text-slate-400">{{ byStatus(column.key).length }}</span>
+            <strong>{{ column.label }}</strong
+            ><span class="ml-auto">{{ byStatus(column.key).length }}</span>
           </header>
-          <div
-            class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
-            [style.border-color]="column.header_border"
-          >
+          <div class="min-h-48 space-y-3 rounded-b-xl border bg-slate-50 p-3">
             @for (plan of byStatus(column.key); track plan.id) {
               <article class="ui-kanban-card">
-                <button class="block w-full text-left" (click)="openEditActionPlan(plan)">
-                  @if (plan.code) {
-                    <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
-                      plan.code
-                    }}</span>
-                  }
-                  <strong class="text-sm text-slate-700">{{ plan.title }}</strong>
-                  <p class="mt-1 line-clamp-2 text-xs text-slate-400">
-                    {{ plan.what || 'Sem ação descrita' }}
+                <button class="w-full text-left" (click)="open(plan)">
+                  <span class="font-mono text-xs text-slate-400">{{ plan.code }}</span
+                  ><strong class="block text-sm">{{ plan.title }}</strong
+                  ><span class="text-xs text-slate-500">{{ originLabel(plan.origin) }}</span>
+                  <p class="mt-2 text-xs">Responsável: {{ profileName(plan.owner_id) }}</p>
+                  <p class="text-xs">Controlador: {{ profileName(plan.controller_id) }}</p>
+                  <p class="mt-2 text-xs" [class.text-rose-600]="isOverdue(plan)">
+                    {{ plan.when || 'Sem prazo' }}{{ isOverdue(plan) ? ' · Atrasado' : '' }}
                   </p>
-                  <div class="mt-2 space-y-1 text-[10px] text-slate-400">
-                    @if (plan.who) {
-                      <span class="flex items-center gap-1"
-                        ><span appIcon="User" class="h-3 w-3"></span>{{ plan.who }}</span
-                      >
-                    }
-                    @if (plan.when) {
-                      <span class="flex items-center gap-1"
-                        ><span appIcon="Calendar" class="h-3 w-3"></span>{{ plan.when }}</span
-                      >
-                    }
+                  <div class="mt-3 h-2 rounded bg-slate-100">
+                    <div
+                      class="h-2 rounded bg-blue-500"
+                      [style.width.%]="plan.approved_progress"
+                    ></div>
                   </div>
-                </button>
-                <div class="ui-kanban-card-footer">
-                  @if (canAdvance(plan.status)) {
-                    <button
-                      class="text-[11px] font-medium text-blue-600"
-                      (click)="advanceActionPlan(plan)"
-                    >
-                      Avançar
-                    </button>
+                  <p class="mt-1 text-xs">
+                    {{ plan.approved_progress }}% aprovado · {{ plan.progress }}% realizado
+                  </p>
+                  @if (plan.review_state === 'pending') {
+                    <p class="text-xs text-amber-600">Aguardando controlador</p>
                   }
-                  <button class="ui-action-danger text-[11px]" (click)="deleteActionPlan(plan)">
-                    Excluir
-                  </button>
+                  @if (plan.review_state === 'rejected') {
+                    <p class="text-xs text-rose-600">Progresso devolvido para ajuste</p>
+                  }
+                </button>
+                <div class="mt-3 flex flex-wrap gap-3 text-xs">
+                  @if (plan.active) {
+                    @if (
+                      plan.controller_id === auth.user()?.id && plan.review_state === 'pending'
+                    ) {
+                      <button
+                        class="ui-action-edit"
+                        (click)="begin(plan, 'approve', 'Aprovar progresso do plano')"
+                      >
+                        Aprovar</button
+                      ><button
+                        class="ui-action-danger"
+                        (click)="begin(plan, 'reject', 'Devolver progresso para ajuste')"
+                      >
+                        Devolver
+                      </button>
+                    }
+                    @if (canEdit(plan)) {
+                      @if (!column.is_terminal && plan.review_state !== 'pending') {
+                        <button
+                          class="ui-action-edit"
+                          (click)="begin(plan, 'request', 'Solicitar aprovação do progresso')"
+                        >
+                          Solicitar avanço
+                        </button>
+                      }
+                      <button
+                        class="ui-action-danger"
+                        (click)="begin(plan, 'deactivate', 'Inativar plano de ação')"
+                      >
+                        Inativar
+                      </button>
+                    }
+                  }
                 </div>
               </article>
             } @empty {
-              <p class="ui-empty-state">Vazio</p>
+              <p class="ui-empty-state">Nenhum plano.</p>
             }
           </div>
         </section>
@@ -93,49 +138,188 @@
 }
 <app-side-drawer
   [open]="formOpen()"
-  [title]="editing() ? 'Editar Plano de Ação' : 'Novo Plano de Ação'"
-  [subtitle]="editing() ? 'Chamado: ' + ticketName(editing()!.ticket_id) : ''"
-  width="max-w-lg"
+  [title]="editing() ? 'Plano de ação' : 'Novo plano de ação'"
+  width="max-w-3xl"
   (closed)="formOpen.set(false)"
-  ><form
-    [formGroup]="form"
-    (ngSubmit)="saveActionPlan()"
-    class="grid grid-cols-1 gap-4 sm:grid-cols-2"
-  >
-    <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
-    ><label class="ui-form-label sm:col-span-2"
-      >Notificação vinculada *<select formControlName="ticket_id">
-        <option value="">Selecionar...</option>
-        @for (ticket of tickets(); track ticket.id) {
-          <option [value]="ticket.id">{{ ticket.title }}</option>
-        }
-      </select></label
-    ><label class="ui-form-label sm:col-span-2"
-      >O quê? (What)<textarea rows="2" formControlName="what"></textarea></label
-    ><label class="ui-form-label"
-      >Por quê? (Why)<textarea rows="2" formControlName="why"></textarea></label
-    ><label class="ui-form-label">Onde? (Where)<input formControlName="where" /></label
-    ><label class="ui-form-label">Quando? (When)<input type="date" formControlName="when" /></label
-    ><label class="ui-form-label">Quem? (Who)<input formControlName="who" /></label
-    ><label class="ui-form-label"
-      >Como? (How)<textarea rows="2" formControlName="how"></textarea></label
-    ><label class="ui-form-label">Quanto? (How much)<input formControlName="how_much" /></label
-    ><label class="ui-form-label"
-      >Status<select formControlName="status">
-        @for (column of formStatuses(); track column.key) {
-          <option [value]="column.key">{{ column.label }}</option>
-        }
-      </select></label
-    >
-    <div class="ui-form-actions">
-      <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
-        Cancelar</button
-      ><button type="submit" class="ui-button-primary">Salvar</button>
-    </div>
-  </form></app-side-drawer
 >
-<app-methodology
-  [open]="methodologyOpen()"
-  [info]="methodology"
-  (closed)="methodologyOpen.set(false)"
-/>
+  <form [formGroup]="form" (ngSubmit)="save()" class="grid gap-4 sm:grid-cols-2">
+    <fieldset [disabled]="!canEdit()" class="contents">
+      <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label>
+      <label class="ui-form-label"
+        >Incidente vinculado<select formControlName="ticket_id">
+          <option value="">Sem incidente</option>
+          @for (ticket of tickets(); track ticket.id) {
+            <option [value]="ticket.id">{{ ticket.code }} · {{ ticket.title }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Processo (para planos diretos)<select formControlName="process_id">
+          <option value="">Geral</option>
+          @for (p of processes(); track p.id) {
+            <option [value]="p.id">{{ p.title }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Responsável principal *<select formControlName="owner_id">
+          <option value="">Selecionar...</option>
+          @for (p of profiles(); track p.id) {
+            <option [value]="p.id">{{ p.name }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Controlador *<select formControlName="controller_id">
+          <option value="">Selecionar...</option>
+          @for (p of profiles(); track p.id) {
+            <option [value]="p.id">{{ p.name }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label sm:col-span-2"
+        >O quê? (What)<textarea rows="2" formControlName="what"></textarea>
+      </label>
+      <label class="ui-form-label"
+        >Por quê? (Why)<textarea rows="2" formControlName="why"></textarea></label
+      ><label class="ui-form-label">Onde? (Where)<input formControlName="where" /></label>
+      <label class="ui-form-label">Quando? (When)<input type="date" formControlName="when" /></label
+      ><label class="ui-form-label"
+        >Quem? (Who)<select multiple formControlName="participant_ids">
+          @for (p of profiles(); track p.id) {
+            <option [value]="p.id">{{ p.name }}</option>
+          }
+        </select></label
+      >
+      <label class="ui-form-label"
+        >Como? (How)<select formControlName="how_mode">
+          <option value="text">Texto livre</option>
+          <option value="tasks">Tarefas</option>
+        </select></label
+      ><label class="ui-form-label">Quanto? (How much)<input formControlName="how_much" /></label>
+      @if (form.controls.how_mode.value === 'text') {
+        <label class="ui-form-label sm:col-span-2"
+          >Descreva como executar<textarea rows="3" formControlName="how"></textarea>
+        </label>
+      } @else {
+        <section class="space-y-3 sm:col-span-2">
+          <h3 class="font-semibold text-sm">Tarefas e prazos individuais</h3>
+          @for (task of tasks(); track task.id) {
+            <div class="grid gap-2 rounded-lg border p-3 sm:grid-cols-3">
+              <label class="ui-form-label sm:col-span-2"
+                >Tarefa *<input
+                  #taskTitle
+                  [value]="task.title"
+                  (change)="updateTask(task.id, 'title', taskTitle.value)" /></label
+              ><label class="ui-form-label"
+                >Prazo *<input
+                  #taskDue
+                  type="date"
+                  [value]="task.due_date"
+                  (change)="updateTask(task.id, 'due_date', taskDue.value)" /></label
+              ><button
+                type="button"
+                class="ui-action-danger text-xs text-left"
+                (click)="removeTask(task.id)"
+              >
+                Remover tarefa
+              </button>
+            </div>
+          }
+          <button type="button" class="ui-button-secondary" (click)="addTask()">
+            Adicionar tarefa
+          </button>
+        </section>
+      }
+      @if (editing()) {
+        <label class="ui-form-label sm:col-span-2"
+          >Justificativa das alterações *<textarea rows="3" formControlName="reason"></textarea>
+        </label>
+      }
+    </fieldset>
+    @if (canEdit()) {
+      <div class="flex justify-end sm:col-span-2">
+        <button type="submit" class="ui-button-primary" [disabled]="busy()">Salvar plano</button>
+      </div>
+    }
+  </form>
+  @if (editing(); as plan) {
+    @if (plan.how_mode === 'tasks') {
+      <section class="mt-6 space-y-3 border-t pt-4">
+        <h3 class="font-semibold text-sm">Evolução das tarefas salvas</h3>
+        @for (task of plan.tasks; track task.id) {
+          <div class="flex justify-between gap-3 text-sm">
+            <div>
+              <strong>{{ task.title }}</strong>
+              <p class="text-xs" [class.text-rose-600]="!task.completed && task.due_date < today">
+                {{ task.due_date }} · {{ task.completed ? 'Concluída' : 'Pendente' }}
+              </p>
+            </div>
+            @if (plan.active) {
+              <button
+                class="ui-action-edit"
+                (click)="
+                  begin(plan, 'task', task.completed ? 'Reabrir tarefa' : 'Concluir tarefa', task)
+                "
+              >
+                {{ task.completed ? 'Reabrir' : 'Concluir' }}
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+    <section class="mt-6 space-y-3 border-t pt-4">
+      <h3 class="font-semibold text-sm">Comentários sobre a evolução</h3>
+      @for (c of comments(); track c.id) {
+        <article class="rounded bg-slate-50 p-3 text-sm">
+          <p>{{ c.body }}</p>
+          <p class="text-xs text-slate-500">
+            {{ profileName(c.created_by) }} · {{ c.created_at | date: 'dd/MM/yyyy HH:mm' }}
+          </p>
+        </article>
+      }
+      <label class="ui-form-label"
+        >Novo comentário<textarea [formControl]="comment" maxlength="10000"></textarea></label
+      ><button class="ui-button-secondary" [disabled]="busy()" (click)="addComment()">
+        Registrar comentário
+      </button>
+    </section>
+    <section class="mt-6 space-y-3 border-t pt-4">
+      <h3 class="font-semibold text-sm">Evidências</h3>
+      @for (item of evidence(); track item.id) {
+        <button class="block text-sm text-blue-600" (click)="openEvidence(item)">
+          {{ item.name }}
+        </button>
+      }
+      <label class="ui-form-label"
+        >Anexar PDF ou imagem (até 10 MB)<input
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          [disabled]="busy()"
+          (change)="upload($event)"
+      /></label>
+    </section>
+    <section class="mt-6 space-y-3 border-t pt-4">
+      <h3 class="font-semibold text-sm">Histórico</h3>
+      @for (entry of history(); track entry.id) {
+        <article class="rounded bg-slate-50 p-3 text-xs">
+          <p>{{ entry.justification }}</p>
+          <p class="mt-1 text-slate-500">
+            {{ profileName(entry.changed_by) }} · {{ entry.changed_at | date: 'dd/MM/yyyy HH:mm' }}
+          </p>
+        </article>
+      }
+    </section>
+  }
+</app-side-drawer>
+<app-side-drawer
+  [open]="!!operation()"
+  [title]="operation()?.label || ''"
+  (closed)="operation.set(null)"
+  ><label class="ui-form-label"
+    >Justificativa *<textarea rows="4" [formControl]="reason"></textarea></label
+  ><button class="ui-button-primary mt-4" [disabled]="busy()" (click)="confirmOperation()">
+    Confirmar
+  </button></app-side-drawer
+>

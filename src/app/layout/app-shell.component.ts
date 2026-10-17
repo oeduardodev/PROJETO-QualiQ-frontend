@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@core/services/auth.service';
+import { OperationInboxService } from '@core/services/operation-inbox.service';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { NAV_GROUPS, ROUTE_SUBTITLES, visibleNavigation } from './navigation';
 
@@ -15,6 +16,8 @@ import { NAV_GROUPS, ROUTE_SUBTITLES, visibleNavigation } from './navigation';
   styleUrl: './app-shell.component.scss',
 })
 export class AppShellComponent {
+  readonly inbox = inject(OperationInboxService);
+  readonly inboxOpen = signal(false);
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -44,14 +47,16 @@ export class AppShellComponent {
   );
 
   constructor() {
+    void this.inbox.load();
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((event) =>
-        this.route.set(event.urlAfterRedirects.slice(1).split('?')[0] || 'dashboard'),
-      );
+      .subscribe((event) => {
+        this.route.set(event.urlAfterRedirects.slice(1).split('?')[0] || 'dashboard');
+        void this.inbox.load();
+      });
   }
 
   toggleGroup(id: string): void {
