@@ -44,7 +44,7 @@ As opções dos formulários são consultadas no banco ao abrir a tela. Para alt
 
 | Área           | Tabela                                                                                                                            |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Notificações   | `ticket_statuses`, `notification_severities`, `analysis_tools`                                                                    |
+| Incidentes     | `ticket_statuses`, `notification_severities`, `analysis_tools`                                                                    |
 | Helpdesk       | `helpdesk_statuses`, `helpdesk_categories`, `helpdesk_priorities`                                                                 |
 | Planos de ação | `action_plan_statuses`                                                                                                            |
 | Riscos         | `risk_types`, `risk_statuses`, `risk_preventive_action_statuses`, `risk_contingency_plan_statuses`, `risk_matrix_classifications` |
@@ -52,28 +52,15 @@ As opções dos formulários são consultadas no banco ao abrir a tela. Para alt
 | Dimensões      | `dimension_classifications`, `dimension_colors`                                                                                   |
 | Indicadores    | `indicator_statuses`                                                                                                              |
 
-Nas tabelas de etapas (`ticket_statuses`, `helpdesk_statuses` e `action_plan_statuses`), `key` é o valor persistido, `label` é o texto exibido, `order_index` controla a ordem das colunas e `next_status_key` define o destino do botão **Avançar**. Marque uma etapa inicial com `is_initial = true` e uma final com `is_terminal = true`. Há apenas uma etapa inicial por fluxo. Uma etapa inativa continua visível para registros antigos, mas não aparece nas opções para novos registros.
+Nas tabelas de etapas (`ticket_statuses`, `helpdesk_statuses` e `action_plan_statuses`), `key` é o valor persistido, `label` é o texto exibido e `order_index` controla a ordem das colunas. `next_status_key` continua atendendo fluxos genéricos, mas as transições de incidentes e a aprovação de progresso dos planos de Operação são validadas pelas funções do banco. Marque uma etapa inicial com `is_initial = true` e uma final com `is_terminal = true`. Há apenas uma etapa inicial por fluxo. Uma etapa inativa continua visível para registros antigos, mas não aparece nas opções para novos registros.
 
 As faixas de `risk_matrix_classifications` são editadas em **Gerenciamento de Riscos → Classificações da matriz** por um administrador. Elas cobrem as pontuações de 1 a 25 sem lacunas e determinam o nível, as cores e a legenda da matriz. Riscos novos e históricos começam como rascunho; no gerenciamento, Admin ou Gestor envia para aprovação e um Admin aprova ou rejeita com motivo. Só riscos aprovados aparecem no painel. A edição de um risco aprovado o devolve ao rascunho.
 
 Ao editar um risco, o responsável é escolhido entre os usuários cadastrados e uma justificativa é obrigatória; ela aparece no histórico da alteração. Nomes antigos sem vínculo com usuário continuam disponíveis ao editar o registro. No gerenciamento, riscos podem ser desativados e reativados sem perder vínculos. O filtro mostra ativados, desativados ou todos; riscos desativados não aparecem no painel nem nas listas de seleção de outras áreas. O botão **Histórico** mostra alterações do risco, decisões de aprovação e inclusões ou remoções de fatores, ações preventivas e planos de contingência. Registros anteriores à auditoria têm um estado inicial e os eventos de aprovação cujas datas já estavam disponíveis.
 
-Exemplo para inserir uma etapa entre **Em Análise** e **Plano de Ação**:
+Em `analysis_tools`, `requires_completion` exige a confirmação da análise antes de concluir o incidente. `render_kind` escolhe o formulário de causa: `ishikawa`, `five_whys`, `none` ou o formulário genérico (confirmação de análise). Novas chaves podem reutilizar um desses renderizadores.
 
-```sql
-INSERT INTO public.ticket_statuses
-  (key, label, order_index, next_status_key)
-VALUES
-  ('validacao', 'Validação', 25, 'plano');
-
-UPDATE public.ticket_statuses
-SET next_status_key = 'validacao'
-WHERE key = 'analise';
-```
-
-Em `analysis_tools`, `requires_completion` exige a confirmação da análise antes de concluir a notificação. `render_kind` escolhe o formulário de causa: `ishikawa`, `five_whys`, `none` ou o formulário genérico (confirmação de análise). Novas chaves podem reutilizar um desses renderizadores.
-
-`form_field_types` registra os tipos aceitos nos esquemas JSON dos campos de notificação. A interface interpreta esses tipos ao exibir os campos.
+`form_field_types` registra os tipos aceitos nos esquemas JSON dos campos de incidente. A interface interpreta esses tipos ao exibir os campos.
 
 Em `indicator_statuses`, `min_goal_ratio` é o limite mínimo em relação à meta; deixe `NULL` na etapa de fallback. O registro de valores consulta esses limites diretamente no banco. As opções de unidade e frequência vêm, respectivamente, das funções `get_indicator_unit_options()` e `get_indicator_frequency_options()` sobre os ENUMs do PostgreSQL.
 
@@ -193,11 +180,17 @@ As opções de unidade e frequência dos indicadores são carregadas pelo aplica
 
 No helpdesk, as categorias e prioridades vêm das tabelas `public.helpdesk_categories` e `public.helpdesk_priorities`. Para incluir uma opção, adicione uma linha no Supabase com `key`, `label` e `order_index`; em prioridades, também é possível definir `badge_background` e `badge_foreground` como cores hexadecimais. Apenas linhas com `is_active = true` aparecem em novos chamados. `is_default` escolhe a opção inicial do formulário, e somente uma linha por tabela pode ser padrão. Após recarregar a página, a nova opção aparece sem alteração no frontend. O fluxo de status continua definido na aplicação.
 
-As severidades de notificações vêm de `public.notification_severities` e são compartilhadas por chamados, tipos e classificações. A tabela usa os mesmos campos de ordenação, ativação, padrão e cores das prioridades do helpdesk. Os status das notificações continuam vinculados à sequência do fluxo na aplicação.
+As severidades de incidentes vêm de `public.notification_severities` e são compartilhadas por chamados, tipos e classificações. A tabela usa os mesmos campos de ordenação, ativação, padrão e cores das prioridades do helpdesk. Os status dos incidentes continuam vinculados à sequência do fluxo na aplicação.
 
 ## Organização das features
 
 Cada feature mantém suas responsabilidades isoladas, evitando arquivos excessivamente grandes e componentes com responsabilidades demais.
+
+### Incidentes
+
+O módulo de Incidentes fica em `features/incidents/`, com componentes, serviços, repositórios e mappers nomeados com `incident` ou `incidents`. As telas usam `/incidentes/realizacao`, `/incidentes/painel` e `/incidentes/parametrizacao`; o formulário público usa `/incidente-publico/:token`.
+
+Os antigos caminhos `/notificacoes/realizacao`, `/notificacoes/painel` e `/notificacoes/parametrizacao` redirecionam para as telas equivalentes. Links públicos em `/notificacao-publica/:token` continuam válidos. Os nomes `notification_*`, as RPCs públicas e a origem persistida `notification` permanecem como contratos legados do Supabase, documentados em `core/models/database.ts`, para manter compatibilidade com os dados e migrações existentes. O futuro módulo de notificações entre usuários terá sua própria feature.
 
 ### Processes
 
@@ -322,3 +315,11 @@ A regra geral é:
 - **Use o SCSS do componente** quando o comportamento ou estilo for exclusivo daquela tela.
 
 Essa divisão mantém a interface consistente sem transformar o arquivo global de estilos em um conjunto de regras específicas de componentes.
+
+## Fluxos de Operação
+
+As migrações `20261016130000` a `20261016134000` implementam os fluxos auditados de documentos, cópias controladas, incidentes e planos de ação. Aplique-as no projeto Supabase antes de publicar o frontend. A criação e o reinício da revisão de documentos exigem perfil Admin; o responsável pode editar e enviar seu documento, e todos os aprovadores cadastrados precisam decidir com justificativa antes da publicação. A publicação usa uma versão sincronizada do Google Docs. Cópias controladas usam o PDF daquela versão.
+
+Implante também a Edge Function `document-integration`, com a verificação de JWT habilitada em `supabase/config.toml`. Configure os segredos indicados em `supabase/functions/.env.example` no ambiente da função. Compartilhe cada Google Docs com a conta de serviço para leitura; os editores humanos precisam de permissão de edição no próprio Google Docs. O link de edição fica na ficha do documento e, ao enviar para validação, o Orbis exporta HTML e PDF da versão atual. A conta de serviço pode usar delegação de domínio por `GOOGLE_IMPERSONATE_USER` quando a organização a tiver configurado. Para enviar cópias por e-mail, configure `RESEND_API_KEY` e um remetente verificado em `RESEND_FROM`.
+
+As solicitações de cópia são aprovadas pelo Admin, podem ser enviadas por e-mail, registram entrega e devolução e destacam atrasos. As classificações de incidente definem questionário, ferramenta de análise e prazo; links públicos aceitam respostas sem cadastro e a triagem administrativa encaminha ao gestor. Planos reúnem origens manuais, incidentes e análises de indicadores, com tarefas, controlador, evidências e aprovação do progresso. A caixa de entrada mostra atribuições aos usuários vinculados.
