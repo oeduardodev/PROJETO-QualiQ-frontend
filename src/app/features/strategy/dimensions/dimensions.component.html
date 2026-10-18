@@ -43,6 +43,11 @@
           </option>
         }
       </select>
+      @if (selectedVersion(); as version) {
+        <span class="text-sm text-slate-500">
+          Criado por {{ versionAuthor(version) }} · {{ versionCreatedAt(version) }}
+        </span>
+      }
       @if (selectedVersion() && selectedVersionId() !== currentVersion()?.id) {
         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
           Versão anterior · somente leitura
@@ -108,8 +113,14 @@
                 concluídos</span
               >
             </div>
-            @if (canManage()) {
-              <div class="flex gap-3">
+            <div class="flex gap-3">
+              <button
+                class="ui-action-history text-xs font-medium"
+                (click)="historyDimension.set(dimension)"
+              >
+                Histórico
+              </button>
+              @if (canManage()) {
                 <button class="ui-action-edit text-xs font-medium" (click)="openEdit(dimension)">
                   Editar
                 </button>
@@ -119,8 +130,8 @@
                 >
                   Excluir
                 </button>
-              </div>
-            }
+              }
+            </div>
           </div>
         </article>
       } @empty {
@@ -133,6 +144,13 @@
     </div>
   }
 </div>
+
+<app-edit-history
+  entity="dimensions"
+  [recordId]="historyDimension()?.id ?? null"
+  [title]="historyDimension()?.name ?? ''"
+  (closed)="historyDimension.set(null)"
+/>
 
 <app-modal
   [open]="!!selectedDimension()"
@@ -366,6 +384,12 @@
     <label class="ui-form-label"
       >Descrição<textarea rows="3" formControlName="description"></textarea>
     </label>
+    @if (editing()) {
+      <label class="ui-form-label">
+        Justificativa da alteração *
+        <textarea rows="3" formControlName="justification"></textarea>
+      </label>
+    }
     <div class="grid gap-4 sm:grid-cols-2">
       <fieldset class="link-picker" [class.link-picker-searchable]="indicators().length > 3">
         <legend>Indicadores</legend>

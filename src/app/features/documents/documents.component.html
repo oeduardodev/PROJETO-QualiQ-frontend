@@ -30,7 +30,11 @@
             <span appIcon="Plus" class="h-4 w-4"></span>Novo Nível
           </button>
           <button
-            class="ui-button-primary"
+            type="button"
+            class="ui-button-primary disabled:cursor-not-allowed disabled:opacity-50"
+            [attr.title]="
+              !store.levels().length ? 'Cadastre um nível antes de criar um tipo' : null
+            "
             [disabled]="!store.levels().length"
             (click)="openType()"
           >
@@ -139,11 +143,16 @@
                   {{ typesAt(level.level).length }} tipos documentais
                 </p>
               </div>
-              @if (canManageTypes()) {
-                <button class="ui-action-edit ml-auto text-xs" (click)="openLevel(level.level)">
-                  Renomear nível
+              <div class="ml-auto flex gap-3">
+                <button class="ui-action-history text-xs" (click)="historyLevel.set(level)">
+                  Histórico
                 </button>
-              }
+                @if (canManageTypes()) {
+                  <button class="ui-action-edit text-xs" (click)="openLevel(level.level)">
+                    Renomear nível
+                  </button>
+                }
+              </div>
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               @for (type of typesAt(level.level); track type.id) {
@@ -214,7 +223,7 @@
       </div>
     }
     @if (mode === 'management') {
-      <div class="grid grid-cols-1 gap-3 lg:grid-cols-5">
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
         @for (column of workflow; track column.value) {
           <section>
             <header class="ui-kanban-column-header" [class]="column.bg + ' ' + column.border">
@@ -224,7 +233,7 @@
               }}</span>
             </header>
             <div
-              class="min-h-64 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
+              class="min-h-40 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2 sm:min-h-48"
               [class]="column.border"
             >
               @for (document of docsByStatus(column.value); track document.id) {
@@ -245,6 +254,14 @@
                       store.typeName(document.type_id)
                     }}</span>
                   </button>
+                  @if (document.status === 'em_validacao') {
+                    <p class="mt-2 text-xs text-slate-500">
+                      {{ approvalProgress(document) }}
+                      @if (!canDecide(document) && document.approver_ids.includes(auth.user()?.id ?? '')) {
+                        · Sua aprovação já foi registrada
+                      }
+                    </p>
+                  }
                   <div class="ui-kanban-card-footer">
                     <button
                       class="ui-action-history text-[11px] font-medium"
@@ -318,19 +335,73 @@
           </section>
         }
       </div>
-    }
-    @if (mode === 'management') {
-      <button class="ui-button-secondary" (click)="showInactive.set(!showInactive())">
-        Documentos inativos ({{ inactiveDocuments().length }})
-      </button>
-      @if (showInactive()) {
-        @for (document of inactiveDocuments(); track document.id) {
-          <article class="ui-card flex justify-between">
-            <span>{{ document.code }} · {{ document.title }}</span
-            ><button class="ui-action-history" (click)="openWorkflow(document)">Histórico</button>
-          </article>
+      <section class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <header class="border-b border-slate-100 px-4 py-3 sm:px-5">
+          <h3 class="text-sm font-semibold text-slate-700">
+            Documentos Publicados — Reiniciar Workflow
+          </h3>
+          <p class="mt-1 text-xs text-slate-400">
+            Ao reiniciar o workflow, o documento muda para “Em Revisão” e sai da Biblioteca.
+          </p>
+        </header>
+        <div class="divide-y divide-slate-100">
+          @for (document of publishedWorkflowDocuments(); track document.id) {
+            <article class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
+              <div class="flex min-w-0 flex-1 items-center gap-3">
+                <span
+                  appIcon="FileCheck2"
+                  class="h-4 w-4 shrink-0 text-emerald-500"
+                ></span>
+                <div class="min-w-0">
+                  <strong class="block truncate text-sm font-medium text-slate-700">
+                    {{ document.title }}
+                  </strong>
+                  <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                    @if (document.code) {
+                      <span class="font-mono">{{ document.code }}</span>
+                    }
+                    <span class="rounded bg-slate-100 px-1.5 py-0.5">{{ store.typeName(document.type_id) }}</span>
+                    <span>{{ store.processName(document.process_id) }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 sm:justify-end">
+                <button class="ui-action-history text-xs" (click)="openWorkflow(document)">
+                  Histórico
+                </button>
+                @if (auth.isAdmin()) {
+                  <button
+                    class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 hover:text-amber-700"
+                    (click)="begin(document, 'revise', 'Reiniciar Workflow')"
+                  >
+                    <span appIcon="RotateCcw" class="h-3.5 w-3.5"></span>
+                    Reiniciar Workflow
+                  </button>
+                }
+              </div>
+            </article>
+          } @empty {
+            <p class="px-4 py-8 text-center text-xs text-slate-400 sm:px-5">
+              Nenhum documento publicado para reiniciar.
+            </p>
+          }
+        </div>
+      </section>
+      <div>
+        <button class="ui-button-secondary" (click)="showInactive.set(!showInactive())">
+          Documentos inativos ({{ inactiveDocuments().length }})
+        </button>
+        @if (showInactive()) {
+          <div class="mt-3 space-y-2">
+            @for (document of inactiveDocuments(); track document.id) {
+              <article class="ui-card flex justify-between">
+                <span>{{ document.code }} · {{ document.title }}</span
+                ><button class="ui-action-history" (click)="openWorkflow(document)">Histórico</button>
+              </article>
+            }
+          </div>
         }
-      }
+      </div>
     }
     @if (mode === 'copies') {
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -573,7 +644,8 @@
       </select></label
     >
     <label class="ui-form-label sm:col-span-2"
-      >Justificativa *<textarea formControlName="justification" rows="3"></textarea>
+      >{{ editingDocument() ? 'Justificativa da alteração *' : 'Observação *'
+      }}<textarea formControlName="justification" rows="3"></textarea>
     </label>
     @if (editingDocument()?.drive_link) {
       <a
@@ -670,6 +742,14 @@
       <p class="error">{{ levelError() }}</p>
     }
     <label class="ui-form-label">Nome do nível *<input [formControl]="levelName" /></label>
+    @if (editingLevel()) {
+      <label class="ui-form-label">
+        Justificativa da alteração *<textarea
+          [formControl]="levelJustification"
+          rows="3"
+        ></textarea>
+      </label>
+    }
     <p class="text-xs text-slate-500">Novos níveis são adicionados à base da pirâmide.</p>
     <div class="flex justify-end gap-2">
       <button type="button" class="ui-button-secondary" (click)="levelOpen.set(false)">
@@ -678,6 +758,12 @@
     </div>
   </form>
 </app-side-drawer>
+<app-edit-history
+  entity="document_levels"
+  [recordId]="historyLevel()?.level?.toString() ?? null"
+  [title]="historyLevel()?.name ?? ''"
+  (closed)="historyLevel.set(null)"
+/>
 <app-side-drawer
   [open]="!!historyType()"
   [title]="'Histórico · ' + (historyType()?.name || '')"
@@ -715,7 +801,7 @@
     <p class="text-sm text-rose-600 mb-3">{{ formError() }}</p>
   }
   <label class="ui-form-label"
-    >Justificativa ou comentário *<textarea rows="4" [formControl]="reason"></textarea>
+    >Observação *<textarea rows="4" [formControl]="reason"></textarea>
   </label>
   @if (operation()?.action === 'request') {
     <label class="ui-form-label mt-4"

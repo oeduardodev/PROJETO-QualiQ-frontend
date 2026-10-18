@@ -170,6 +170,109 @@
               </label>
             }
             @if (history(indicator.id).length) {
+              <button
+                type="button"
+                class="ui-action-history mt-5 border-t border-slate-100 pt-4 text-sm"
+                (click)="historyDrawerIndicator.set(indicator)"
+              >
+                Ver histórico das evoluções ({{ history(indicator.id).length }})
+              </button>
+            }
+
+          </article>
+        }
+      </div>
+    }
+    @if (mode === 'registration') {
+      <div class="ui-table-panel">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="ui-table-header">
+                <th class="ui-table-heading">Código</th>
+                <th class="ui-table-heading">Indicador</th>
+                <th class="ui-table-heading">Processo</th>
+                <th class="ui-table-heading">Meta</th>
+                <th class="ui-table-heading">Frequência</th>
+                <th class="ui-table-heading">Status</th>
+                <th class="ui-table-heading !text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (indicator of indicators(); track indicator.id) {
+                <tr class="border-b border-slate-50">
+                  <td class="ui-table-cell font-mono text-xs text-slate-500">
+                    {{ indicator.code || '—' }}
+                  </td>
+                  <td class="ui-table-cell font-medium text-slate-700">
+                    {{ indicator.title }}
+                    @if (indicator.obsolete) {
+                      <span class="ml-2 rounded bg-slate-100 px-2 py-1 text-xs text-slate-500"
+                        >Obsoleto</span
+                      >
+                    }
+                    @if (indicator.calculation_type === 'composite') {
+                      <span class="ml-2 rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                        >Composto</span
+                      >
+                    }
+                  </td>
+                  <td class="ui-table-cell">{{ processName(indicator.process_id) }}</td>
+                  <td class="ui-table-cell">
+                    {{
+                      formatValue(indicator.goal_value, indicator.unit, indicator.decimal_places)
+                    }}
+                  </td>
+                  <td class="ui-table-cell">{{ frequencyLabel(indicator.frequency) }}</td>
+                  <td class="ui-table-cell">
+                    <span
+                      class="rounded-full px-2 py-1 text-xs"
+                      [style.background-color]="statusBackground(indicator.status)"
+                      [style.color]="statusForeground(indicator.status)"
+                      >{{ statusLabel(indicator.status) }}</span
+                    >
+                  </td>
+                  <td class="ui-table-cell !text-right">
+                    <div class="flex justify-end gap-3">
+                      @if (auth.isAdmin()) {
+                        <button
+                          class="ui-action-edit text-xs"
+                          (click)="openEditIndicator(indicator)"
+                        >
+                          Editar
+                        </button>
+                      }
+                      <button
+                        class="ui-action-history text-xs"
+                        (click)="toggleDefinitionHistory(indicator)"
+                      >
+                        Histórico
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" class="ui-table-empty">Nenhum indicador.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+
+<app-side-drawer
+  [open]="!!historyDrawerIndicator()"
+  [title]="'Histórico das evoluções · ' + (historyDrawerIndicator()?.title ?? '')"
+  width="max-w-2xl"
+  (closed)="historyDrawerIndicator.set(null)"
+>
+  @if (historyDrawerIndicator(); as indicator) {
+            @if (history(indicator.id).length) {
               <div class="mt-5 border-t border-slate-100 pt-4">
                 <h4 class="text-sm font-semibold text-slate-700">Histórico das evoluções</h4>
                 @for (entry of history(indicator.id).slice().reverse(); track entry.id) {
@@ -291,119 +394,29 @@
                 }
               </div>
             }
-          </article>
-        }
-      </div>
-    }
-    @if (mode === 'registration') {
-      <div class="ui-table-panel">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="ui-table-header">
-                <th class="ui-table-heading">Código</th>
-                <th class="ui-table-heading">Indicador</th>
-                <th class="ui-table-heading">Processo</th>
-                <th class="ui-table-heading">Meta</th>
-                <th class="ui-table-heading">Frequência</th>
-                <th class="ui-table-heading">Status</th>
-                <th class="ui-table-heading text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (indicator of indicators(); track indicator.id) {
-                <tr class="border-b border-slate-50">
-                  <td class="ui-table-cell font-mono text-xs text-slate-500">
-                    {{ indicator.code || '—' }}
-                  </td>
-                  <td class="ui-table-cell font-medium text-slate-700">
-                    {{ indicator.title }}
-                    @if (indicator.obsolete) {
-                      <span class="ml-2 rounded bg-slate-100 px-2 py-1 text-xs text-slate-500"
-                        >Obsoleto</span
-                      >
-                    }
-                    @if (indicator.calculation_type === 'composite') {
-                      <span class="ml-2 rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"
-                        >Composto</span
-                      >
-                    }
-                  </td>
-                  <td class="ui-table-cell">{{ processName(indicator.process_id) }}</td>
-                  <td class="ui-table-cell">
-                    {{
-                      formatValue(indicator.goal_value, indicator.unit, indicator.decimal_places)
-                    }}
-                  </td>
-                  <td class="ui-table-cell">{{ frequencyLabel(indicator.frequency) }}</td>
-                  <td class="ui-table-cell">
-                    <span
-                      class="rounded-full px-2 py-1 text-xs"
-                      [style.background-color]="statusBackground(indicator.status)"
-                      [style.color]="statusForeground(indicator.status)"
-                      >{{ statusLabel(indicator.status) }}</span
-                    >
-                  </td>
-                  <td class="ui-table-cell text-right">
-                    @if (auth.isAdmin()) {
-                      <button class="ui-action-edit text-xs" (click)="openEditIndicator(indicator)">
-                        Editar
-                      </button>
-                    }
-                    <button
-                      class="ui-action-history ml-3 text-xs"
-                      (click)="toggleDefinitionHistory(indicator)"
-                    >
-                      {{
-                        historyIndicatorId() === indicator.id ? 'Ocultar histórico' : 'Histórico'
-                      }}
-                    </button>
-                  </td>
-                </tr>
-                @if (historyIndicatorId() === indicator.id) {
-                  <tr>
-                    <td colspan="7" class="bg-slate-50 px-5 py-4">
-                      <h4 class="mb-2 text-sm font-semibold text-slate-700">Alterações da ficha</h4>
-                      @if (historyLoading()) {
-                        <p class="text-xs text-slate-500">Carregando...</p>
-                      } @else {
-                        <ol class="space-y-2">
-                          @for (entry of definitionHistory(); track entry.id) {
-                            <li class="text-xs text-slate-600">
-                              <strong>{{
-                                entry.action === 'created' ? 'Criação' : 'Alteração'
-                              }}</strong>
-                              · {{ formatTimestamp(entry.changed_at) }} ·
-                              {{ authorName(entry.changed_by) }}
-                              @if (entry.justification) {
-                                · {{ entry.justification }}
-                              }
-                            </li>
-                            @for (change of definitionChanges(entry); track change.label) {
-                              <li class="ml-4 text-xs text-slate-500">
-                                {{ change.label }}: {{ change.before }} → {{ change.after }}
-                              </li>
-                            }
-                          } @empty {
-                            <li class="text-xs text-slate-500">Sem registros de alteração.</li>
-                          }
-                        </ol>
-                      }
-                    </td>
-                  </tr>
-                }
-              } @empty {
-                <tr>
-                  <td colspan="7" class="ui-table-empty">Nenhum indicador.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
-    }
-  </div>
-}
+  }
+</app-side-drawer>
+<app-side-drawer
+  [open]="!!historyIndicatorId()"
+  title="Alterações da ficha do indicador"
+  (closed)="historyIndicatorId.set(null)"
+>
+  @if (historyLoading()) {
+    <p class="text-sm text-slate-500">Carregando...</p>
+  } @else {
+    <ol class="space-y-3">
+      @for (entry of definitionHistory(); track entry.id) {
+        <li class="text-sm text-slate-600">
+          <strong>{{ entry.action === 'created' ? 'Criação' : 'Alteração' }}</strong> · {{ formatTimestamp(entry.changed_at) }} · {{ authorName(entry.changed_by) }}
+          @if (entry.justification) { <p class="text-slate-500">{{ entry.justification }}</p> }
+          @for (change of definitionChanges(entry); track change.label) {
+            <p class="text-slate-500">{{ change.label }}: {{ change.before }} → {{ change.after }}</p>
+          }
+        </li>
+      } @empty { <li class="text-sm text-slate-500">Sem registros de alteração.</li> }
+    </ol>
+  }
+</app-side-drawer>
 <app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar Indicador' : 'Novo Indicador'"

@@ -78,6 +78,18 @@
                     </p>
                   }
                   <div class="mt-3 flex flex-wrap gap-3 text-xs">
+                    <button
+                      class="ui-action-history"
+                      (click)="
+                        historySelection.set({
+                          entity: 'tickets',
+                          id: ticket.id,
+                          title: ticket.title,
+                        })
+                      "
+                    >
+                      Histórico
+                    </button>
                     @if (
                       auth.isAdmin() &&
                       ticket.status !== 'concluido' &&
@@ -169,9 +181,23 @@
                     {{ c.form_schema?.length || 0 }} campos · {{ c.active ? 'Ativa' : 'Inativa' }}
                   </p>
                 </div>
-                <button class="ui-action-edit text-sm" (click)="openClassification(c)">
-                  {{ section() === 'forms' ? 'Editar questionário' : 'Editar' }}
-                </button>
+                <div class="flex gap-3">
+                  <button
+                    class="ui-action-history text-sm"
+                    (click)="
+                      historySelection.set({
+                        entity: 'notification_classifications',
+                        id: c.id,
+                        title: c.name,
+                      })
+                    "
+                  >
+                    Histórico
+                  </button>
+                  <button class="ui-action-edit text-sm" (click)="openClassification(c)">
+                    {{ section() === 'forms' ? 'Editar questionário' : 'Editar' }}
+                  </button>
+                </div>
               </article>
             } @empty {
               <p class="ui-empty-state">Nenhuma classificação cadastrada.</p>
@@ -192,7 +218,21 @@
                     {{ className(t.classification_id) }} · {{ t.active ? 'Ativo' : 'Inativo' }}
                   </p>
                 </div>
-                <button class="ui-action-edit text-sm" (click)="openType(t)">Editar</button>
+                <div class="flex gap-3">
+                  <button
+                    class="ui-action-history text-sm"
+                    (click)="
+                      historySelection.set({
+                        entity: 'notification_types',
+                        id: t.id,
+                        title: t.name,
+                      })
+                    "
+                  >
+                    Histórico
+                  </button>
+                  <button class="ui-action-edit text-sm" (click)="openType(t)">Editar</button>
+                </div>
               </article>
             } @empty {
               <p class="ui-empty-state">Nenhum tipo cadastrado.</p>
@@ -281,17 +321,22 @@
           }
         </select>
         @if (selectedClass() && !availableTypes().length) {
-          <p id="incident-type-help" role="status" class="mt-1 text-xs font-normal text-slate-500">
+          <p
+            id="incident-type-help"
+            role="status"
+            class="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs font-normal text-blue-800"
+          >
             A classificação {{ className(selectedClass()) }} não possui tipos ativos vinculados.
-            @if (!auth.isAdmin()) {
+            @if (auth.isAdmin()) {
+              Para cadastrar ou ativar um tipo, acesse
+              <a class="font-medium text-blue-700 underline" routerLink="/incidentes/parametrizacao">
+                Parametrização de incidentes
+              </a>
+              e selecione “Tipos de incidente”.
+            } @else {
               Solicite o cadastro ou a ativação de um tipo ao administrador.
             }
           </p>
-          @if (auth.isAdmin()) {
-            <button type="button" class="ui-action-edit mt-2 text-xs" (click)="openType()">
-              Cadastrar tipo nesta classificação
-            </button>
-          }
         }
       </div>
       <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label>
@@ -471,9 +516,20 @@
     <label class="flex items-center gap-2 text-sm"
       ><input type="checkbox" formControlName="active" />Ativo</label
     >
+    @if (editingClass() || editingType()) {
+      <label class="ui-form-label">
+        Justificativa da alteração *<textarea formControlName="justification" rows="3"></textarea>
+      </label>
+    }
     <button type="submit" class="ui-button-primary" [disabled]="saving()">Salvar</button>
   </form>
 </app-side-drawer>
+<app-edit-history
+  [entity]="historySelection()?.entity ?? 'tickets'"
+  [recordId]="historySelection()?.id ?? null"
+  [title]="historySelection()?.title ?? ''"
+  (closed)="historySelection.set(null)"
+/>
 <app-side-drawer
   [open]="!!operation()"
   [title]="operation()?.label || ''"

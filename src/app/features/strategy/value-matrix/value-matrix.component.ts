@@ -26,6 +26,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
 import { QuickPaletteComponent } from '@shared/components/quick-palette/quick-palette.component';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 import { ToastService } from '@shared/services/toast.service';
@@ -62,6 +63,7 @@ const MATRIX_COLORS: Record<string, string> = {
     MethodologyComponent,
     ModalComponent,
     SideDrawerComponent,
+    EditHistoryComponent,
     QuickPaletteComponent,
   ],
   templateUrl: './value-matrix.component.html',
@@ -97,6 +99,7 @@ export class ValueMatrixComponent {
   readonly summaryError = signal<string | null>(null);
   readonly categoryEditorOpen = signal(false);
   readonly editingCategory = signal<ValueChainCategory | null>(null);
+  readonly historyCategory = signal<ValueChainCategory | null>(null);
   readonly categorySaving = signal(false);
   readonly categoryError = signal<string | null>(null);
   readonly reordering = signal(false);
@@ -108,6 +111,7 @@ export class ValueMatrixComponent {
       nonNullable: true,
       validators: Validators.required,
     }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly total = computed(() =>
     this.categories().reduce((sum, item) => sum + item.processes.length, 0),
@@ -238,7 +242,12 @@ export class ValueMatrixComponent {
     if (!this.auth.isAdmin() || !this.manageMode()) return;
     this.editingCategory.set(null);
     this.categoryError.set(null);
-    this.categoryForm.reset({ name: '', description: '', color_key: MATRIX_COLORS['blue'] });
+    this.categoryForm.reset({
+      name: '',
+      description: '',
+      color_key: MATRIX_COLORS['blue'],
+      justification: '',
+    });
     this.categoryEditorOpen.set(true);
   }
 
@@ -250,6 +259,7 @@ export class ValueMatrixComponent {
       name: category.name,
       description: category.description ?? '',
       color_key: this.colorHex(category.color_key),
+      justification: '',
     });
     this.categoryEditorOpen.set(true);
   }
@@ -268,6 +278,10 @@ export class ValueMatrixComponent {
       this.categoryError.set('Informe o nome da classificação.');
       return;
     }
+    if (this.editingCategory() && !value.justification.trim()) {
+      this.categoryError.set('Informe a justificativa da alteração.');
+      return;
+    }
     this.categorySaving.set(true);
     this.categoryError.set(null);
     try {
@@ -278,7 +292,11 @@ export class ValueMatrixComponent {
         color_key: value.color_key,
       };
       if (current) {
-        const saved = await this.processService.updateCategory(current.id, payload);
+        const saved = await this.processService.updateCategory(
+          current.id,
+          payload,
+          value.justification.trim(),
+        );
         this.categories.update((lanes) =>
           lanes.map((lane) =>
             lane.id === saved.id ? { ...saved, processes: lane.processes } : lane,

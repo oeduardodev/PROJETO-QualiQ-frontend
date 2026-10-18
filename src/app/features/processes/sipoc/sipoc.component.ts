@@ -26,6 +26,7 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
 import { ToastService } from '@shared/services/toast.service';
 import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
@@ -41,7 +42,13 @@ interface CustomFieldEntry {
 @Component({
   selector: 'app-sipoc',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, MethodologyComponent, SideDrawerComponent],
+  imports: [
+    ReactiveFormsModule,
+    IconDirective,
+    MethodologyComponent,
+    SideDrawerComponent,
+    EditHistoryComponent,
+  ],
   templateUrl: './sipoc.component.html',
   styleUrl: './sipoc.component.scss',
 })
@@ -87,6 +94,7 @@ export class SipocComponent {
   readonly methodologyOpen = signal(false);
   readonly nodeOpen = signal(false);
   readonly editingNode = signal<SipocNode | null>(null);
+  readonly historyNode = signal<SipocNode | null>(null);
   readonly nodeType = signal<NodeType>('S');
   readonly nodeError = signal<string | null>(null);
   readonly customFields = signal<CustomFieldEntry[]>([]);
@@ -104,6 +112,7 @@ export class SipocComponent {
   readonly nodeForm = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly selectedStep = computed(
     () => this.allNodes().find((node) => node.id === this.selectedStepId()) ?? null,
@@ -179,7 +188,7 @@ export class SipocComponent {
   openCreateNode(type: NodeType): void {
     this.editingNode.set(null);
     this.nodeType.set(type);
-    this.nodeForm.reset({ title: '', description: '' });
+    this.nodeForm.reset({ title: '', description: '', justification: '' });
     this.nodeError.set(null);
     this.customFields.set([]);
     this.customFieldsDirty.set(false);
@@ -198,7 +207,11 @@ export class SipocComponent {
   openNodeEditor(node: SipocNode): void {
     this.editingNode.set(node);
     this.nodeType.set(node.node_type);
-    this.nodeForm.reset({ title: node.title, description: node.description ?? '' });
+    this.nodeForm.reset({
+      title: node.title,
+      description: node.description ?? '',
+      justification: '',
+    });
     this.nodeError.set(null);
     const raw = node.custom_fields ?? {};
     this.customFields.set(
@@ -318,16 +331,29 @@ export class SipocComponent {
       this.nodeError.set('Título é obrigatório.');
       return;
     }
+    if (this.editingNode() && !this.nodeForm.controls.justification.value.trim()) {
+      this.nodeError.set('Informe a justificativa da alteração.');
+      return;
+    }
     this.saving.set(true);
     try {
       const value = this.nodeForm.getRawValue();
       const current = this.editingNode();
       const steps = !current && this.nodeType() !== 'P' ? this.nodesFor('P') : [];
-      let saved =
-        current || this.nodeType() === 'P'
+      const saved = current
+        ? await this.processService.updateSipocNode(
+            current.id,
+            {
+              title: value.title.trim(),
+              description: value.description.trim() || null,
+              ...(this.customFieldsDirty() ? { custom_fields: this.serializeCustomFields() } : {}),
+            },
+            value.justification.trim(),
+          )
+        : this.nodeType() === 'P'
           ? await this.processService.saveNode(
               value,
-              current,
+              null,
               this.nodeType(),
               this.processControl.value,
             )
@@ -337,11 +363,6 @@ export class SipocComponent {
               this.processControl.value,
               steps,
             );
-      if (this.customFieldsDirty()) {
-        saved = await this.processService.updateSipocNode(saved.id, {
-          custom_fields: this.serializeCustomFields(),
-        });
-      }
       if (steps.length) {
         this.stepAssociations.update((items) => [
           ...items,

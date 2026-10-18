@@ -267,7 +267,7 @@
                         class="ui-action-history px-2 py-1 text-xs"
                         (click)="toggleHistory(risk)"
                       >
-                        {{ historyRiskId() === risk.id ? 'Ocultar histórico' : 'Histórico' }}
+                        Histórico
                       </button>
                       <button
                         type="button"
@@ -282,43 +282,7 @@
                     </div>
                   </td>
                 </tr>
-                @if (historyRiskId() === risk.id) {
-                  <tr>
-                    <td colspan="8" class="bg-slate-50 px-5 py-4">
-                      <h4 class="mb-2 text-sm font-semibold text-slate-700">Histórico do risco</h4>
-                      @if (historyLoading()) {
-                        <p class="text-xs text-slate-500">Carregando...</p>
-                      } @else if (historyError()) {
-                        <p class="text-xs text-rose-600">{{ historyError() }}</p>
-                      } @else {
-                        <ol class="space-y-3">
-                          @for (entry of history(); track entry.id) {
-                            <li class="text-xs text-slate-600">
-                              <strong>{{ historyActionLabel(entry) }}</strong>
-                              · {{ formatHistoryDate(entry.changed_at) }} ·
-                              {{ entry.changed_by_name || 'Sistema' }}
-                              @if (entry.justification) {
-                                <p class="ml-4 text-slate-500">
-                                  Justificativa: {{ entry.justification }}
-                                </p>
-                              }
-                              @if (historyDescription(entry)) {
-                                <p class="ml-4 text-slate-500">{{ historyDescription(entry) }}</p>
-                              }
-                              @for (change of historyChanges(entry); track change.label) {
-                                <p class="ml-4 text-slate-500">
-                                  {{ change.label }}: {{ change.before }} → {{ change.after }}
-                                </p>
-                              }
-                            </li>
-                          } @empty {
-                            <li class="text-xs text-slate-500">Sem registros de alteração.</li>
-                          }
-                        </ol>
-                      }
-                    </td>
-                  </tr>
-                }
+
               } @empty {
                 <tr>
                   <td colspan="8" class="ui-table-empty">Nenhum risco encontrado.</td>
@@ -571,51 +535,6 @@
           }
         </div>
       </section>
-      <section>
-        <button
-          type="button"
-          class="ui-action-history text-sm font-semibold"
-          (click)="toggleHistory(selectedRisk()!)"
-        >
-          {{
-            historyRiskId() === selectedRisk()!.id
-              ? 'Ocultar histórico do risco'
-              : 'Ver histórico do risco'
-          }}
-        </button>
-        @if (historyRiskId() === selectedRisk()!.id) {
-          <div class="mt-3 rounded-lg border border-slate-200 p-3">
-            @if (historyLoading()) {
-              <p class="text-xs text-slate-500">Carregando...</p>
-            } @else if (historyError()) {
-              <p class="text-xs text-rose-600">{{ historyError() }}</p>
-            } @else {
-              <ol class="space-y-3">
-                @for (entry of history(); track entry.id) {
-                  <li class="text-xs text-slate-600">
-                    <strong>{{ historyActionLabel(entry) }}</strong>
-                    · {{ formatHistoryDate(entry.changed_at) }} ·
-                    {{ entry.changed_by_name || 'Sistema' }}
-                    @if (entry.justification) {
-                      <p class="ml-4 text-slate-500">Justificativa: {{ entry.justification }}</p>
-                    }
-                    @if (historyDescription(entry)) {
-                      <p class="ml-4 text-slate-500">{{ historyDescription(entry) }}</p>
-                    }
-                    @for (change of historyChanges(entry); track change.label) {
-                      <p class="ml-4 text-slate-500">
-                        {{ change.label }}: {{ change.before }} → {{ change.after }}
-                      </p>
-                    }
-                  </li>
-                } @empty {
-                  <li class="text-xs text-slate-500">Sem registros de alteração.</li>
-                }
-              </ol>
-            }
-          </div>
-        }
-      </section>
     </div>
   }
 </app-side-drawer>
@@ -765,3 +684,28 @@
   [info]="methodology"
   (closed)="methodologyOpen.set(false)"
 />
+
+<app-side-drawer
+  [open]="!!historyRiskId()"
+  title="Histórico do risco"
+  (closed)="historyRiskId.set(null)"
+>
+  @if (historyLoading()) {
+    <p class="text-sm text-slate-500">Carregando...</p>
+  } @else if (historyError()) {
+    <p class="text-sm text-rose-600">{{ historyError() }}</p>
+  } @else {
+    <ol class="space-y-3">
+      @for (entry of history(); track entry.id) {
+        <li class="text-sm text-slate-600">
+          <strong>{{ historyActionLabel(entry) }}</strong> · {{ formatHistoryDate(entry.changed_at) }} · {{ entry.changed_by_name || 'Sistema' }}
+          @if (entry.justification) { <p class="text-slate-500">Justificativa: {{ entry.justification }}</p> }
+          @if (historyDescription(entry)) { <p class="text-slate-500">{{ historyDescription(entry) }}</p> }
+          @for (change of historyChanges(entry); track change.label) {
+            <p class="text-slate-500">{{ change.label }}: {{ change.before }} → {{ change.after }}</p>
+          }
+        </li>
+      } @empty { <li class="text-sm text-slate-500">Sem registros de alteração.</li> }
+    </ol>
+  }
+</app-side-drawer>

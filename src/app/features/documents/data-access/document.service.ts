@@ -8,6 +8,7 @@ import type {
   DocumentTypeHistory,
   GEDDocument,
   DocumentWorkflow,
+  DocumentDecision,
   ControlledCopy,
 } from '@core/models/database';
 
@@ -52,8 +53,12 @@ export class DocumentService {
     return this.repository.fetchDocumentLevels();
   }
 
-  saveDocumentLevel(level: number | null, name: string): Promise<DocumentLevel> {
-    return this.repository.saveDocumentLevel(level, name);
+  saveDocumentLevel(
+    level: number | null,
+    name: string,
+    justification: string | null,
+  ): Promise<DocumentLevel> {
+    return this.repository.saveDocumentLevel(level, name, justification);
   }
 
   saveDocumentType(
@@ -86,6 +91,10 @@ export class DocumentService {
 
   fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
     return this.repository.fetchDocumentWorkflows(documentId);
+  }
+
+  fetchDocumentDecisions(documentIds: string[]): Promise<DocumentDecision[]> {
+    return this.repository.fetchDocumentDecisions(documentIds);
   }
 
   fetchControlledCopies(): Promise<ControlledCopy[]> {

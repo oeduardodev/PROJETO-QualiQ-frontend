@@ -11,6 +11,8 @@ import { SlaService } from '@features/processes/data-access/sla.service';
 import { ProfileService } from '@core/services/profile.service';
 import { AuthService } from '@core/services/auth.service';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
+import type { AuditedEntity } from '@shared/services/edit-history.service';
 import { FormSchemaEditorComponent } from '@shared/components/form-schema-editor/form-schema-editor.component';
 import { ToastService } from '@shared/services/toast.service';
 import { errorMessage } from '@shared/utils/error.utils';
@@ -36,6 +38,7 @@ import type {
     ReactiveFormsModule,
     RouterLink,
     SideDrawerComponent,
+    EditHistoryComponent,
     FormSchemaEditorComponent,
     DatePipe,
     NgTemplateOutlet,
@@ -109,6 +112,9 @@ export class IncidentsComponent {
   readonly configKind = signal<'classification' | 'type'>('classification');
   readonly editingClass = signal<IncidentClassification | null>(null);
   readonly editingType = signal<IncidentType | null>(null);
+  readonly historySelection = signal<{ entity: AuditedEntity; id: string; title: string } | null>(
+    null,
+  );
   readonly schema = signal<FormFieldSchema[]>([]);
   readonly config = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
@@ -120,6 +126,7 @@ export class IncidentsComponent {
     risk_id: new FormControl('', { nonNullable: true }),
     sla_id: new FormControl('', { nonNullable: true }),
     active: new FormControl(true, { nonNullable: true }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly operation = signal<{ ticket: Ticket; action: string; label: string } | null>(null);
   readonly reason = new FormControl('', { nonNullable: true });
@@ -132,7 +139,7 @@ export class IncidentsComponent {
     this.types().filter((t) => t.active && t.classification_id === this.selectedClass()),
   );
   readonly managers = computed(() =>
-    this.profiles().filter((p) => p.role.toLowerCase() === 'gestor'),
+    this.profiles().filter((p) => p.role.toLowerCase() === 'gestor' || p.role.toLowerCase() === 'admin' || p.role.toLowerCase() === 'supervisor'),
   );
   readonly filteredTickets = computed(() =>
     this.tickets().filter(
@@ -404,6 +411,7 @@ export class IncidentsComponent {
         item?.analysis_tool ?? this.analysisTools().find((a) => a.is_default)?.key ?? 'Nenhuma',
       requires_root_cause: item?.requires_root_cause ?? false,
       active: item?.active ?? true,
+      justification: '',
     });
     this.schema.set(item?.form_schema ?? []);
     this.configOpen.set(true);
@@ -421,6 +429,7 @@ export class IncidentsComponent {
       risk_id: item?.risk_id ?? '',
       sla_id: item?.sla_id ?? '',
       active: item?.active ?? true,
+      justification: '',
     });
     this.configOpen.set(true);
   }
@@ -442,6 +451,10 @@ export class IncidentsComponent {
       );
       return;
     }
+    if ((isClass ? this.editingClass() : this.editingType()) && !v.justification.trim()) {
+      this.toast.error('Informe a justificativa da alteração.');
+      return;
+    }
     this.saving.set(true);
     try {
       if (isClass) {
@@ -458,6 +471,7 @@ export class IncidentsComponent {
           ? await this.incidentService.updateIncidentClassification(
               this.editingClass()!.id,
               payload,
+              v.justification.trim(),
             )
           : await this.incidentService.createIncidentClassification(payload);
         this.classifications.update((items) => [saved, ...items.filter((c) => c.id !== saved.id)]);
@@ -470,7 +484,11 @@ export class IncidentsComponent {
           active: v.active,
         };
         const saved = this.editingType()
-          ? await this.incidentService.updateIncidentType(this.editingType()!.id, payload)
+          ? await this.incidentService.updateIncidentType(
+              this.editingType()!.id,
+              payload,
+              v.justification.trim(),
+            )
           : await this.incidentService.createIncidentType(payload);
         this.types.update((items) => [saved, ...items.filter((t) => t.id !== saved.id)]);
       }

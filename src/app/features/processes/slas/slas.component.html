@@ -229,7 +229,7 @@
                     (keydown.enter)="$event.stopPropagation()"
                     (keydown.space)="$event.stopPropagation()"
                   >
-                    {{ historySlaId() === sla.id ? 'Ocultar histórico' : 'Histórico' }}
+                    Histórico
                   </button>
                   <button
                     type="button"
@@ -264,52 +264,6 @@
               }
             </footer>
           </article>
-          @if (slaApprovals(sla).length) {
-            <section class="sla-history" aria-label="Decisões anteriores do SLA">
-              <h4 class="mb-2 text-sm font-semibold text-slate-700">Decisões anteriores</h4>
-              @for (approval of slaApprovals(sla); track approval.id) {
-                <p class="text-xs text-slate-600">
-                  {{ management ? userName(approval.approver_id) : 'Sua decisão' }}
-                  ({{ approvalProcesses(approval) }}) ·
-                  {{ approvalDecisionLabel(approval.decision) }} ·
-                  {{ approval.decided_at ? formatHistoryDate(approval.decided_at) : 'Aguardando' }}
-                  @if (approval.reason) {
-                    · {{ approval.reason }}
-                  }
-                </p>
-              }
-            </section>
-          }
-          @if (historySlaId() === sla.id) {
-            <section class="sla-history" aria-label="Histórico de alterações do SLA">
-              <h4 class="mb-2 text-sm font-semibold text-slate-700">Alterações do SLA</h4>
-              @if (historyLoading()) {
-                <p class="text-xs text-slate-500">Carregando...</p>
-              } @else if (historyError()) {
-                <p class="text-xs text-rose-600">{{ historyError() }}</p>
-              } @else {
-                <ol class="space-y-2">
-                  @for (entry of history(); track entry.id) {
-                    <li class="text-xs text-slate-600">
-                      <strong>{{ historyActionLabel(entry.action) }}</strong>
-                      · {{ formatHistoryDate(entry.changed_at) }} ·
-                      {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
-                      @if (entry.justification) {
-                        · {{ entry.justification }}
-                      }
-                    </li>
-                    @for (change of historyChanges(entry); track change.label) {
-                      <li class="ml-4 text-xs text-slate-500">
-                        {{ change.label }}: {{ change.before }} → {{ change.after }}
-                      </li>
-                    }
-                  } @empty {
-                    <li class="text-xs text-slate-500">Sem registros de alteração.</li>
-                  }
-                </ol>
-              }
-            </section>
-          }
         </div>
       } @empty {
         <p class="sla-empty">Nenhum SLA encontrado para os filtros selecionados.</p>
@@ -317,6 +271,45 @@
     </section>
   </div>
 }
+
+<app-side-drawer
+  [open]="!!historySlaId()"
+  title="Histórico do SLA"
+  (closed)="historySlaId.set(null)"
+>
+  @if (historySlaId(); as slaId) {
+    @if (slaApprovalsById(slaId).length) {
+      <section class="mb-6 space-y-2 border-b border-slate-100 pb-5" aria-label="Decisões anteriores do SLA">
+        <h3 class="text-sm font-semibold text-slate-700">Decisões anteriores</h3>
+        @for (approval of slaApprovalsById(slaId); track approval.id) {
+          <p class="text-sm text-slate-600">
+            {{ management ? userName(approval.approver_id) : 'Sua decisão' }} ({{ approvalProcesses(approval) }}) ·
+            {{ approvalDecisionLabel(approval.decision) }} · {{ approval.decided_at ? formatHistoryDate(approval.decided_at) : 'Aguardando' }}
+            @if (approval.reason) { · {{ approval.reason }} }
+          </p>
+        }
+      </section>
+    }
+  }
+  @if (historyLoading()) {
+    <p class="text-sm text-slate-500">Carregando...</p>
+  } @else if (historyError()) {
+    <p class="text-sm text-rose-600">{{ historyError() }}</p>
+  } @else {
+    <h3 class="mb-3 text-sm font-semibold text-slate-700">Alterações</h3>
+    <ol class="space-y-3">
+      @for (entry of history(); track entry.id) {
+        <li class="text-sm text-slate-600">
+          <strong>{{ historyActionLabel(entry.action) }}</strong> · {{ formatHistoryDate(entry.changed_at) }} · {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
+          @if (entry.justification) { <p class="text-slate-500">{{ entry.justification }}</p> }
+          @for (change of historyChanges(entry); track change.label) {
+            <p class="text-slate-500">{{ change.label }}: {{ change.before }} → {{ change.after }}</p>
+          }
+        </li>
+      } @empty { <li class="text-sm text-slate-500">Sem registros de alteração.</li> }
+    </ol>
+  }
+</app-side-drawer>
 <app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar SLA' : 'Novo SLA'"

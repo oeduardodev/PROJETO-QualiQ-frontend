@@ -7,9 +7,29 @@ const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const appOrigin = Deno.env.get('PUBLIC_APP_ORIGIN') ?? '';
 const admin = createClient(supabaseUrl, serviceKey);
 
+function normalizedOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+const allowedOrigins = new Set(
+  appOrigin
+    .split(',')
+    .map((value) => normalizedOrigin(value.trim()))
+    .filter((value): value is string => value !== null),
+);
+
 function cors(origin: string | null) {
+  const normalizedRequestOrigin = origin ? normalizedOrigin(origin) : null;
+  const allowedOrigin =
+    normalizedRequestOrigin && allowedOrigins.has(normalizedRequestOrigin)
+      ? normalizedRequestOrigin
+      : '';
   return {
-    'Access-Control-Allow-Origin': origin === appOrigin ? appOrigin : '',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     Vary: 'Origin',

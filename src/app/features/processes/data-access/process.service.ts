@@ -37,9 +37,10 @@ export class ProcessService {
     current: SipocNode | null,
     type: NodeType,
     processId: string,
+    justification?: string,
   ): Promise<SipocNode> {
     const attributes = { title: form.title.trim(), description: form.description.trim() || null };
-    if (current) return this.repository.updateSipocNode(current.id, attributes);
+    if (current) return this.repository.updateSipocNode(current.id, attributes, justification);
 
     return this.repository.createSipocNode({
       ...attributes,
@@ -98,8 +99,9 @@ export class ProcessService {
   updateCategory(
     id: string,
     patch: Partial<Pick<ValueChainCategory, 'name' | 'description' | 'color_key' | 'order_index'>>,
+    justification?: string,
   ): Promise<ValueChainCategory> {
-    return this.repository.updateCategory(id, patch);
+    return this.repository.updateCategory(id, patch, justification);
   }
 
   fetchSipocNodes(): Promise<SipocNode[]> {
@@ -115,8 +117,9 @@ export class ProcessService {
   updateSipocNode(
     id: string,
     patch: Partial<Omit<SipocNode, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<SipocNode> {
-    return this.repository.updateSipocNode(id, patch);
+    return this.repository.updateSipocNode(id, patch, justification);
   }
 
   deleteSipocNode(id: string): Promise<void> {

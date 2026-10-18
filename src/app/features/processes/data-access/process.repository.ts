@@ -91,7 +91,18 @@ export class ProcessRepository {
   async updateCategory(
     id: string,
     patch: Partial<Pick<ValueChainCategory, 'name' | 'description' | 'color_key' | 'order_index'>>,
+    justification?: string,
   ): Promise<ValueChainCategory> {
+    if (justification !== undefined) {
+      const { data, error } = await this.client.rpc('update_audited_record', {
+        p_entity: 'value_chain_categories',
+        p_id: id,
+        p_patch: patch,
+        p_justification: justification,
+      });
+      if (error) throw error;
+      return data as unknown as ValueChainCategory;
+    }
     const { data, error } = await this.client
       .from('value_chain_categories')
       .update(patch)
@@ -140,7 +151,18 @@ export class ProcessRepository {
   async updateSipocNode(
     id: string,
     patch: Partial<Omit<SipocNode, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<SipocNode> {
+    if (justification !== undefined) {
+      const { data, error } = await this.client.rpc('update_audited_record', {
+        p_entity: 'sipoc_nodes',
+        p_id: id,
+        p_patch: patch,
+        p_justification: justification,
+      });
+      if (error) throw error;
+      return data as unknown as SipocNode;
+    }
     const { data, error } = await this.client
       .from('sipoc_nodes')
       .update(patch)

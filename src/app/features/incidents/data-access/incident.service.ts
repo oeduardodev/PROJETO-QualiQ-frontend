@@ -32,8 +32,9 @@ export class IncidentService {
   updateIncidentClassification(
     id: string,
     patch: Partial<Omit<IncidentClassification, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<IncidentClassification> {
-    return this.repository.updateIncidentClassification(id, patch);
+    return this.repository.updateIncidentClassification(id, patch, justification);
   }
 
   deleteIncidentClassification(id: string): Promise<void> {
@@ -53,8 +54,9 @@ export class IncidentService {
   updateIncidentType(
     id: string,
     patch: Partial<Omit<IncidentType, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<IncidentType> {
-    return this.repository.updateIncidentType(id, patch);
+    return this.repository.updateIncidentType(id, patch, justification);
   }
 
   deleteIncidentType(id: string): Promise<void> {

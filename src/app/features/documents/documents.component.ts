@@ -7,7 +7,13 @@ import { toDocumentPayload } from './data-access/document.mapper';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import type {
   ControlledCopy,
   CopyStatus,
@@ -20,6 +26,7 @@ import type {
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
 import { ToastService } from '@shared/services/toast.service';
 import { DocumentsStore } from './documents.store';
 import { AuthService } from '@core/services/auth.service';
@@ -27,7 +34,14 @@ import { AuthService } from '@core/services/auth.service';
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, DocumentViewerComponent],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    IconDirective,
+    SideDrawerComponent,
+    DocumentViewerComponent,
+    EditHistoryComponent,
+  ],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -41,7 +55,9 @@ export class DocumentsComponent {
   private readonly toast = inject(ToastService);
   readonly mode = this.route.snapshot.data['mode'] as
     'panel' | 'hierarchy' | 'management' | 'copies';
-  readonly workflow = WORKFLOW.filter((c) => c.value !== 'obsoleto');
+  readonly workflow = WORKFLOW.filter((c) =>
+    ['rascunho', 'em_revisao', 'aprovado', 'obsoleto'].includes(c.value),
+  );
   readonly versions = signal<DocumentVersion[]>([]);
   readonly previewDocument = signal<GEDDocument | null>(null);
   readonly operation = signal<{
@@ -85,7 +101,7 @@ export class DocumentsComponent {
   );
   readonly today = new Date().toLocaleDateString('en-CA');
   readonly locked = DOCUMENTS_LOCKED;
-  readonly canManageTypes = computed(() => this.auth.isAdmin());
+  readonly canManageTypes = computed(() => this.auth.isAdmin() || this.auth.isGestor());
   readonly searchValue = signal('');
   readonly search = new FormControl('', { nonNullable: true });
   readonly documentOpen = signal(false);
@@ -100,9 +116,11 @@ export class DocumentsComponent {
   readonly typeError = signal<string | null>(null);
   readonly levelOpen = signal(false);
   readonly editingLevel = signal<number | null>(null);
+  readonly historyLevel = signal<{ level: number; name: string } | null>(null);
   readonly levelError = signal<string | null>(null);
   readonly levelSaving = signal(false);
   readonly levelName = new FormControl('', { nonNullable: true, validators: Validators.required });
+  readonly levelJustification = new FormControl('', { nonNullable: true });
   readonly historyType = signal<DocumentType | null>(null);
   readonly typeHistory = signal<DocumentTypeHistory[]>([]);
   readonly typeHistoryLoading = signal(false);
@@ -160,6 +178,24 @@ export class DocumentsComponent {
             .includes(this.searchValue().toLowerCase()),
       ),
   );
+  readonly publishedWorkflowDocuments = computed(() =>
+    this.store
+      .documents()
+      .filter((document) => document.status === 'publicado')
+      .filter(
+        (document) =>
+          !this.searchValue() ||
+          [
+            document.title,
+            document.code,
+            this.store.typeName(document.type_id),
+            this.store.processName(document.process_id),
+          ]
+            .join(' ')
+            .toLowerCase()
+            .includes(this.searchValue().toLowerCase()),
+      ),
+  );
   readonly publishedProcessCount = computed(
     () =>
       new Set(
@@ -202,7 +238,11 @@ export class DocumentsComponent {
   }
 
   docsByStatus(status: DocumentStatus): GEDDocument[] {
-    return this.store.documents().filter((document) => document.status === status);
+    return this.store.documents().filter((document) =>
+      status === 'em_revisao'
+        ? document.status === 'em_revisao' || document.status === 'em_validacao'
+        : document.status === status,
+    );
   }
 
   typesAt(level: number): DocumentType[] {
@@ -329,8 +369,29 @@ export class DocumentsComponent {
   canDecide(document: GEDDocument): boolean {
     return (
       document.status === 'em_validacao' &&
-      document.approver_ids.includes(this.auth.user()?.id ?? '')
+      document.approver_ids.includes(this.auth.user()?.id ?? '') &&
+      !this.store.decisions().some(
+        (decision) =>
+          decision.document_id === document.id &&
+          decision.version === document.version &&
+          decision.approver_id === this.auth.user()?.id,
+      )
     );
+  }
+
+  approvalProgress(document: GEDDocument): string {
+    const approved = new Set(
+      this.store
+        .decisions()
+        .filter(
+          (decision) =>
+            decision.document_id === document.id &&
+            decision.version === document.version &&
+            decision.approved,
+        )
+        .map((decision) => decision.approver_id),
+    ).size;
+    return `${approved} de ${document.approver_ids.length} aprovações`;
   }
 
   begin(document: GEDDocument, action: string, title: string): void {
@@ -389,6 +450,18 @@ export class DocumentsComponent {
           this.reason.value,
         );
         this.store.documents.update((items) => items.map((d) => (d.id === saved.id ? saved : d)));
+        if (operation.action === 'approve' || operation.action === 'reject') {
+          try {
+            const refreshed = await this.documentService.fetchDocumentDecisions([saved.id]);
+            this.store.decisions.update((items) => [
+              ...items.filter((decision) => decision.document_id !== saved.id),
+              ...refreshed,
+            ]);
+          } catch {
+            // The transition already succeeded; refreshing the optional progress display must not
+            // turn a completed approval into a reported failure.
+          }
+        }
       }
       this.operation.set(null);
       this.toast.success('Operação registrada com sucesso');
@@ -524,6 +597,7 @@ export class DocumentsComponent {
     if (!this.canManageTypes()) return;
     this.editingLevel.set(level ?? null);
     this.levelName.setValue(level ? this.levelLabel(level) : '');
+    this.levelJustification.setValue('');
     this.levelError.set(null);
     this.levelOpen.set(true);
   }
@@ -535,9 +609,17 @@ export class DocumentsComponent {
       this.levelError.set('Informe um nome com pelo menos 2 caracteres.');
       return;
     }
+    if (this.editingLevel() && !this.levelJustification.value.trim()) {
+      this.levelError.set('Informe a justificativa da alteração.');
+      return;
+    }
     this.levelSaving.set(true);
     try {
-      const saved = await this.documentService.saveDocumentLevel(this.editingLevel(), name);
+      const saved = await this.documentService.saveDocumentLevel(
+        this.editingLevel(),
+        name,
+        this.editingLevel() ? this.levelJustification.value.trim() : null,
+      );
       this.store.levels.update((items) =>
         [...items.filter((item) => item.level !== saved.level), saved].sort(
           (a, b) => a.level - b.level,

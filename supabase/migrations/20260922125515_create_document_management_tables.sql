@@ -37,7 +37,7 @@ AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = auth.uid()
-    AND role IN ('Admin', 'Gestor')
+    AND lower(coalesce(role::text, '')) IN ('admin', 'gestor')
   );
 $$;
 

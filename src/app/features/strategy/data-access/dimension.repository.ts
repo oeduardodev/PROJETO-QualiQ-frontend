@@ -63,9 +63,10 @@ export class DimensionRepository {
     orderIndex: number;
     indicatorIds: string[];
     planIds: string[];
+    justification: string | null;
   }): Promise<Dimension> {
     const { data, error } = await this.client
-      .rpc('save_dimension_with_links', {
+      .rpc('save_dimension_with_reason', {
         p_id: input.id,
         p_version_id: input.versionId,
         p_name: input.name,
@@ -76,6 +77,7 @@ export class DimensionRepository {
         p_order_index: input.orderIndex,
         p_indicator_ids: input.indicatorIds,
         p_plan_ids: input.planIds,
+        p_justification: input.justification,
       })
       .single();
     if (error) throw error;

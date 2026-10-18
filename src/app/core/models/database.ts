@@ -18,12 +18,14 @@ export interface AppDatabase {
       value_chain_categories: TableDefinition<ValueChainCategory>;
       processes: TableDefinition<Process>;
       process_history: TableDefinition<ProcessHistory>;
+      edit_history: TableDefinition<EditHistory>;
       sla_history: TableDefinition<SlaHistory>;
       sla_approvals: TableDefinition<SlaApproval>;
       sipoc_nodes: TableDefinition<SipocNode>;
       sipoc_node_associations: TableDefinition<SipocNodeAssociation>;
       sipoc_step_associations: TableDefinition<SipocStepAssociation>;
       tickets: TableDefinition<Ticket>;
+      ticket_history: TableDefinition<TicketHistory>;
       ticket_statuses: TableDefinition<TicketStatusOption>;
       helpdesk_tickets: TableDefinition<HelpdeskTicket>;
       helpdesk_statuses: TableDefinition<HelpdeskStatusOption>;
@@ -212,6 +214,19 @@ export interface AppDatabase {
         Args: { p_level: number | null; p_name: string };
         Returns: DocumentLevel;
       };
+      save_document_level_with_reason: {
+        Args: { p_level: number | null; p_name: string; p_justification: string | null };
+        Returns: DocumentLevel;
+      };
+      update_audited_record: {
+        Args: {
+          p_entity: string;
+          p_id: string;
+          p_patch: Record<string, unknown>;
+          p_justification: string;
+        };
+        Returns: Record<string, unknown>;
+      };
       save_document_type: {
         Args: {
           p_type_id: string | null;
@@ -327,6 +342,22 @@ export interface AppDatabase {
         };
         Returns: Dimension;
       };
+      save_dimension_with_reason: {
+        Args: {
+          p_id: string | null;
+          p_version_id: string;
+          p_name: string;
+          p_description: string;
+          p_objective: string;
+          p_classification_key: string;
+          p_color_key: string;
+          p_order_index: number;
+          p_indicator_ids: string[];
+          p_plan_ids: string[];
+          p_justification: string | null;
+        };
+        Returns: Dimension;
+      };
     };
     Enums: GeneratedDatabase['public']['Enums'];
   };
@@ -368,6 +399,29 @@ export interface ProcessHistory {
   process_id: string;
   action: 'baseline' | 'created' | 'updated';
   justification: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
+}
+
+export interface EditHistory {
+  id: number | string;
+  entity_name: string;
+  record_id: string;
+  action: string;
+  justification: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
+}
+
+export interface TicketHistory {
+  id: string;
+  ticket_id: string;
+  action: string;
+  reason: string;
   before_data: Record<string, unknown> | null;
   after_data: Record<string, unknown>;
   changed_by: string | null;

@@ -8,8 +8,34 @@ import type {
   DocumentTypeHistory,
   GEDDocument,
   DocumentWorkflow,
+  DocumentDecision,
   ControlledCopy,
 } from '@core/models/database';
+
+async function integrationError(error: Error): Promise<Error> {
+  const context = (error as Error & { context?: unknown }).context;
+  if (context instanceof Response) {
+    try {
+      const payload: unknown = await context.clone().json();
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        'error' in payload &&
+        typeof payload.error === 'string'
+      )
+        return new Error(payload.error);
+    } catch {
+      // Keep the HTTP status when the function response is not JSON.
+    }
+    return new Error(`A Edge Function respondeu ${context.status} ${context.statusText}.`);
+  }
+  const message = error.message || 'Falha ao chamar a Edge Function de documentos.';
+  if (message.includes('Failed to send a request to the Edge Function'))
+    return new Error(
+      'Falha de rede ou CORS ao chamar a Edge Function. Confirme se document-integration está implantada e se PUBLIC_APP_ORIGIN corresponde à origem deste app.',
+    );
+  return new Error(message);
+}
 
 @Injectable({ providedIn: 'root' })
 export class DocumentRepository {
@@ -83,7 +109,7 @@ export class DocumentRepository {
     const { data, error } = await this.client.functions.invoke('document-integration', {
       body: { action: 'sync', document_id: document.id, expected_updated_at: document.updated_at },
     });
-    if (error) throw error;
+    if (error) throw await integrationError(error);
     if (data?.error) throw new Error(data.error);
     return data.document;
   }
@@ -92,7 +118,7 @@ export class DocumentRepository {
     const { data, error } = await this.client.functions.invoke('document-integration', {
       body: { action: 'email', copy_id: id },
     });
-    if (error) throw error;
+    if (error) throw await integrationError(error);
     if (data?.error) throw new Error(data.error);
   }
 
@@ -113,9 +139,17 @@ export class DocumentRepository {
     );
   }
 
-  async saveDocumentLevel(level: number | null, name: string): Promise<DocumentLevel> {
+  async saveDocumentLevel(
+    level: number | null,
+    name: string,
+    justification: string | null,
+  ): Promise<DocumentLevel> {
     const { data, error } = await this.client
-      .rpc('save_document_level', { p_level: level, p_name: name })
+      .rpc('save_document_level_with_reason', {
+        p_level: level,
+        p_name: name,
+        p_justification: justification,
+      })
       .single();
     if (error) throw error;
     return data;
@@ -187,6 +221,19 @@ export class DocumentRepository {
         .select('*')
         .eq('document_id', documentId)
         .order('changed_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    );
+  }
+
+  fetchDocumentDecisions(documentIds: string[]): Promise<DocumentDecision[]> {
+    if (!documentIds.length) return Promise.resolve([]);
+    return fetchAllPages((from, to) =>
+      this.client
+        .from('document_decisions')
+        .select('*')
+        .in('document_id', documentIds)
+        .order('decided_at', { ascending: false })
         .order('id')
         .range(from, to),
     );

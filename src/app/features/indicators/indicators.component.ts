@@ -82,6 +82,7 @@ export class IndicatorsComponent {
   readonly dimensionLinks = signal<DimensionLink[]>([]);
   readonly definitionHistory = signal<IndicatorDefinitionHistory[]>([]);
   readonly historyIndicatorId = signal<string | null>(null);
+  readonly historyDrawerIndicator = signal<Indicator | null>(null);
   readonly historyLoading = signal(false);
   readonly formSaving = signal(false);
   readonly formError = signal<string | null>(null);

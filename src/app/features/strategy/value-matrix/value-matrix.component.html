@@ -94,6 +94,15 @@
                 {{ category.processes.length }}
                 {{ category.processes.length === 1 ? 'processo' : 'processos' }}
               </span>
+              <button
+                type="button"
+                class="ui-action-history rounded px-1.5 py-1 text-xs hover:bg-slate-100"
+                [attr.aria-label]="'Histórico da classificação ' + category.name"
+                title="Histórico"
+                (click)="historyCategory.set(category)"
+              >
+                Histórico
+              </button>
               @if (auth.isAdmin() && manageMode()) {
                 <button
                   type="button"
@@ -398,6 +407,16 @@
         class="mt-1.5"
       />
     </div>
+    @if (editingCategory()) {
+      <label class="block text-sm font-medium text-slate-700">
+        Justificativa da alteração *
+        <textarea
+          formControlName="justification"
+          class="matrix-form-input mt-1"
+          rows="3"
+        ></textarea>
+      </label>
+    }
     @if (categoryError()) {
       <p class="text-sm text-red-600">{{ categoryError() }}</p>
     }
@@ -419,6 +438,13 @@
     </div>
   </form>
 </app-side-drawer>
+
+<app-edit-history
+  entity="value_chain_categories"
+  [recordId]="historyCategory()?.id ?? null"
+  [title]="historyCategory()?.name ?? ''"
+  (closed)="historyCategory.set(null)"
+/>
 
 <app-methodology
   [open]="methodologyOpen()"

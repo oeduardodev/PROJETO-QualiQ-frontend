@@ -58,7 +58,18 @@ export class IncidentRepository {
   async updateIncidentClassification(
     id: string,
     patch: Partial<Omit<IncidentClassification, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<IncidentClassification> {
+    if (justification !== undefined) {
+      const { data, error } = await this.client.rpc('update_audited_record', {
+        p_entity: 'notification_classifications',
+        p_id: id,
+        p_patch: patch,
+        p_justification: justification,
+      });
+      if (error) throw error;
+      return data as unknown as IncidentClassification;
+    }
     const { data, error } = await this.client
       .from('notification_classifications')
       .update(patch)
@@ -100,7 +111,18 @@ export class IncidentRepository {
   async updateIncidentType(
     id: string,
     patch: Partial<Omit<IncidentType, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<IncidentType> {
+    if (justification !== undefined) {
+      const { data, error } = await this.client.rpc('update_audited_record', {
+        p_entity: 'notification_types',
+        p_id: id,
+        p_patch: patch,
+        p_justification: justification,
+      });
+      if (error) throw error;
+      return data as unknown as IncidentType;
+    }
     const { data, error } = await this.client
       .from('notification_types')
       .update(patch)

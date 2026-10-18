@@ -68,7 +68,18 @@ export class HelpdeskRepository {
   async updateHelpdeskTicket(
     id: string,
     patch: Partial<Omit<HelpdeskTicket, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<HelpdeskTicket> {
+    if (justification !== undefined) {
+      const { data, error } = await this.client.rpc('update_audited_record', {
+        p_entity: 'helpdesk_tickets',
+        p_id: id,
+        p_patch: patch,
+        p_justification: justification,
+      });
+      if (error) throw error;
+      return data as unknown as HelpdeskTicket;
+    }
     const { data, error } = await this.client
       .from('helpdesk_tickets')
       .update(patch)

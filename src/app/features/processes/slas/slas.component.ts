@@ -426,6 +426,12 @@ export class SlasComponent {
     );
   }
 
+  slaApprovalsById(id: string): SlaApproval[] {
+    const sla = this.slas().find((item) => item.id === id);
+    return sla ? this.slaApprovals(sla) : [];
+  }
+
+
   approvalDecisionLabel(decision: SlaApproval['decision']): string {
     return {
       pending: 'Pendente',

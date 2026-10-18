@@ -112,40 +112,45 @@
               [class]="column.border"
             >
               @for (node of nodesFor(column.type); track node.id) {
-                <button
-                  class="group block w-full rounded-lg border bg-white px-3 py-2.5 text-left transition hover:shadow-sm"
+                <div
+                  class="group rounded-lg border bg-white px-3 py-2.5 transition hover:shadow-sm"
                   [class.border-violet-400]="node.node_type === 'P' && selectedStepId() === node.id"
                   [class.bg-violet-50]="node.node_type === 'P'"
-                  (click)="openNode(node)"
                 >
-                  <span class="flex items-start justify-between gap-1"
-                    ><span
-                      class="text-sm font-medium"
-                      [class.text-violet-800]="node.node_type === 'P'"
-                      [class.text-slate-700]="node.node_type !== 'P'"
-                      >{{ node.title }}</span
-                    >
-                    @if (node.node_type === 'P' && selectedStepId() === node.id) {
-                      <span class="text-[10px] font-medium text-violet-500">Selecionado</span>
+                  <button class="block w-full text-left" (click)="openNode(node)">
+                    <span class="flex items-start justify-between gap-1"
+                      ><span
+                        class="text-sm font-medium"
+                        [class.text-violet-800]="node.node_type === 'P'"
+                        [class.text-slate-700]="node.node_type !== 'P'"
+                        >{{ node.title }}</span
+                      >
+                      @if (node.node_type === 'P' && selectedStepId() === node.id) {
+                        <span class="text-[10px] font-medium text-violet-500">Selecionado</span>
+                      }
+                    </span>
+                    @if (node.description) {
+                      <span
+                        class="mt-1 line-clamp-2 block text-xs leading-relaxed text-slate-400"
+                        >{{ node.description }}</span
+                      >
                     }
-                  </span>
-                  @if (node.description) {
-                    <span class="mt-1 line-clamp-2 block text-xs leading-relaxed text-slate-400">{{
-                      node.description
-                    }}</span>
-                  }
-                  @if (node.node_type === 'P') {
-                    <span
-                      class="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-violet-500"
-                      ><span appIcon="Cog" class="h-3 w-3"></span
-                      >{{
-                        selectedStepId() === node.id
-                          ? 'Clique para ver tudo'
-                          : 'Clique para filtrar e ver detalhes'
-                      }}</span
-                    >
-                  }
-                </button>
+                    @if (node.node_type === 'P') {
+                      <span
+                        class="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-violet-500"
+                        ><span appIcon="Cog" class="h-3 w-3"></span
+                        >{{
+                          selectedStepId() === node.id
+                            ? 'Clique para ver tudo'
+                            : 'Clique para filtrar e ver detalhes'
+                        }}</span
+                      >
+                    }
+                  </button>
+                  <button class="ui-action-history mt-2 text-xs" (click)="historyNode.set(node)">
+                    Histórico
+                  </button>
+                </div>
               } @empty {
                 <p class="ui-empty-state">
                   {{
@@ -215,13 +220,24 @@
               </p>
             }
           </div>
-          <button
-            type="button"
-            class="ui-action-edit text-xs font-medium"
-            (click)="editSelectedStep()"
-          >
-            Editar etapa
-          </button>
+          <div class="flex gap-3">
+            @if (selectedStep(); as step) {
+              <button
+                type="button"
+                class="ui-action-history text-xs font-medium"
+                (click)="historyNode.set(step)"
+              >
+                Histórico
+              </button>
+            }
+            <button
+              type="button"
+              class="ui-action-edit text-xs font-medium"
+              (click)="editSelectedStep()"
+            >
+              Editar etapa
+            </button>
+          </div>
         </div>
         <div class="mt-4 grid grid-cols-5 gap-1.5 text-center">
           <div class="rounded-lg bg-white p-2">
@@ -416,6 +432,12 @@
       ></textarea>
     </label>
     @if (editingNode()) {
+      <label class="ui-form-label">
+        Justificativa da alteração *
+        <textarea formControlName="justification" rows="3" class="ui-form-control"></textarea>
+      </label>
+    }
+    @if (editingNode()) {
       <section class="space-y-3 border-t border-slate-100 pt-4">
         <h3 class="text-sm font-semibold text-slate-700">Atributos customizados</h3>
         @for (field of customFields(); track field.key) {
@@ -468,9 +490,18 @@
     }
     <div class="flex justify-between border-t border-slate-100 pt-4">
       @if (editingNode()) {
-        <button type="button" class="ui-action-danger text-sm font-medium" (click)="removeNode()">
-          Excluir
-        </button>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            class="ui-action-history text-sm font-medium"
+            (click)="historyNode.set(editingNode())"
+          >
+            Histórico
+          </button>
+          <button type="button" class="ui-action-danger text-sm font-medium" (click)="removeNode()">
+            Excluir
+          </button>
+        </div>
       } @else {
         <span></span>
       }
@@ -497,6 +528,13 @@
     </div>
   </form></app-side-drawer
 >
+
+<app-edit-history
+  entity="sipoc_nodes"
+  [recordId]="historyNode()?.id ?? null"
+  [title]="historyNode()?.title ?? ''"
+  (closed)="historyNode.set(null)"
+/>
 
 <app-side-drawer
   [open]="associationOpen()"

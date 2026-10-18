@@ -44,8 +44,9 @@ export class HelpdeskService {
   updateHelpdeskTicket(
     id: string,
     patch: Partial<Omit<HelpdeskTicket, 'id' | 'created_at' | 'updated_at'>>,
+    justification?: string,
   ): Promise<HelpdeskTicket> {
-    return this.repository.updateHelpdeskTicket(id, patch);
+    return this.repository.updateHelpdeskTicket(id, patch, justification);
   }
 
   deleteHelpdeskTicket(id: string): Promise<void> {

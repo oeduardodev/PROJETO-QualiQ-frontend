@@ -7,6 +7,7 @@ import type {
   DocumentType,
   DocumentLevel,
   GEDDocument,
+  DocumentDecision,
   Process,
   Profile,
   SipocNode,
@@ -22,6 +23,7 @@ export class DocumentsStore {
   readonly types = signal<DocumentType[]>([]);
   readonly levels = signal<DocumentLevel[]>([]);
   readonly documents = signal<GEDDocument[]>([]);
+  readonly decisions = signal<DocumentDecision[]>([]);
   readonly processes = signal<Process[]>([]);
   readonly profiles = signal<Profile[]>([]);
   readonly copies = signal<ControlledCopy[]>([]);
@@ -58,6 +60,9 @@ export class DocumentsStore {
       this.types.set(types);
       this.levels.set(levels);
       this.documents.set(documents);
+      this.decisions.set(
+        await this.documentService.fetchDocumentDecisions(documents.map((document) => document.id)),
+      );
       this.processes.set(processes);
       this.copies.set(copies);
       this.profiles.set(profiles);

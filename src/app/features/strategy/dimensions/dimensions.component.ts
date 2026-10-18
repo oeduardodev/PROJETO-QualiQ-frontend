@@ -6,6 +6,7 @@ import { formatIndicatorValue } from '@features/indicators/data-access/indicator
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { AuthService } from '@core/services/auth.service';
+import { ProfileRepository } from '@core/data-access/profile.repository';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -30,6 +31,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
 import { QuickPaletteComponent } from '@shared/components/quick-palette/quick-palette.component';
 import { ToastService } from '@shared/services/toast.service';
 import { AlertDialogService } from '@shared/services/alert-dialog.service';
@@ -43,6 +45,7 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
     IconDirective,
     ModalComponent,
     SideDrawerComponent,
+    EditHistoryComponent,
     MethodologyComponent,
     QuickPaletteComponent,
   ],
@@ -55,6 +58,7 @@ export class DimensionsComponent {
   private readonly indicatorService = inject(IndicatorService);
   private readonly processService = inject(ProcessService);
   private readonly ticketService = inject(IncidentTicketService);
+  private readonly profileRepository = inject(ProfileRepository);
   private readonly toast = inject(ToastService);
   private readonly alertDialog = inject(AlertDialogService);
   readonly auth = inject(AuthService);
@@ -71,6 +75,7 @@ export class DimensionsComponent {
     );
   });
   readonly versions = signal<DimensionVersion[]>([]);
+  readonly profileNames = signal<Record<string, string>>({});
   readonly selectedVersionId = signal<string | null>(null);
   readonly versionSelection = new FormControl('', { nonNullable: true });
   readonly dimensions = signal<Dimension[]>([]);
@@ -85,6 +90,7 @@ export class DimensionsComponent {
   readonly error = signal<string | null>(null);
   readonly formOpen = signal(false);
   readonly editing = signal<Dimension | null>(null);
+  readonly historyDimension = signal<Dimension | null>(null);
   readonly saving = signal(false);
   readonly selectedIndicatorIds = signal<Set<string>>(new Set());
   readonly selectedPlanIds = signal<Set<string>>(new Set());
@@ -112,6 +118,7 @@ export class DimensionsComponent {
       nonNullable: true,
       validators: Validators.required,
     }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly filteredIndicators = computed(() => {
     const term = this.normalizeSearch(this.indicatorSearch());
@@ -182,6 +189,8 @@ export class DimensionsComponent {
       ]);
       if (requestId !== this.versionRequestId) return;
       this.versions.set(versions);
+      const profiles = await this.profileRepository.findAll();
+      this.profileNames.set(Object.fromEntries(profiles.map((profile) => [profile.id, profile.name])));
       this.indicators.set(indicators);
       this.plans.set(plans);
       this.planStatuses.set(planStatuses);
@@ -281,6 +290,7 @@ export class DimensionsComponent {
       objective: '',
       classification_key: this.defaultClassificationKey(),
       color_key: this.defaultColor(),
+      justification: '',
     });
     this.formOpen.set(true);
   }
@@ -298,6 +308,7 @@ export class DimensionsComponent {
       objective: item.objective ?? '',
       classification_key: item.classification_key,
       color_key: this.colorLine(item.color_key),
+      justification: '',
     });
     this.formOpen.set(true);
   }
@@ -328,6 +339,10 @@ export class DimensionsComponent {
       this.form.controls.name.setErrors({ required: true });
       return;
     }
+    if (this.editing() && !value.justification.trim()) {
+      this.toast.error('Informe a justificativa da alteração.');
+      return;
+    }
     this.saving.set(true);
     try {
       await this.dimensionService.saveWithLinks({
@@ -343,6 +358,7 @@ export class DimensionsComponent {
           Math.max(-1, ...this.dimensions().map((item) => item.order_index)) + 1,
         indicatorIds: [...this.selectedIndicatorIds()],
         planIds: [...this.selectedPlanIds()],
+        justification: this.editing() ? value.justification.trim() : null,
       });
       this.formOpen.set(false);
       await this.selectVersion(versionId);
@@ -443,6 +459,17 @@ export class DimensionsComponent {
 
   processName(id: string | null): string {
     return this.processes().find((item) => item.id === id)?.title ?? 'Processo indisponível';
+  }
+
+  versionAuthor(version: DimensionVersion): string {
+    return (version.created_by && this.profileNames()[version.created_by]) || 'Usuário indisponível';
+  }
+
+  versionCreatedAt(version: DimensionVersion): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(version.created_at));
   }
 
   private normalizeSearch(value: string): string {

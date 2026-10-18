@@ -19,6 +19,7 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
 import { ToastService } from '@shared/services/toast.service';
 import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
@@ -26,7 +27,13 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 @Component({
   selector: 'app-helpdesk',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, SideDrawerComponent, MethodologyComponent],
+  imports: [
+    ReactiveFormsModule,
+    IconDirective,
+    SideDrawerComponent,
+    MethodologyComponent,
+    EditHistoryComponent,
+  ],
   templateUrl: './helpdesk.component.html',
   styleUrl: './helpdesk.component.scss',
   host: { class: 'ui-standard-fields' },
@@ -67,6 +74,8 @@ export class HelpdeskComponent {
   readonly error = signal<string | null>(null);
   readonly formOpen = signal(false);
   readonly editing = signal<HelpdeskTicket | null>(null);
+  readonly historyTicket = signal<HelpdeskTicket | null>(null);
+  readonly formError = signal<string | null>(null);
   readonly readOnly = signal(false);
   readonly saving = signal(false);
   readonly methodologyOpen = signal(false);
@@ -92,6 +101,7 @@ export class HelpdeskComponent {
     requester_name: new FormControl('', { nonNullable: true }),
     assigned_to: new FormControl('', { nonNullable: true }),
     process_id: new FormControl('', { nonNullable: true }),
+    justification: new FormControl('', { nonNullable: true }),
   });
   readonly filtered = computed(() =>
     this.tickets().filter(
@@ -152,6 +162,7 @@ export class HelpdeskComponent {
     )
       return;
     this.editing.set(null);
+    this.formError.set(null);
     this.readOnly.set(false);
     this.form.enable();
     this.form.reset({
@@ -163,12 +174,14 @@ export class HelpdeskComponent {
       requester_name: '',
       assigned_to: '',
       process_id: '',
+      justification: '',
     });
     this.formOpen.set(true);
   }
 
   openEditTicket(ticket: HelpdeskTicket): void {
     this.editing.set(ticket);
+    this.formError.set(null);
     this.readOnly.set(!this.canManage(ticket));
     this.form.reset({
       title: ticket.title,
@@ -179,6 +192,7 @@ export class HelpdeskComponent {
       requester_name: ticket.requester_name ?? '',
       assigned_to: ticket.assigned_to ?? '',
       process_id: ticket.process_id ?? '',
+      justification: '',
     });
     if (this.readOnly()) this.form.disable();
     else this.form.enable();
@@ -187,13 +201,18 @@ export class HelpdeskComponent {
 
   async saveTicket(): Promise<void> {
     if (this.readOnly() || this.form.invalid) return;
+    if (this.editing() && !this.form.controls.justification.value.trim()) {
+      this.formError.set('Informe a justificativa da alteração.');
+      return;
+    }
     this.saving.set(true);
     try {
       const value = this.form.getRawValue();
-      const payload = toHelpdeskTicketPayload(value);
+      const { justification, ...fields } = value;
+      const payload = toHelpdeskTicketPayload(fields);
       const current = this.editing();
       const saved = current
-        ? await this.helpdeskService.updateHelpdeskTicket(current.id, payload)
+        ? await this.helpdeskService.updateHelpdeskTicket(current.id, payload, justification.trim())
         : await this.helpdeskService.createHelpdeskTicket(payload);
       this.tickets.update((items) =>
         current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
@@ -207,15 +226,12 @@ export class HelpdeskComponent {
     }
   }
 
-  async advanceTicket(ticket: HelpdeskTicket): Promise<void> {
+  advanceTicket(ticket: HelpdeskTicket): void {
     if (!this.canManage(ticket)) return;
-    try {
-      const saved = await this.helpdeskService.advance(ticket);
-      this.tickets.update((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-      this.toast.success('Status atualizado');
-    } catch (e) {
-      this.toast.error(errorMessage(e, 'Erro ao atualizar status'));
-    }
+    const next = this.columns().find((option) => option.key === ticket.status)?.next_status_key;
+    if (!next || !this.activeStatuses().some((option) => option.key === next)) return;
+    this.openEditTicket(ticket);
+    this.form.controls.status.setValue(next);
   }
 
   async deleteTicket(ticket: HelpdeskTicket): Promise<void> {

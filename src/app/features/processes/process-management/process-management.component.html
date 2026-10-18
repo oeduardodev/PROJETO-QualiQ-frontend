@@ -138,7 +138,7 @@
                       class="ui-action-history inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium hover:bg-slate-100"
                       (click)="toggleHistory(process)"
                     >
-                      {{ historyProcessId() === process.id ? 'Ocultar histórico' : 'Histórico' }}
+                      Histórico
                     </button>
                     <button
                       class="inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium hover:bg-slate-100"
@@ -152,46 +152,6 @@
                   </div>
                 </td>
               </tr>
-              @if (historyProcessId() === process.id) {
-                <tr>
-                  <td colspan="7" class="bg-slate-50 px-5 py-4">
-                    <h4 class="mb-2 text-sm font-semibold text-slate-700">
-                      Alterações do processo
-                    </h4>
-                    @if (historyLoading()) {
-                      <p class="text-xs text-slate-500">Carregando...</p>
-                    } @else if (historyError()) {
-                      <p class="text-xs text-rose-600">{{ historyError() }}</p>
-                    } @else {
-                      <ol class="space-y-2">
-                        @for (entry of history(); track entry.id) {
-                          <li class="text-xs text-slate-600">
-                            <strong>{{
-                              entry.action === 'created'
-                                ? 'Criação'
-                                : entry.action === 'baseline'
-                                  ? 'Estado inicial'
-                                  : 'Alteração'
-                            }}</strong>
-                            · {{ formatDate(entry.changed_at) }} ·
-                            {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
-                            @if (entry.justification) {
-                              · {{ entry.justification }}
-                            }
-                          </li>
-                          @for (change of historyChanges(entry); track change.label) {
-                            <li class="ml-4 text-xs text-slate-500">
-                              {{ change.label }}: {{ change.before }} → {{ change.after }}
-                            </li>
-                          }
-                        } @empty {
-                          <li class="text-xs text-slate-500">Sem registros de alteração.</li>
-                        }
-                      </ol>
-                    }
-                  </td>
-                </tr>
-              }
             } @empty {
               <tr>
                 <td colspan="7" class="ui-table-empty">Nenhum processo encontrado.</td>
@@ -203,6 +163,31 @@
     </div>
   </div>
 }
+
+<app-side-drawer
+  [open]="!!historyProcessId()"
+  title="Alterações do processo"
+  (closed)="historyProcessId.set(null)"
+>
+  @if (historyLoading()) {
+    <p class="text-sm text-slate-500">Carregando...</p>
+  } @else if (historyError()) {
+    <p class="text-sm text-rose-600">{{ historyError() }}</p>
+  } @else {
+    <ol class="space-y-3">
+      @for (entry of history(); track entry.id) {
+        <li class="text-sm text-slate-600">
+          <strong>{{ entry.action === 'created' ? 'Criação' : entry.action === 'baseline' ? 'Estado inicial' : 'Alteração' }}</strong>
+          · {{ formatDate(entry.changed_at) }} · {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
+          @if (entry.justification) { <p class="text-slate-500">{{ entry.justification }}</p> }
+        </li>
+        @for (change of historyChanges(entry); track change.label) {
+          <li class="text-sm text-slate-500">{{ change.label }}: {{ change.before }} → {{ change.after }}</li>
+        }
+      } @empty { <li class="text-sm text-slate-500">Sem registros de alteração.</li> }
+    </ol>
+  }
+</app-side-drawer>
 <app-side-drawer
   [open]="formOpen()"
   [title]="editing() ? 'Editar Processo' : 'Novo Processo'"

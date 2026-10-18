@@ -85,6 +85,9 @@
                   </div>
                 </button>
                 <div class="ui-kanban-card-footer">
+                  <button class="ui-action-history text-[11px]" (click)="historyTicket.set(ticket)">
+                    Histórico
+                  </button>
                   @if (canManage(ticket) && canAdvance(ticket.status)) {
                     <button
                       class="text-[11px] font-medium text-blue-600"
@@ -146,6 +149,14 @@
       </select></label
     ><label class="ui-form-label">Solicitante<input formControlName="requester_name" /></label
     ><label class="ui-form-label">Atribuído a<input formControlName="assigned_to" /></label>
+    @if (editing() && !readOnly()) {
+      <label class="ui-form-label sm:col-span-2">
+        Justificativa da alteração *<textarea rows="3" formControlName="justification"></textarea>
+      </label>
+    }
+    @if (formError()) {
+      <p class="sm:col-span-2 text-sm text-rose-600" role="alert">{{ formError() }}</p>
+    }
     <div class="ui-form-actions">
       <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
         Cancelar
@@ -156,6 +167,12 @@
     </div>
   </form></app-side-drawer
 >
+<app-edit-history
+  entity="helpdesk_tickets"
+  [recordId]="historyTicket()?.id ?? null"
+  [title]="historyTicket()?.title ?? ''"
+  (closed)="historyTicket.set(null)"
+/>
 <app-methodology
   [open]="methodologyOpen()"
   [info]="methodology"
