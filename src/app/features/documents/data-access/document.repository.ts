@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { DocumentSavePayload } from './document.mapper';
+import type { DocumentBody } from '@core/models/document-content';
 import type {
   DocumentType,
   DocumentLevel,
@@ -57,13 +58,19 @@ export class DocumentRepository {
     return data;
   }
 
-  async transition(document: GEDDocument, action: string, reason: string): Promise<GEDDocument> {
+  async transition(
+    document: GEDDocument,
+    action: string,
+    reason: string,
+    pdfPath?: string,
+  ): Promise<GEDDocument> {
     const { data, error } = await this.client
       .rpc('transition_operation_document', {
         p_id: document.id,
         p_expected_updated_at: document.updated_at,
         p_action: action,
         p_reason: reason,
+        ...(pdfPath ? { p_pdf_path: pdfPath } : {}),
       })
       .single();
     if (error) throw error;
@@ -105,9 +112,32 @@ export class DocumentRepository {
     return data;
   }
 
-  async syncGoogle(document: GEDDocument): Promise<GEDDocument> {
+  async saveContent(
+    document: GEDDocument,
+    body: DocumentBody,
+    reason: string,
+  ): Promise<GEDDocument> {
+    const { data, error } = await this.client
+      .rpc('save_document_content', {
+        p_id: document.id,
+        p_expected_updated_at: document.updated_at,
+        p_json: body.json,
+        p_html: body.html,
+        p_reason: reason,
+      })
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async submitNative(document: GEDDocument, reason: string): Promise<GEDDocument> {
     const { data, error } = await this.client.functions.invoke('document-integration', {
-      body: { action: 'sync', document_id: document.id, expected_updated_at: document.updated_at },
+      body: {
+        action: 'submit',
+        document_id: document.id,
+        expected_updated_at: document.updated_at,
+        reason,
+      },
     });
     if (error) throw await integrationError(error);
     if (data?.error) throw new Error(data.error);
@@ -214,6 +244,12 @@ export class DocumentRepository {
     );
   }
 
+  async fetchDocument(id: string): Promise<GEDDocument> {
+    const { data, error } = await this.client.from('documents').select('*').eq('id', id).single();
+    if (error) throw error;
+    return data;
+  }
+
   fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {
     return fetchAllPages((from, to) =>
       this.client
@@ -256,6 +292,7 @@ export class DocumentRepository {
         .from('documents')
         .select('*')
         .eq('process_id', processId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .order('id')
         .range(from, to),

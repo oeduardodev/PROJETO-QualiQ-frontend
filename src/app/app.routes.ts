@@ -68,6 +68,9 @@ export const routes: Routes = [
   },
   {
     path: 'documentos/gerenciamento',
+    canDeactivate: [
+      (component: { leaveEditor: () => Promise<boolean> }) => component.leaveEditor(),
+    ],
     data: { mode: 'management' },
     loadComponent: () =>
       import('@features/documents/documents.component').then((m) => m.DocumentsComponent),

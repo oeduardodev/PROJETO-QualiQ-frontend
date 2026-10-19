@@ -1,4 +1,5 @@
 import type { Database as GeneratedDatabase } from './database.generated';
+import type { DocumentContent } from './document-content';
 export type { Database } from './database.generated';
 
 // Application contracts for the QMS. Database is the generated schema; AppDatabase is the
@@ -146,7 +147,23 @@ export interface AppDatabase {
         Returns: GEDDocument;
       };
       transition_operation_document: {
-        Args: { p_id: string; p_expected_updated_at: string; p_action: string; p_reason: string };
+        Args: {
+          p_id: string;
+          p_expected_updated_at: string;
+          p_action: string;
+          p_reason: string;
+          p_pdf_path?: string;
+        };
+        Returns: GEDDocument;
+      };
+      save_document_content: {
+        Args: {
+          p_id: string;
+          p_expected_updated_at: string;
+          p_json: DocumentContent;
+          p_html: string;
+          p_reason: string;
+        };
         Returns: GEDDocument;
       };
       request_operation_copy: {
@@ -844,6 +861,13 @@ export interface DocumentDecision {
   decided_at: string;
 }
 export interface GEDDocument {
+  content_json: DocumentContent | null;
+  content_schema_version: number;
+  content_revision: number;
+  content_origin: 'native' | 'legacy_html' | 'legacy_pending';
+  content_pdf_path: string | null;
+  content_synced_version: number | null;
+  deleted_at: string | null;
   step_id: string | null;
   approver_ids: string[];
   version: number;

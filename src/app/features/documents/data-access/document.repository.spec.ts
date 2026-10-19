@@ -21,7 +21,6 @@ describe('DocumentRepository', () => {
       step_id: 'step-1',
       owner_id: 'owner-1',
       approver_ids: ['approver-1'],
-      drive_link: 'https://docs.google.com/document/d/example/edit',
       justification: 'Nova edição',
     };
     expect(await TestBed.inject(DocumentRepository).saveDocument(current, payload)).toBe(saved);

@@ -1,0 +1,197 @@
+.native-document-editor {
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  overflow: hidden;
+  .document-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 10px;
+    background: #f8fafc;
+    border-bottom: 1px solid #dbe3ee;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+    padding-right: 8px;
+    border-right: 1px solid #dbe3ee;
+  }
+  .document-toolbar button,
+  .document-toolbar select {
+    font: inherit;
+    font-size: 12px;
+    width: auto;
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    color: #334155;
+    background: transparent;
+  }
+  .document-toolbar button:hover,
+  .document-toolbar button[aria-pressed='true'] {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  .document-toolbar button:focus-visible,
+  .document-toolbar select:focus-visible {
+    outline: 2px solid #2563eb;
+  }
+  .document-toolbar label {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .document-toolbar input[type='color'] {
+    width: 25px;
+    height: 27px;
+    padding: 1px;
+  }
+  .document-editor-notice {
+    padding: 10px;
+    font-size: 12px;
+    color: #92400e;
+    background: #fffbeb;
+  }
+  .document-canvas {
+    padding: 24px;
+    background: #e8edf3;
+    overflow: auto;
+    max-height: 85vh;
+  }
+  .document-paper {
+    box-sizing: border-box;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 20mm;
+    background: white;
+    color: #172033;
+    box-shadow: 0 2px 10px #0f172a14;
+    outline: none;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    overflow-wrap: break-word;
+  }
+  .document-paper p {
+    margin: 0 0 8pt;
+  }
+  .document-paper h1 {
+    font-size: 24pt;
+    font-weight: 700;
+    margin: 16pt 0 8pt;
+  }
+  .document-paper h2 {
+    font-size: 18pt;
+    font-weight: 700;
+    margin: 14pt 0 8pt;
+  }
+  .document-paper h3 {
+    font-size: 14pt;
+    font-weight: 700;
+    margin: 12pt 0 6pt;
+  }
+  .document-paper ul,
+  .document-paper ol {
+    padding-left: 24px;
+    margin-bottom: 8pt;
+  }
+  .document-paper ul {
+    list-style: disc;
+  }
+  .document-paper ol {
+    list-style: decimal;
+  }
+  .document-paper a {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+  .document-paper table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    margin: 12px 0;
+  }
+  .document-paper td,
+  .document-paper th {
+    border: 1px solid #94a3b8;
+    padding: 7px;
+    min-width: 40px;
+    vertical-align: top;
+    position: relative;
+  }
+  .document-paper th {
+    background: #eef2f7;
+    font-weight: 700;
+  }
+  .document-paper .selectedCell {
+    background: #dbeafe;
+  }
+  .document-paper img {
+    max-width: 100%;
+    height: auto;
+  }
+  .document-paper blockquote {
+    border-left: 3px solid #cbd5e1;
+    padding-left: 16px;
+  }
+  .document-page-break {
+    break-after: page;
+    border-top: 2px dashed #94a3b8;
+    margin: 24px -20mm;
+    padding: 12px;
+    text-align: center;
+    user-select: none;
+  }
+  .document-page-break::after {
+    content: 'Quebra de página';
+    font: 11px Arial;
+    color: #64748b;
+  }
+  @media (max-width: 800px) {
+    .document-canvas {
+      padding: 8px;
+    }
+    .document-paper {
+      width: 100%;
+      min-width: 280px;
+      padding: 20px;
+      min-height: 70vh;
+    }
+    .document-page-break {
+      margin: 20px 0;
+    }
+  }
+  @media print {
+    .document-toolbar,
+    .document-editor-notice {
+      display: none;
+    }
+    .document-canvas {
+      padding: 0;
+      max-height: none;
+      overflow: visible;
+      background: white;
+    }
+    .document-paper {
+      box-shadow: none;
+      min-height: 0;
+      padding: 0;
+    }
+    .document-page-break {
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
+    .document-page-break::after {
+      content: none;
+    }
+  }
+}

@@ -367,15 +367,12 @@
                   <strong>{{ document.title }}</strong>
                   <p class="mt-1 text-xs text-slate-500">{{ document.status }}</p>
                 </div>
-                @if (document.drive_link) {
-                  <a
-                    class="text-xs text-blue-600"
-                    [href]="document.drive_link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Abrir</a
-                  >
-                }
+                <a
+                  class="text-xs text-blue-600"
+                  routerLink="/documentos/painel"
+                  [queryParams]="{ document: document.id }"
+                  >Abrir no Orbis</a
+                >
               </article>
             } @empty {
               <p class="ui-empty-state">Nenhum documento vinculado.</p>

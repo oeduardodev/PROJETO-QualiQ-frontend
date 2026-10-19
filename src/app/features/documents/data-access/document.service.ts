@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { DocumentRepository } from './document.repository';
+import type { DocumentBody } from '@core/models/document-content';
 import type { CopyStatus } from '@core/models/database';
 import type { DocumentSavePayload } from './document.mapper';
 import type {
@@ -18,15 +19,22 @@ export class DocumentService {
 
   transition(document: GEDDocument, action: string, reason: string) {
     if (!reason.trim()) throw new Error('Informe a justificativa.');
+    if (action === 'submit') return this.submit(document, reason.trim());
     return this.repository.transition(document, action, reason.trim());
+  }
+
+  private submit(document: GEDDocument, reason: string) {
+    if (!document.content_json || document.content_origin !== 'native')
+      throw new Error('Abra o editor, importe ou revise o conteúdo e salve antes de enviar.');
+    return this.repository.submitNative(document, reason);
   }
 
   versions(id: string) {
     return this.repository.versions(id);
   }
 
-  syncGoogle(document: GEDDocument) {
-    return this.repository.syncGoogle(document);
+  saveContent(document: GEDDocument, body: DocumentBody, reason: string) {
+    return this.repository.saveContent(document, body, reason);
   }
 
   emailCopy(id: string) {
@@ -87,6 +95,10 @@ export class DocumentService {
 
   fetchDocuments(): Promise<GEDDocument[]> {
     return this.repository.fetchDocuments();
+  }
+
+  fetchDocument(id: string): Promise<GEDDocument> {
+    return this.repository.fetchDocument(id);
   }
 
   fetchDocumentWorkflows(documentId: string): Promise<DocumentWorkflow[]> {

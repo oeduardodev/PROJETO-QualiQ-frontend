@@ -1,0 +1,175 @@
+<section class="native-document-editor" [class.is-readonly]="readonly()">
+  @if (!readonly()) {
+    <div class="document-toolbar" role="toolbar" aria-label="Formatação do documento">
+      <div class="toolbar-group">
+        <button
+          type="button"
+          title="Desfazer (Ctrl+Z)"
+          aria-label="Desfazer"
+          (click)="command('undo')"
+        >
+          ↶
+        </button>
+        <button
+          type="button"
+          title="Refazer (Ctrl+Shift+Z)"
+          aria-label="Refazer"
+          (click)="command('redo')"
+        >
+          ↷
+        </button>
+        <select aria-label="Estilo do parágrafo" #style (change)="heading(style.value)">
+          <option value="0">Texto normal</option>
+          <option value="1">Título 1</option>
+          <option value="2">Título 2</option>
+          <option value="3">Subtítulo</option>
+        </select>
+        <select
+          aria-label="Fonte"
+          #font
+          (change)="editor?.chain()?.focus()?.setFontFamily(font.value)?.run()"
+        >
+          @for (name of fonts; track name) {
+            <option [value]="name">{{ name }}</option>
+          }
+        </select>
+        <select
+          aria-label="Tamanho da fonte"
+          #size
+          (change)="
+            editor
+              ?.chain()
+              ?.focus()
+              ?.setFontSize(size.value + 'pt')
+              ?.run()
+          "
+        >
+          @for (value of sizes; track value) {
+            <option [value]="value" [selected]="value === '12'">{{ value }}</option>
+          }
+        </select>
+      </div>
+      <div class="toolbar-group">
+        <button
+          type="button"
+          title="Negrito (Ctrl+B)"
+          aria-label="Negrito"
+          [attr.aria-pressed]="active('bold')"
+          (click)="command('bold')"
+        >
+          <b>B</b>
+        </button>
+        <button
+          type="button"
+          title="Itálico (Ctrl+I)"
+          aria-label="Itálico"
+          [attr.aria-pressed]="active('italic')"
+          (click)="command('italic')"
+        >
+          <i>I</i>
+        </button>
+        <button
+          type="button"
+          title="Sublinhado (Ctrl+U)"
+          aria-label="Sublinhado"
+          [attr.aria-pressed]="active('underline')"
+          (click)="command('underline')"
+        >
+          <u>U</u>
+        </button>
+        <button
+          type="button"
+          title="Tachado"
+          aria-label="Tachado"
+          [attr.aria-pressed]="active('strike')"
+          (click)="command('strike')"
+        >
+          <s>S</s>
+        </button>
+        <label title="Cor do texto"
+          >Cor
+          <input
+            type="color"
+            aria-label="Cor do texto"
+            #color
+            (input)="editor?.chain()?.focus()?.setColor(color.value)?.run()"
+        /></label>
+        <label title="Cor de destaque"
+          >Fundo
+          <input
+            type="color"
+            value="#fff2a8"
+            aria-label="Cor de destaque"
+            #background
+            (input)="editor?.chain()?.focus()?.setBackgroundColor(background.value)?.run()"
+        /></label>
+      </div>
+      <div class="toolbar-group">
+        @for (
+          alignment of ['left', 'center', 'right', 'justify'];
+          track alignment;
+          let i = $index
+        ) {
+          <button
+            type="button"
+            [attr.aria-pressed]="active('paragraph', { textAlign: alignment })"
+            (click)="editor?.chain()?.focus()?.setTextAlign(alignment)?.run()"
+          >
+            {{ ['Esquerda', 'Centro', 'Direita', 'Justificar'][i] }}
+          </button>
+        }
+        <button
+          type="button"
+          [attr.aria-pressed]="active('bulletList')"
+          (click)="command('bulletList')"
+        >
+          • Lista
+        </button>
+        <button
+          type="button"
+          [attr.aria-pressed]="active('orderedList')"
+          (click)="command('orderedList')"
+        >
+          1. Lista
+        </button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" (click)="command('table')">Tabela</button>
+        <button type="button" (click)="imageInput.click()">Imagem</button>
+        <button type="button" (click)="link()">Link</button>
+        <button type="button" (click)="command('pageBreak')">Quebra de página</button>
+        <button type="button" (click)="command('clear')">Limpar formato</button>
+        <button type="button" [disabled]="importing()" (click)="importInput.click()">
+          {{ importing() ? 'Importando…' : 'Importar DOCX/HTML' }}
+        </button>
+        <input
+          #imageInput
+          type="file"
+          accept="image/png,image/jpeg"
+          hidden
+          (change)="imageSelected($event)"
+        />
+        <input
+          #importInput
+          type="file"
+          accept=".docx,.html,.htm"
+          hidden
+          (change)="importFile($event)"
+        />
+      </div>
+      @if (active('table')) {
+        <div class="toolbar-group">
+          <button type="button" (click)="command('row')">+ Linha</button
+          ><button type="button" (click)="command('column')">+ Coluna</button>
+          <button type="button" (click)="command('deleteRow')">Excluir linha</button
+          ><button type="button" (click)="command('deleteColumn')">Excluir coluna</button
+          ><button type="button" (click)="command('deleteTable')">Excluir tabela</button>
+        </div>
+      }
+    </div>
+    @if (error()) {
+      <p class="document-editor-notice" role="status">{{ error() }}</p>
+    }
+  }
+  <div class="document-canvas"><div #surface></div></div>
+</section>

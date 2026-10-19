@@ -14,8 +14,8 @@ describe('DocumentService', () => {
 
     expect(() => service.transition(document, 'submit', ' ')).toThrow('Informe a justificativa.');
     expect(repository.transition).not.toHaveBeenCalled();
-    await service.transition(document, 'submit', ' Revisado ');
-    expect(repository.transition).toHaveBeenCalledWith(document, 'submit', 'Revisado');
+    await service.transition(document, 'revise', ' Revisado ');
+    expect(repository.transition).toHaveBeenCalledWith(document, 'revise', 'Revisado');
   });
 
   it('passes reason and due date to the controlled-copy request', async () => {

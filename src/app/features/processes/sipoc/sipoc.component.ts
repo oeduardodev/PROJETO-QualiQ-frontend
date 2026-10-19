@@ -9,6 +9,7 @@ import { RiskService } from '@features/risks/data-access/risk.service';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { SlaService } from '@features/processes/data-access/sla.service';
 import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
 import type {
@@ -43,6 +44,7 @@ interface CustomFieldEntry {
   selector: 'app-sipoc',
   standalone: true,
   imports: [
+    RouterLink,
     ReactiveFormsModule,
     IconDirective,
     MethodologyComponent,

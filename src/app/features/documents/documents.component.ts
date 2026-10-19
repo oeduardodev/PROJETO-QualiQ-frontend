@@ -1,3 +1,11 @@
+import { DocumentEditorComponent } from './editor/document-editor.component';
+import { EMPTY_DOCUMENT, MAX_DOCUMENT_BYTES, normalizeDocument } from './editor/document-schema';
+import type { DocumentBody } from '@core/models/document-content';
+import { DocumentExportService, type DocumentFormat } from './data-access/document-export.service';
+import {
+  DocumentRecoveryService,
+  type DocumentRecovery,
+} from './data-access/document-recovery.service';
 import { DocumentViewerComponent } from './document-viewer.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { formatDate } from '@shared/utils/date.utils';
@@ -5,7 +13,7 @@ import { errorMessage } from '@shared/utils/error.utils';
 import { DOCUMENTS_LOCKED, DOCUMENTS_LOCKED_MESSAGE, WORKFLOW } from './documents.constants';
 import { toDocumentPayload } from './data-access/document.mapper';
 import { DocumentService } from '@features/documents/data-access/document.service';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
   FormControl,
@@ -40,14 +48,15 @@ import { AuthService } from '@core/services/auth.service';
     IconDirective,
     SideDrawerComponent,
     DocumentViewerComponent,
+    DocumentEditorComponent,
     EditHistoryComponent,
   ],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss',
-  host: { class: 'ui-standard-fields' },
+  host: { class: 'ui-standard-fields', '(window:beforeunload)': 'beforeUnload($event)' },
   providers: [DocumentsStore],
 })
-export class DocumentsComponent {
+export class DocumentsComponent implements OnDestroy {
   private readonly documentService = inject(DocumentService);
   readonly auth = inject(AuthService);
   readonly store = inject(DocumentsStore);
@@ -97,7 +106,7 @@ export class DocumentsComponent {
     () => this.store.copies().filter((c) => c.status === 'entregue').length,
   );
   readonly inactiveDocuments = computed(() =>
-    this.store.documents().filter((d) => d.status === 'obsoleto'),
+    this.store.documents().filter((d) => !d.deleted_at && d.status === 'obsoleto'),
   );
   readonly today = new Date().toLocaleDateString('en-CA');
   readonly locked = DOCUMENTS_LOCKED;
@@ -136,7 +145,6 @@ export class DocumentsComponent {
       validators: Validators.required,
     }),
     justification: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    drive_link: new FormControl('', { nonNullable: true }),
   });
   readonly typeForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
@@ -181,7 +189,7 @@ export class DocumentsComponent {
   readonly publishedWorkflowDocuments = computed(() =>
     this.store
       .documents()
-      .filter((document) => document.status === 'publicado')
+      .filter((document) => !document.deleted_at && document.status === 'publicado')
       .filter(
         (document) =>
           !this.searchValue() ||
@@ -228,7 +236,12 @@ export class DocumentsComponent {
     this.search.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((value) => this.searchValue.set(value));
-    void this.store.load();
+    this.documentForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.draftChanged());
+    void this.store.load().then(() => {
+      const id = this.route.snapshot.queryParamMap.get('document');
+      const document = this.store.documents().find((item) => item.id === id && !item.deleted_at);
+      if (document) this.preview(document);
+    });
   }
 
   private blocked(): boolean {
@@ -238,11 +251,15 @@ export class DocumentsComponent {
   }
 
   docsByStatus(status: DocumentStatus): GEDDocument[] {
-    return this.store.documents().filter((document) =>
-      status === 'em_revisao'
-        ? document.status === 'em_revisao' || document.status === 'em_validacao'
-        : document.status === status,
-    );
+    return this.store
+      .documents()
+      .filter(
+        (document) =>
+          !document.deleted_at &&
+          (status === 'em_revisao'
+            ? document.status === 'em_revisao' || document.status === 'em_validacao'
+            : document.status === status),
+      );
   }
 
   typesAt(level: number): DocumentType[] {
@@ -277,12 +294,14 @@ export class DocumentsComponent {
   }
 
   openDocument(document?: GEDDocument): void {
+    if (this.documentOpen()) return;
     if (this.blocked()) return;
     if (!this.canEdit(document)) {
       this.preview(document!);
       return;
     }
     this.formError.set(null);
+    this.recoveryWarning.set('');
     this.editingDocument.set(document ?? null);
     this.documentForm.reset(
       document
@@ -294,7 +313,6 @@ export class DocumentsComponent {
             title: document.title,
             type_id: document.type_id ?? '',
             process_id: document.process_id ?? '',
-            drive_link: document.drive_link ?? '',
           }
         : {
             step_id: '',
@@ -304,9 +322,27 @@ export class DocumentsComponent {
             title: '',
             type_id: '',
             process_id: '',
-            drive_link: '',
           },
     );
+    this.changeVersion = 0;
+    this.savedVersion = 0;
+    this.editorBody.set(
+      normalizeDocument(document?.content_json ?? document?.content_html ?? EMPTY_DOCUMENT),
+    );
+    this.editorInitial.set(this.editorBody().json);
+    this.editorInstance.update((value) => value + 1);
+    this.saveStatus.set('Sem alterações');
+    this.recovery.set(null);
+    this.recoveryKey = `${this.auth.user()?.id}:${document?.id ?? 'new'}`;
+    const key = this.recoveryKey;
+    void this.recoveryService
+      .read(key)
+      .then((draft) => {
+        if (key === this.recoveryKey && this.documentOpen()) this.recovery.set(draft ?? null);
+      })
+      .catch(() =>
+        this.recoveryWarning.set('A recuperação local está indisponível neste navegador.'),
+      );
     this.documentOpen.set(true);
   }
 
@@ -329,31 +365,276 @@ export class DocumentsComponent {
     }
   }
 
-  async saveDocument(): Promise<void> {
-    if (this.blocked()) return;
-    if (this.documentForm.invalid) {
-      this.formError.set(
-        'Preencha título, tipo, processo, etapa, responsável, aprovadores e justificativa.',
+  private readonly exporter = inject(DocumentExportService);
+  private readonly recoveryService = inject(DocumentRecoveryService);
+  readonly editorBody = signal<DocumentBody>({ json: EMPTY_DOCUMENT, html: '<p></p>' });
+  readonly editorInitial = signal(EMPTY_DOCUMENT);
+  readonly editorInstance = signal(0);
+  readonly saveStatus = signal('Sem alterações');
+  readonly saving = signal(false);
+  readonly exporting = signal(false);
+  readonly recovery = signal<DocumentRecovery | null>(null);
+  readonly recoveryWarning = signal('');
+  readonly showDeleted = signal(false);
+  readonly deletedDocuments = computed(() => this.store.documents().filter((d) => !!d.deleted_at));
+  private timer?: ReturnType<typeof setTimeout>;
+  private changeVersion = 0;
+  private savedVersion = 0;
+  private recoveryKey = '';
+  private inFlight?: Promise<boolean>;
+  private inFlightManual = false;
+
+  bodyChanged(body: DocumentBody): void {
+    this.editorBody.set(body);
+    this.draftChanged();
+  }
+
+  private draftChanged(): void {
+    if (!this.documentOpen()) return;
+    this.changeVersion++;
+    this.saveStatus.set('Alterações pendentes');
+    this.backupDraft();
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => void this.saveDocument(), 1200);
+  }
+
+  private backupDraft(): void {
+    void this.recoveryService
+      .write(this.recoveryKey, {
+        body: this.editorBody(),
+        form: this.documentForm.getRawValue(),
+        baseUpdatedAt: this.editingDocument()?.updated_at ?? null,
+        savedAt: new Date().toISOString(),
+      })
+      .catch(() =>
+        this.recoveryWarning.set(
+          'Não foi possível guardar uma recuperação local. Mantenha esta página aberta até salvar.',
+        ),
       );
+  }
+
+  restoreDraft(): void {
+    const draft = this.recovery();
+    if (!draft) return;
+    this.documentForm.reset(draft.form, { emitEvent: false });
+    const body = normalizeDocument(draft.body.json);
+    this.editorBody.set(body);
+    this.editorInitial.set(body.json);
+    this.editorInstance.update((value) => value + 1);
+    this.recovery.set(null);
+    this.draftChanged();
+  }
+
+  discardRecovery(): void {
+    this.recovery.set(null);
+    void this.recoveryService.write(this.recoveryKey).catch(() => undefined);
+  }
+
+  discardDraft(): void {
+    if (this.saving() || !window.confirm('Descartar as alterações não salvas deste rascunho?'))
+      return;
+    clearTimeout(this.timer);
+    void this.recoveryService.write(this.recoveryKey).catch(() => undefined);
+    this.changeVersion = this.savedVersion;
+    this.documentOpen.set(false);
+  }
+
+  async saveDocument(manual = false): Promise<boolean> {
+    clearTimeout(this.timer);
+    if (this.inFlight) {
+      const pendingManual = this.inFlightManual;
+      const success = await this.inFlight;
+      if (success && this.changeVersion !== this.savedVersion) return this.saveDocument(manual);
+      if (manual && success && !pendingManual) this.toast.success('Documento salvo com sucesso');
+      return success;
+    }
+    if (this.blocked()) return false;
+    if (this.recovery()) {
+      if (manual) this.toast.error('Resolva a recuperação local antes de salvar.');
+      return false;
+    }
+    if (this.documentForm.invalid || !this.documentForm.controls.justification.value.trim()) {
+      this.saveStatus.set('Preencha os campos obrigatórios para salvar automaticamente');
+      if (manual) this.toast.error('Preencha os campos obrigatórios para salvar.');
+      return false;
+    }
+    if (
+      this.savedVersion === this.changeVersion &&
+      this.editingDocument()?.content_origin === 'native'
+    ) {
+      if (manual) this.toast.success('Documento salvo com sucesso');
+      return true;
+    }
+    const version = this.changeVersion;
+    const current = this.editingDocument();
+    const body = normalizeDocument(this.editorBody().json);
+    if (
+      current?.content_origin === 'legacy_pending' &&
+      !body.json.content?.some(
+        (node) => node.type === 'image' || JSON.stringify(node).includes('"text":'),
+      )
+    ) {
+      const message =
+        'Importe ou escreva o conteúdo do documento antigo antes de salvar. O original permanece arquivado.';
+      this.formError.set(message);
+      this.saveStatus.set('Importação pendente');
+      if (manual) this.toast.error(message);
+      return false;
+    }
+    if (
+      new Blob([JSON.stringify(body.json)]).size > MAX_DOCUMENT_BYTES ||
+      new Blob([body.html]).size > MAX_DOCUMENT_BYTES
+    ) {
+      const message = 'O documento excede 8 MB. Reduza as imagens antes de salvar.';
+      this.formError.set(message);
+      this.saveStatus.set('Não salvo');
+      if (manual) this.toast.error(message);
+      return false;
+    }
+    const value = this.documentForm.getRawValue();
+    this.saving.set(true);
+    this.formError.set(null);
+    this.saveStatus.set('Salvando…');
+    this.inFlightManual = manual;
+    this.inFlight = (async () => {
+      try {
+        const saved = await this.documentService.saveDocument(
+          current,
+          toDocumentPayload(value, body),
+        );
+        this.store.documents.update((items) =>
+          current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
+        );
+        this.editingDocument.set(saved);
+        this.savedVersion = version;
+        this.saveStatus.set(
+          this.changeVersion === version ? 'Todas as alterações salvas' : 'Alterações pendentes',
+        );
+        const oldKey = this.recoveryKey;
+        this.recoveryKey = `${this.auth.user()?.id}:${saved.id}`;
+        if (this.changeVersion === version) {
+          void this.recoveryService.write(oldKey).catch(() => undefined);
+          if (oldKey !== this.recoveryKey)
+            void this.recoveryService.write(this.recoveryKey).catch(() => undefined);
+        } else this.backupDraft();
+        if (oldKey !== this.recoveryKey)
+          void this.recoveryService.write(oldKey).catch(() => undefined);
+        if (manual) this.toast.success('Documento salvo com sucesso');
+        return true;
+      } catch (error) {
+        const message = errorMessage(
+          error,
+          'Não foi possível salvar. Seu rascunho permanece aberto.',
+        );
+        this.formError.set(message);
+        this.saveStatus.set('Não salvo — tente novamente');
+        this.toast.error(message);
+        return false;
+      } finally {
+        this.saving.set(false);
+        this.inFlight = undefined;
+        this.inFlightManual = false;
+      }
+    })();
+    return this.inFlight;
+  }
+
+  async closeDocument(): Promise<void> {
+    if (this.recovery() || this.changeVersion !== this.savedVersion || this.saving()) {
+      const saved = await this.saveDocument(true);
+      if (!saved) {
+        this.formError.set(
+          this.formError() ||
+            'Resolva a recuperação e preencha os campos obrigatórios antes de fechar.',
+        );
+        return;
+      }
+    }
+    this.documentOpen.set(false);
+  }
+
+  async reloadDocument(): Promise<void> {
+    const current = this.editingDocument();
+    if (!current || this.saving()) return;
+    try {
+      const fresh = await this.documentService.fetchDocument(current.id);
+      clearTimeout(this.timer);
+      this.documentOpen.set(false);
+      this.store.documents.update((items) => items.map((d) => (d.id === fresh.id ? fresh : d)));
+      this.openDocument(fresh);
+    } catch (error) {
+      this.formError.set(errorMessage(error, 'Não foi possível recarregar.'));
+    }
+  }
+
+  leaveEditor(): Promise<boolean> {
+    if (!this.documentOpen() || (this.changeVersion === this.savedVersion && !this.saving()))
+      return Promise.resolve(true);
+    return this.saveDocument();
+  }
+
+  beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.documentOpen() && (this.changeVersion !== this.savedVersion || this.saving())) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.timer);
+  }
+
+  duplicateDocument(document: GEDDocument): void {
+    if (!this.auth.isAdmin() || this.documentOpen()) return;
+    if (!document.content_json && !document.content_html && document.drive_link) {
+      this.toast.error('Importe o conteúdo do documento antigo antes de duplicar.');
       return;
     }
+    this.workflowDocument.set(null);
+    this.openDocument();
+    this.documentForm.patchValue(
+      {
+        title: `${document.title} (cópia)`,
+        type_id: document.type_id ?? '',
+        process_id: document.process_id ?? '',
+        step_id: document.step_id ?? '',
+        owner_id: this.auth.user()?.id ?? '',
+        approver_ids: [...document.approver_ids],
+        justification: `Duplicação de ${document.code ?? document.title}`,
+      },
+      { emitEvent: false },
+    );
+    const body = normalizeDocument(
+      document.content_json ?? document.content_html ?? EMPTY_DOCUMENT,
+    );
+    this.editorBody.set(body);
+    this.editorInitial.set(body.json);
+    this.draftChanged();
+  }
+
+  async exportDocument(format: DocumentFormat): Promise<void> {
+    this.exporting.set(true);
     try {
-      const value = this.documentForm.getRawValue();
-      const current = this.editingDocument();
-      const saved = await this.documentService.saveDocument(current, toDocumentPayload(value));
-      this.store.documents.update((items) =>
-        current ? items.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...items],
+      const blob = await this.exporter.create(
+        this.editorBody().json,
+        this.documentForm.controls.title.value,
+        format,
       );
-      this.toast.success(current ? 'Documento atualizado' : 'Documento criado');
-      this.documentOpen.set(false);
-    } catch (e) {
-      this.formError.set(errorMessage(e, 'Erro ao salvar documento'));
+      this.exporter.saveBlob(
+        blob,
+        `${this.documentForm.controls.title.value || 'Documento'}.${format}`,
+      );
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'Não foi possível exportar o documento'));
+    } finally {
+      this.exporting.set(false);
     }
   }
 
   canEdit(document?: GEDDocument): boolean {
     return document
-      ? ['rascunho', 'em_revisao'].includes(document.status) &&
+      ? !document.deleted_at &&
+          ['rascunho', 'em_revisao'].includes(document.status) &&
           (this.auth.isAdmin() || document.owner_id === this.auth.user()?.id)
       : this.auth.isAdmin();
   }
@@ -370,12 +651,14 @@ export class DocumentsComponent {
     return (
       document.status === 'em_validacao' &&
       document.approver_ids.includes(this.auth.user()?.id ?? '') &&
-      !this.store.decisions().some(
-        (decision) =>
-          decision.document_id === document.id &&
-          decision.version === document.version &&
-          decision.approver_id === this.auth.user()?.id,
-      )
+      !this.store
+        .decisions()
+        .some(
+          (decision) =>
+            decision.document_id === document.id &&
+            decision.version === document.version &&
+            decision.approver_id === this.auth.user()?.id,
+        )
     );
   }
 
@@ -437,13 +720,7 @@ export class DocumentsComponent {
         );
         this.store.copies.update((items) => [saved, ...items]);
       } else if (operation.document) {
-        let current = operation.document;
-        if (operation.action === 'submit') {
-          current = await this.documentService.syncGoogle(current);
-          this.store.documents.update((items) =>
-            items.map((d) => (d.id === current.id ? current : d)),
-          );
-        }
+        const current = operation.document;
         const saved = await this.documentService.transition(
           current,
           operation.action,
@@ -478,22 +755,6 @@ export class DocumentsComponent {
       copy.due_date < this.today &&
       ['aprovada', 'entregue'].includes(copy.status)
     );
-  }
-
-  async syncGoogle(document: GEDDocument): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    try {
-      const saved = await this.documentService.syncGoogle(document);
-      this.store.documents.update((items) => items.map((d) => (d.id === saved.id ? saved : d)));
-      this.toast.success('Conteúdo sincronizado');
-    } catch (error) {
-      this.toast.error(
-        errorMessage(error, 'Configure a integração Google Docs no servidor para sincronizar.'),
-      );
-    } finally {
-      this.busy.set(false);
-    }
   }
 
   async emailCopy(copy: ControlledCopy): Promise<void> {

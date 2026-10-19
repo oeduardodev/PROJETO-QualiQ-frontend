@@ -1,29 +1,49 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import type { GEDDocument } from '@core/models/database';
+import { DocumentEditorComponent } from './editor/document-editor.component';
+import { DocumentExportService, type DocumentFormat } from './data-access/document-export.service';
+import { errorMessage } from '@shared/utils/error.utils';
 
 @Component({
   selector: 'app-document-viewer',
+  imports: [DocumentEditorComponent],
   template: `
-    @if (printAllowed() && document().content_html) {
-      <button class="ui-button-secondary mb-4 print:hidden" (click)="print()">Imprimir</button>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-xs text-slate-500">{{ document().code }} · Versão {{ document().version }}</p>
+      @if (printAllowed() && (document().content_json || document().content_html)) {
+        <div class="flex gap-2">
+          @for (format of formats; track format) {
+            <button class="ui-button-secondary" [disabled]="busy()" (click)="download(format)">
+              Baixar .{{ format }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+    @if (error()) {
+      <p class="mb-3 text-sm text-rose-600" role="alert">{{ error() }}</p>
     }
     <div
-      class="document-viewer"
       [class.document-protected]="!printAllowed()"
       (copy)="protect($event)"
       (cut)="protect($event)"
       (contextmenu)="protect($event)"
       (dragstart)="protect($event)"
     >
-      <p class="mb-4 text-xs text-slate-500">
-        {{ document().code }} · Versão {{ document().version }}
-      </p>
-      @if (document().content_html) {
-        <div class="document-content" [innerHTML]="document().content_html"></div>
+      @if (document().content_json || document().content_html) {
+        @for (
+          version of [document()];
+          track version.id + ':' + version.version + ':' + version.updated_at
+        ) {
+          <app-document-editor
+            [initialContent]="version.content_json ?? version.content_html!"
+            [readonly]="true"
+          />
+        }
       } @else {
         <p class="text-sm text-slate-500">
-          Conteúdo ainda não sincronizado. O responsável deve sincronizar o documento no
-          gerenciamento.
+          Conteúdo ainda não armazenado. O responsável pode importar um arquivo DOCX ou HTML no
+          editor.
         </p>
       }
     </div>
@@ -32,9 +52,6 @@ import type { GEDDocument } from '@core/models/database';
     .document-protected {
       user-select: none;
       -webkit-user-select: none;
-    }
-    .document-content {
-      overflow-wrap: anywhere;
     }
     @media print {
       .document-protected {
@@ -46,12 +63,25 @@ import type { GEDDocument } from '@core/models/database';
 export class DocumentViewerComponent {
   readonly document = input.required<GEDDocument>();
   readonly printAllowed = input(false);
+  readonly formats: DocumentFormat[] = ['docx', 'pdf', 'odt'];
+  readonly busy = signal(false);
+  readonly error = signal('');
+  private readonly exporter = inject(DocumentExportService);
 
   protect(event: Event): void {
     if (!this.printAllowed()) event.preventDefault();
   }
 
-  print(): void {
-    if (this.printAllowed()) window.print();
+  async download(format: DocumentFormat): Promise<void> {
+    if (!this.printAllowed() || this.busy()) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.exporter.download(this.document(), format);
+    } catch (error) {
+      this.error.set(errorMessage(error, 'Não foi possível exportar.'));
+    } finally {
+      this.busy.set(false);
+    }
   }
 }

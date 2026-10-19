@@ -11,7 +11,6 @@ describe('document payloads', () => {
       owner_id: 'owner-1',
       approver_ids: ['approver-1'],
       justification: 'Criação',
-      drive_link: 'https://docs.google.com/document/d/example/edit',
     });
     expect(payload).toMatchObject({
       owner_id: 'owner-1',

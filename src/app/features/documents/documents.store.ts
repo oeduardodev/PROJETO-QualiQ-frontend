@@ -32,6 +32,7 @@ export class DocumentsStore {
   readonly published = computed(() =>
     this.documents().filter(
       (document) =>
+        !document.deleted_at &&
         document.status === 'publicado' &&
         this.types().some((type) => type.id === document.type_id && type.public_panel),
     ),

@@ -1,10 +1,10 @@
 import type { GEDDocument } from '@core/models/database';
+import type { DocumentBody } from '@core/models/document-content';
 
 export interface DocumentFormValue {
   title: string;
   type_id: string;
   process_id: string;
-  drive_link: string;
   step_id: string;
   owner_id: string;
   approver_ids: string[];
@@ -13,10 +13,13 @@ export interface DocumentFormValue {
 
 export type DocumentSavePayload = Pick<
   GEDDocument,
-  'title' | 'type_id' | 'process_id' | 'drive_link' | 'step_id' | 'owner_id' | 'approver_ids'
-> & { justification: string };
+  'title' | 'type_id' | 'process_id' | 'step_id' | 'owner_id' | 'approver_ids'
+> & { justification: string; content_json?: GEDDocument['content_json']; content_html?: string };
 
-export function toDocumentPayload(value: DocumentFormValue): DocumentSavePayload {
+export function toDocumentPayload(
+  value: DocumentFormValue,
+  body?: DocumentBody,
+): DocumentSavePayload {
   return {
     title: value.title,
     type_id: value.type_id || null,
@@ -25,6 +28,6 @@ export function toDocumentPayload(value: DocumentFormValue): DocumentSavePayload
     owner_id: value.owner_id || null,
     approver_ids: value.approver_ids,
     justification: value.justification,
-    drive_link: value.drive_link || null,
+    ...(body ? { content_json: body.json, content_html: body.html } : {}),
   };
 }

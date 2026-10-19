@@ -257,7 +257,10 @@
                   @if (document.status === 'em_validacao') {
                     <p class="mt-2 text-xs text-slate-500">
                       {{ approvalProgress(document) }}
-                      @if (!canDecide(document) && document.approver_ids.includes(auth.user()?.id ?? '')) {
+                      @if (
+                        !canDecide(document) &&
+                        document.approver_ids.includes(auth.user()?.id ?? '')
+                      ) {
                         · Sua aprovação já foi registrada
                       }
                     </p>
@@ -273,9 +276,9 @@
                       <button
                         class="text-xs text-blue-600"
                         [disabled]="busy()"
-                        (click)="syncGoogle(document)"
+                        (click)="openDocument(document)"
                       >
-                        Sincronizar Docs
+                        Editar conteúdo
                       </button>
                       <button
                         class="text-xs text-blue-600"
@@ -348,10 +351,7 @@
           @for (document of publishedWorkflowDocuments(); track document.id) {
             <article class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
               <div class="flex min-w-0 flex-1 items-center gap-3">
-                <span
-                  appIcon="FileCheck2"
-                  class="h-4 w-4 shrink-0 text-emerald-500"
-                ></span>
+                <span appIcon="FileCheck2" class="h-4 w-4 shrink-0 text-emerald-500"></span>
                 <div class="min-w-0">
                   <strong class="block truncate text-sm font-medium text-slate-700">
                     {{ document.title }}
@@ -360,7 +360,9 @@
                     @if (document.code) {
                       <span class="font-mono">{{ document.code }}</span>
                     }
-                    <span class="rounded bg-slate-100 px-1.5 py-0.5">{{ store.typeName(document.type_id) }}</span>
+                    <span class="rounded bg-slate-100 px-1.5 py-0.5">{{
+                      store.typeName(document.type_id)
+                    }}</span>
                     <span>{{ store.processName(document.process_id) }}</span>
                   </div>
                 </div>
@@ -396,7 +398,9 @@
             @for (document of inactiveDocuments(); track document.id) {
               <article class="ui-card flex justify-between">
                 <span>{{ document.code }} · {{ document.title }}</span
-                ><button class="ui-action-history" (click)="openWorkflow(document)">Histórico</button>
+                ><button class="ui-action-history" (click)="openWorkflow(document)">
+                  Histórico
+                </button>
               </article>
             }
           </div>
@@ -509,6 +513,31 @@
     }
   </div>
 }
+@if (mode === 'management' && auth.isAdmin()) {
+  <section class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+    <button class="ui-button-secondary" (click)="showDeleted.set(!showDeleted())">
+      Lixeira ({{ deletedDocuments().length }})
+    </button>
+    @if (showDeleted()) {
+      @for (document of deletedDocuments(); track document.id) {
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span>{{ document.code }} · {{ document.title }}</span>
+          <div class="flex gap-3">
+            <button class="ui-action-history" (click)="openWorkflow(document)">Histórico</button
+            ><button
+              class="ui-action-edit"
+              (click)="begin(document, 'restore', 'Restaurar documento')"
+            >
+              Restaurar
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <p class="mt-3 text-xs text-slate-500">Nenhum documento excluído.</p>
+      }
+    }
+  </section>
+}
 <app-side-drawer
   [open]="!!workflowDocument()"
   [title]="workflowDocument()?.title || 'Documento'"
@@ -534,14 +563,21 @@
         <p class="mt-1 text-xs text-slate-500">
           Responsável: {{ store.profileName(document.owner_id) }}
         </p>
-        @if (document.drive_link) {
-          <a
-            [href]="document.drive_link"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-2 inline-block text-xs text-blue-600"
-            >Abrir documento</a
-          >
+        <button class="ui-button-secondary mt-2" (click)="preview(document)">
+          Visualizar documento
+        </button>
+        @if (auth.isAdmin() && !document.deleted_at) {
+          <button class="ui-button-secondary mt-2" (click)="duplicateDocument(document)">
+            Duplicar como rascunho
+          </button>
+          @if (document.status === 'rascunho' || document.status === 'obsoleto') {
+            <button
+              class="ui-action-danger ml-3"
+              (click)="begin(document, 'delete', 'Excluir documento')"
+            >
+              Excluir
+            </button>
+          }
         }
       </div>
       <section class="space-y-2">
@@ -585,17 +621,28 @@
   [open]="documentOpen()"
   [title]="editingDocument() ? 'Editar Documento' : 'Novo Documento'"
   [subtitle]="editingDocument() ? store.typeName(editingDocument()!.type_id) : ''"
-  width="max-w-lg"
-  (closed)="documentOpen.set(false)"
+  width="max-w-full"
+  (closed)="closeDocument()"
   ><form
     [formGroup]="documentForm"
-    (ngSubmit)="saveDocument()"
-    class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+    (ngSubmit)="saveDocument(true)"
+    class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
   >
     @if (formError()) {
-      <p class="sm:col-span-2 error">{{ formError() }}</p>
+      <p class="sm:col-span-2 xl:col-span-4 error">{{ formError() }}</p>
+      @if (editingDocument()) {
+        <button
+          type="button"
+          class="ui-button-secondary sm:col-span-2 xl:col-span-4"
+          [disabled]="saving()"
+          (click)="reloadDocument()"
+        >
+          Recarregar versão do servidor e comparar com o rascunho local
+        </button>
+      }
     }
-    <label class="ui-form-label sm:col-span-2">Título *<input formControlName="title" /></label
+    <label class="ui-form-label sm:col-span-2 xl:col-span-4"
+      >Título *<input formControlName="title" /></label
     ><label class="ui-form-label"
       >Tipo *<select formControlName="type_id">
         <option value="">—</option>
@@ -615,11 +662,7 @@
           <option [value]="process.id">{{ process.title }}</option>
         }
       </select></label
-    ><label class="ui-form-label sm:col-span-2"
-      >Link do documento<input
-        formControlName="drive_link"
-        placeholder="https://docs.google.com/..."
-    /></label>
+    >
     <label class="ui-form-label"
       >Etapa SIPOC *<select formControlName="step_id">
         <option value="">Selecionar...</option>
@@ -636,40 +679,94 @@
         }
       </select></label
     >
-    <label class="ui-form-label sm:col-span-2"
-      >Aprovadores *<select multiple formControlName="approver_ids">
+    <label class="ui-form-label flex flex-col sm:col-span-2 xl:order-2 xl:col-span-1"
+      >Aprovadores *<select multiple formControlName="approver_ids" class="flex-1">
         @for (profile of store.profiles(); track profile.id) {
           <option [value]="profile.id">{{ profile.name }}</option>
         }
       </select></label
     >
-    <label class="ui-form-label sm:col-span-2"
+    <label class="ui-form-label flex flex-col sm:col-span-2 xl:order-1 xl:col-span-3"
       >{{ editingDocument() ? 'Justificativa da alteração *' : 'Observação *'
-      }}<textarea formControlName="justification" rows="3"></textarea>
+      }}<textarea formControlName="justification" rows="3" class="flex-1"></textarea>
     </label>
-    @if (editingDocument()?.drive_link) {
-      <a
-        class="text-sm text-blue-600"
-        [href]="editingDocument()!.drive_link"
-        target="_blank"
-        rel="noopener noreferrer"
-        >Editar no Google Docs</a
-      >
-    }
-    <p class="text-xs text-slate-500 sm:col-span-2">
-      Edite o arquivo no Google Docs com uma conta autorizada. Ao enviar para validação, o Orbis
-      sincroniza a versão e o PDF automaticamente. A impressão segue a parametrização do tipo.
-    </p>
-    <div class="ui-form-actions">
-      <button type="button" class="ui-button-secondary" (click)="documentOpen.set(false)">
-        Cancelar</button
+    <section class="sm:col-span-2 xl:col-span-4 xl:order-3 space-y-3">
+      @if (editingDocument()?.content_origin === 'legacy_pending') {
+        <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Este registro contém apenas um link antigo. Importe o arquivo DOCX ou HTML para preservar
+          seu conteúdo no Orbis. O registro original permanece arquivado.
+        </p>
+      }
+      @if (editingDocument()?.content_origin === 'legacy_html') {
+        <p class="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+          Conteúdo antigo recuperado. Revise a formatação e salve para concluir a conversão nativa.
+          O original permanece arquivado.
+        </p>
+      }
+      @if (recovery(); as draft) {
+        <div class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+          <p>
+            Há um rascunho local não salvo. A recuperação substituirá o conteúdo aberto. Revise
+            antes de continuar.
+          </p>
+          @if (draft.baseUpdatedAt !== (editingDocument()?.updated_at ?? null)) {
+            <p>
+              O documento no servidor mudou desde esse rascunho. Compare a versão atual antes de
+              recuperá-lo.
+            </p>
+          }
+          <button type="button" class="ui-button-secondary mt-2" (click)="restoreDraft()">
+            Recuperar rascunho
+          </button>
+          <button type="button" class="ui-button-secondary ml-2" (click)="discardRecovery()">
+            Manter versão do servidor
+          </button>
+        </div>
+      }
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs text-slate-500" role="status" aria-live="polite">{{ saveStatus() }}</p>
+        <div class="flex flex-wrap gap-2">
+          @for (format of ['docx', 'pdf', 'odt']; track format) {
+            <button
+              type="button"
+              class="ui-button-secondary"
+              [disabled]="exporting()"
+              (click)="exportDocument($any(format))"
+            >
+              Baixar .{{ format }}
+            </button>
+          }
+        </div>
+      </div>
+      @if (recoveryWarning()) {
+        <p class="text-xs text-amber-700">{{ recoveryWarning() }}</p>
+      }
+      @if (documentOpen()) {
+        @for (instance of [editorInstance()]; track instance) {
+          <app-document-editor
+            [initialContent]="editorInitial()"
+            (bodyChange)="bodyChanged($event)"
+          />
+        }
+      }
+      <p class="text-xs text-slate-500">
+        Salvamento automático após preencher os campos obrigatórios. DOCX e ODT mantêm o texto
+        editável. O PDF usa fontes incorporadas e pode ter pequenas diferenças de paginação.
+      </p>
+    </section>
+    <div class="ui-form-actions sm:col-span-2 xl:col-span-4 xl:order-4">
+      <button type="button" class="ui-action-danger" [disabled]="saving()" (click)="discardDraft()">
+        Descartar alterações
+      </button>
+      <button type="button" class="ui-button-secondary" (click)="closeDocument()">Fechar</button
       ><button
         type="submit"
         class="ui-button-primary"
+        [disabled]="saving() || !!recovery()"
         [class.ui-locked]="locked"
         [attr.aria-disabled]="locked"
       >
-        Salvar
+        Salvar agora
       </button>
     </div>
   </form></app-side-drawer
@@ -677,7 +774,7 @@
 <app-side-drawer
   [open]="typeOpen()"
   [title]="editingType() ? 'Editar Tipo Documental' : 'Novo Tipo Documental'"
-  width="max-w-lg"
+  width="max-w-full"
   (closed)="typeOpen.set(false)"
   ><form [formGroup]="typeForm" (ngSubmit)="saveType()" class="space-y-4">
     @if (typeError()) {
@@ -734,7 +831,7 @@
 <app-side-drawer
   [open]="levelOpen()"
   [title]="editingLevel() ? 'Renomear nível' : 'Novo nível da pirâmide'"
-  width="max-w-md"
+  width="max-w-full"
   (closed)="levelOpen.set(false)"
 >
   <form (ngSubmit)="saveLevel()" class="space-y-4">
@@ -767,7 +864,7 @@
 <app-side-drawer
   [open]="!!historyType()"
   [title]="'Histórico · ' + (historyType()?.name || '')"
-  width="max-w-lg"
+  width="max-w-full"
   (closed)="historyType.set(null)"
 >
   @if (typeHistoryLoading()) {
@@ -795,6 +892,7 @@
 <app-side-drawer
   [open]="!!operation()"
   [title]="operation()?.title || ''"
+  width="max-w-full"
   (closed)="operation.set(null)"
 >
   @if (formError()) {
@@ -815,7 +913,7 @@
 <app-side-drawer
   [open]="!!previewDocument()"
   [title]="previewDocument()?.title || 'Visualizar documento'"
-  width="max-w-4xl"
+  width="max-w-full"
   (closed)="previewDocument.set(null)"
 >
   @if (previewDocument(); as document) {
