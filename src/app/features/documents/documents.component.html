@@ -892,7 +892,6 @@
 <app-side-drawer
   [open]="!!operation()"
   [title]="operation()?.title || ''"
-  width="max-w-full"
   (closed)="operation.set(null)"
 >
   @if (formError()) {
