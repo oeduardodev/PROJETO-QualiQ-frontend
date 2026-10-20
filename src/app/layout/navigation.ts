@@ -45,7 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         id: 'indicadores-group',
-        label: 'Gestão de Indicadores',
+        label: 'Indicadores',
         icon: 'Target',
         leaves: [
           {
@@ -78,7 +78,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         id: 'processos-group',
-        label: 'Gestão de Processos',
+        label: 'Processos',
         icon: 'GitBranch',
         leaves: [
           {
@@ -110,7 +110,7 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         id: 'riscos-group',
-        label: 'Gestão de Riscos',
+        label: 'Riscos',
         icon: 'Shield',
         leaves: [
           {
@@ -130,7 +130,7 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         id: 'documentos',
-        label: 'Gestão de Documentos',
+        label: 'Documentos',
         icon: 'FileText',
         leaves: [
           {
