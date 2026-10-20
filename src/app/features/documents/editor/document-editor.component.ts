@@ -212,7 +212,10 @@ export class DocumentEditorComponent implements AfterViewInit, OnDestroy {
       if (file.size > MAX_DOCUMENT_BYTES) throw new Error('O arquivo deve ter até 8 MB.');
       let html: string;
       if (/\.docx$/i.test(file.name)) {
-        const mammoth = await import('mammoth');
+        const mammothModule = await import('mammoth');
+        const mammoth =
+          (mammothModule as unknown as { default?: typeof mammothModule }).default ??
+          mammothModule;
         const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
         html = result.value;
       } else if (/\.html?$/i.test(file.name)) html = await file.text();
