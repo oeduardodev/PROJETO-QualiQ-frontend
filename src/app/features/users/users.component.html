@@ -1,0 +1,540 @@
+<div class="space-y-6">
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+        Administração do sistema
+      </p>
+      <h2 class="mt-1 text-2xl font-semibold text-slate-900">
+        {{ profileOnly ? 'Meu perfil' : 'Usuários e acessos' }}
+      </h2>
+      <p class="mt-1 max-w-2xl text-sm text-slate-500">
+        {{
+          profileOnly
+            ? 'Confira seus dados e preferências de comunicação.'
+            : 'Gerencie perfis, responsabilidades e módulos disponíveis para cada pessoa.'
+        }}
+      </p>
+    </div>
+    @if (!profileOnly && auth.isAdmin()) {
+      <button type="button" class="ui-button-primary" (click)="openCreateUser()">
+        <span appIcon="UserPlus" class="mr-2 inline-block h-4 w-4 align-middle"></span>
+        Criar usuário
+      </button>
+    }
+  </header>
+
+  @if (!profileOnly) {
+    <nav
+      class="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5"
+      aria-label="Seções de usuários"
+    >
+      <button
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm font-medium transition"
+        [class.bg-slate-900]="activeTab() === 'users'"
+        [class.text-white]="activeTab() === 'users'"
+        [class.text-slate-600]="activeTab() !== 'users'"
+        (click)="setTab('users')"
+      >
+        Usuários
+      </button>
+      <button
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm font-medium transition"
+        [class.bg-slate-900]="activeTab() === 'profile'"
+        [class.text-white]="activeTab() === 'profile'"
+        [class.text-slate-600]="activeTab() !== 'profile'"
+        (click)="setTab('profile')"
+      >
+        Meu perfil
+      </button>
+      <button
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm font-medium transition"
+        [class.bg-slate-900]="activeTab() === 'settings'"
+        [class.text-white]="activeTab() === 'settings'"
+        [class.text-slate-600]="activeTab() !== 'settings'"
+        (click)="setTab('settings')"
+      >
+        Configuração
+      </button>
+    </nav>
+  }
+
+  @if (activeTab() === 'users' && !profileOnly) {
+    <section class="space-y-4">
+      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]">
+        <label class="relative block">
+          <span
+            appIcon="Search"
+            class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          ></span>
+          <input
+            class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
+            placeholder="Buscar por nome, e-mail ou matrícula"
+            [value]="search()"
+            (input)="search.set($any($event.target).value)"
+          />
+        </label>
+        <select
+          class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-400"
+          [value]="statusFilter()"
+          (change)="statusFilter.set($any($event.target).value)"
+        >
+          <option value="active">Usuários ativos</option>
+          <option value="inactive">Usuários inativos</option>
+          <option value="all">Todos os usuários</option>
+        </select>
+      </div>
+
+      @if (loading()) {
+        <div
+          class="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500"
+        >
+          Carregando usuários...
+        </div>
+      } @else if (pageError()) {
+        <div class="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
+          {{ pageError() }}
+        </div>
+      } @else {
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px]">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th
+                    class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    Pessoa
+                  </th>
+                  <th
+                    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    Matrícula / documento
+                  </th>
+                  <th
+                    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    Perfil
+                  </th>
+                  <th
+                    class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    Processos
+                  </th>
+                  <th
+                    class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    Status
+                  </th>
+                  <th
+                    class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    Ação
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of filteredUsers(); track user.id) {
+                  <tr class="border-t border-slate-100 transition hover:bg-slate-50/70">
+                    <td class="px-5 py-3.5">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700"
+                          >{{ (user.short_name || user.name).charAt(0).toUpperCase() }}</span
+                        >
+                        <span class="min-w-0"
+                          ><span class="block truncate text-sm font-medium text-slate-800">{{
+                            user.name
+                          }}</span
+                          ><span class="block truncate text-xs text-slate-500">{{
+                            user.email || 'E-mail não informado'
+                          }}</span></span
+                        >
+                      </div>
+                    </td>
+                    <td class="px-4 py-3.5 text-sm text-slate-600">
+                      {{ user.registration_code || '—' }}
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <span
+                        class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+                        >{{ roleLabel(user.role) }}</span
+                      >
+                      @if (user.is_department_head) {
+                        <span
+                          class="ml-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700"
+                          >Gestor de setor</span
+                        >
+                      }
+                    </td>
+                    <td class="px-4 py-3.5 text-sm text-slate-600">
+                      {{ user.process_ids?.length || 0 }}
+                    </td>
+                    <td class="px-4 py-3.5 text-center">
+                      <span
+                        class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                        [class.bg-emerald-50]="user.is_active"
+                        [class.text-emerald-700]="user.is_active"
+                        [class.bg-slate-100]="!user.is_active"
+                        [class.text-slate-500]="!user.is_active"
+                        >{{ user.is_active ? 'Ativo' : 'Inativo' }}</span
+                      >
+                    </td>
+                    <td class="px-5 py-3.5 text-right">
+                      <button
+                        type="button"
+                        class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-700"
+                        (click)="openEditUser(user)"
+                      >
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="px-5 py-12 text-center text-sm text-slate-500">
+                      Nenhum usuário encontrado.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <footer class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+            {{ filteredUsers().length }} usuário(s) exibido(s)
+          </footer>
+        </div>
+      }
+    </section>
+  }
+
+  @if (activeTab() === 'profile') {
+    <section class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <form
+        [formGroup]="selfForm"
+        (ngSubmit)="saveOwnProfile()"
+        class="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      >
+        <div>
+          <h3 class="text-base font-semibold text-slate-800">Dados pessoais</h3>
+          <p class="mt-1 text-sm text-slate-500">
+            Atualize seu nome de exibição e a preferência de alertas.
+          </p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="sm:col-span-2"
+            ><span class="mb-1.5 block text-xs font-medium text-slate-600">Nome completo *</span
+            ><input
+              formControlName="name"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+              autocomplete="name"
+          /></label>
+          <label
+            ><span class="mb-1.5 block text-xs font-medium text-slate-600">Nome abreviado *</span
+            ><input
+              formControlName="short_name"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          /></label>
+          <label
+            ><span class="mb-1.5 block text-xs font-medium text-slate-600">Data de nascimento</span
+            ><input
+              type="date"
+              formControlName="birth_date"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          /></label>
+          <label class="sm:col-span-2"
+            ><span class="mb-1.5 block text-xs font-medium text-slate-600">E-mail / login</span
+            ><input
+              [value]="auth.profile()?.email || auth.user()?.email || ''"
+              disabled
+              class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500"
+            /><span class="mt-1 block text-xs text-slate-400"
+              >Para alterar o e-mail de acesso, solicite a atualização ao administrador.</span
+            ></label
+          >
+        </div>
+        <label class="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3.5"
+          ><input
+            type="checkbox"
+            formControlName="receive_email_alerts"
+            class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          /><span
+            ><span class="block text-sm font-medium text-slate-700">Receber alertas por e-mail</span
+            ><span class="mt-0.5 block text-xs text-slate-500"
+              >Permite incluir este usuário nas filas de notificações do sistema.</span
+            ></span
+          ></label
+        >
+        <div class="flex justify-end">
+          <button type="submit" class="ui-button-primary" [disabled]="saving()">
+            {{ saving() ? 'Salvando...' : 'Salvar perfil' }}
+          </button>
+        </div>
+      </form>
+
+      <aside class="h-fit space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Acesso atual</p>
+          <h3 class="mt-2 text-lg font-semibold text-slate-800">
+            {{ auth.profile()?.short_name || auth.profile()?.name }}
+          </h3>
+          <span
+            class="mt-2 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700"
+            >{{ roleLabel(auth.profile()?.role || '') }}</span
+          >
+        </div>
+        <div class="space-y-3 border-t border-slate-100 pt-4 text-sm">
+          <div>
+            <p class="text-xs text-slate-400">Matrícula / documento</p>
+            <p class="mt-0.5 text-slate-700">
+              {{ auth.profile()?.registration_code || 'Não cadastrado' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Processos vinculados</p>
+            <p class="mt-0.5 text-slate-700">A associação é mantida pelo administrador.</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Situação</p>
+            <p class="mt-0.5 font-medium text-emerald-700">
+              {{ auth.profile()?.is_active ? 'Ativo' : 'Inativo' }}
+            </p>
+          </div>
+        </div>
+      </aside>
+    </section>
+  }
+
+  @if (activeTab() === 'settings' && !profileOnly) {
+    <section class="space-y-5">
+      <div class="rounded-xl border border-blue-100 bg-blue-50/70 p-5">
+        <h3 class="text-base font-semibold text-slate-800">Acesso por usuário</h3>
+        <p class="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+          No cadastro ou na edição de uma pessoa, selecione os módulos disponíveis para ela. As
+          páginas de configuração administrativa continuam restritas ao perfil de administrador;
+          auditores têm consulta sem edição e assistentes ficam limitados ao dashboard.
+        </p>
+      </div>
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        @for (role of roles; track role.value) {
+          <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <span
+              class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
+              >{{ role.label }}</span
+            >
+            <p class="mt-3 text-sm leading-5 text-slate-600">{{ role.description }}</p>
+          </article>
+        }
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-800">Módulos disponíveis</h3>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          @for (module of moduleOptions; track module.key) {
+            <div class="rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <p class="text-sm font-medium text-slate-700">{{ module.label }}</p>
+              <p class="mt-1 text-xs leading-5 text-slate-500">{{ module.description }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  }
+</div>
+
+<app-side-drawer
+  [open]="formOpen()"
+  [title]="editing() ? 'Editar usuário' : 'Criar usuário'"
+  [subtitle]="
+    editing()
+      ? 'Atualize o perfil e os acessos da pessoa.'
+      : 'A pessoa receberá um convite para definir a senha.'
+  "
+  width="max-w-3xl"
+  (closed)="formOpen.set(false)"
+>
+  <form [formGroup]="form" (ngSubmit)="saveUser()" class="space-y-6">
+    <section class="space-y-3">
+      <div>
+        <h3 class="text-sm font-semibold text-slate-800">Identificação e comunicação</h3>
+        <p class="mt-0.5 text-xs text-slate-500">
+          O nome completo e a matrícula/documento são obrigatórios.
+        </p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="sm:col-span-2"
+          ><span class="mb-1 block text-xs font-medium text-slate-600">Nome completo *</span
+          ><input
+            formControlName="name"
+            autocomplete="name"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+        /></label>
+        <label
+          ><span class="mb-1 block text-xs font-medium text-slate-600">Nome abreviado *</span
+          ><input
+            formControlName="short_name"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+            placeholder="Como aparecerá nos painéis"
+        /></label>
+        <label
+          ><span class="mb-1 block text-xs font-medium text-slate-600">Matrícula / documento *</span
+          ><input
+            formControlName="registration_code"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+        /></label>
+        <label
+          ><span class="mb-1 block text-xs font-medium text-slate-600">Data de nascimento</span
+          ><input
+            type="date"
+            formControlName="birth_date"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+        /></label>
+        <label
+          ><span class="mb-1 block text-xs font-medium text-slate-600">E-mail / login *</span
+          ><input
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+        /></label>
+      </div>
+    </section>
+
+    <section class="space-y-3 border-t border-slate-100 pt-5">
+      <div>
+        <h3 class="text-sm font-semibold text-slate-800">Perfil e escopo de acesso</h3>
+        <p class="mt-0.5 text-xs text-slate-500">
+          Vincule os processos sob responsabilidade e escolha os módulos habilitados.
+        </p>
+      </div>
+      <label class="block"
+        ><span class="mb-1 block text-xs font-medium text-slate-600">Perfil de acesso *</span
+        ><select
+          formControlName="role"
+          (change)="roleChanged()"
+          class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+        >
+          @for (role of roles; track role.value) {
+            <option [value]="role.value">{{ role.label }}</option>
+          }
+        </select></label
+      >
+      @if (form.controls.role.value === 'gestor') {
+        <label class="block"
+          ><span class="mb-1 block text-xs font-medium text-slate-600">Área do gestor *</span
+          ><select
+            formControlName="category_id"
+            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+          >
+            <option value="">Selecione a área</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select></label
+        >
+      }
+      <div class="rounded-lg border border-slate-200 p-3">
+        <p class="mb-2 text-xs font-medium text-slate-600">Processos vinculados</p>
+        <div class="max-h-40 space-y-1 overflow-y-auto">
+          @for (process of processes(); track process.id) {
+            <label
+              class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              ><input
+                type="checkbox"
+                [checked]="form.controls.process_ids.value.includes(process.id)"
+                (change)="toggleProcess(process.id)"
+                class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              /><span>{{ process.code }} · {{ process.title }}</span></label
+            >
+          } @empty {
+            <p class="px-2 py-2 text-xs text-slate-500">Nenhum processo ativo disponível.</p>
+          }
+        </div>
+      </div>
+      <div class="rounded-lg border border-slate-200 p-3">
+        <p class="mb-2 text-xs font-medium text-slate-600">Módulos específicos</p>
+        <div class="grid gap-2 sm:grid-cols-2">
+          @for (module of moduleOptions; track module.key) {
+            <label
+              class="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-slate-50"
+              [class.opacity-60]="
+                module.key === 'dashboard' ||
+                form.controls.role.value === 'admin' ||
+                form.controls.role.value === 'visualizador'
+              "
+              ><input
+                type="checkbox"
+                [checked]="form.controls.module_access.value.includes(module.key)"
+                [disabled]="
+                  module.key === 'dashboard' ||
+                  form.controls.role.value === 'admin' ||
+                  form.controls.role.value === 'visualizador'
+                "
+                (change)="toggleModule(module.key)"
+                class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              /><span
+                ><span class="block text-xs font-medium text-slate-700">{{ module.label }}</span
+                ><span class="mt-0.5 block text-[11px] leading-4 text-slate-500">{{
+                  module.description
+                }}</span></span
+              ></label
+            >
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-3 border-t border-slate-100 pt-5">
+      <h3 class="text-sm font-semibold text-slate-800">Controles</h3>
+      <div class="grid gap-2 sm:grid-cols-3">
+        <label
+          class="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-xs text-slate-700"
+          ><input
+            type="checkbox"
+            formControlName="is_active"
+            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />Ativo / inativo</label
+        >
+        <label
+          class="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-xs text-slate-700"
+          ><input
+            type="checkbox"
+            formControlName="receive_email_alerts"
+            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />Receber alertas por e-mail</label
+        >
+        <label
+          class="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-xs text-slate-700"
+          ><input
+            type="checkbox"
+            formControlName="is_department_head"
+            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />Gestor de setor</label
+        >
+      </div>
+    </section>
+
+    @if (formError()) {
+      <p class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
+        {{ formError() }}
+      </p>
+    }
+  </form>
+  <div
+    drawer-footer
+    class="flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4"
+  >
+    <button
+      type="button"
+      class="ui-button-secondary"
+      (click)="formOpen.set(false)"
+      [disabled]="saving()"
+    >
+      Cancelar
+    </button>
+    <button type="button" class="ui-button-primary" (click)="saveUser()" [disabled]="saving()">
+      {{ saving() ? 'Salvando...' : editing() ? 'Salvar alterações' : 'Enviar convite' }}
+    </button>
+  </div>
+</app-side-drawer>

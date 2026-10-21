@@ -33,6 +33,7 @@ export interface AppDatabase {
       helpdesk_categories: TableDefinition<HelpdeskCategoryOption>;
       helpdesk_priorities: TableDefinition<HelpdeskPriorityOption>;
       operation_inbox: TableDefinition<OperationInbox>;
+      profile_processes: TableDefinition<ProfileProcess>;
       action_plan_comments: TableDefinition<ActionPlanComment>;
       action_plan_evidence: TableDefinition<ActionPlanEvidence>;
       action_plan_history: TableDefinition<ActionPlanHistory>;
@@ -646,8 +647,23 @@ export type UserRole = GeneratedDatabase['public']['Enums']['user_role'];
 export interface Profile {
   id: string;
   name: string;
+  email?: string | null;
+  short_name?: string | null;
+  registration_code?: string | null;
+  birth_date?: string | null;
   role: UserRole;
   category_id: string | null;
+  is_active?: boolean;
+  receive_email_alerts?: boolean;
+  is_department_head?: boolean;
+  module_access?: string[];
+  process_ids?: string[];
+  created_at: string;
+}
+
+export interface ProfileProcess {
+  profile_id: string;
+  process_id: string;
   created_at: string;
 }
 

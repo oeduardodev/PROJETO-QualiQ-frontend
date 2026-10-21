@@ -1684,23 +1684,47 @@ export type Database = {
         Row: {
           category_id: string | null;
           created_at: string | null;
+          email: string | null;
           id: string;
+          is_active: boolean;
+          is_department_head: boolean;
+          module_access: string[];
           name: string;
+          birth_date: string | null;
+          receive_email_alerts: boolean;
+          registration_code: string | null;
           role: Database['public']['Enums']['user_role'];
+          short_name: string | null;
         };
         Insert: {
           category_id?: string | null;
           created_at?: string | null;
+          email?: string | null;
           id: string;
+          is_active?: boolean;
+          is_department_head?: boolean;
+          module_access?: string[];
           name: string;
+          birth_date?: string | null;
+          receive_email_alerts?: boolean;
+          registration_code?: string | null;
           role?: Database['public']['Enums']['user_role'];
+          short_name?: string | null;
         };
         Update: {
           category_id?: string | null;
           created_at?: string | null;
+          email?: string | null;
           id?: string;
+          is_active?: boolean;
+          is_department_head?: boolean;
+          module_access?: string[];
           name?: string;
+          birth_date?: string | null;
+          receive_email_alerts?: boolean;
+          registration_code?: string | null;
           role?: Database['public']['Enums']['user_role'];
+          short_name?: string | null;
         };
         Relationships: [
           {
@@ -1708,6 +1732,39 @@ export type Database = {
             columns: ['category_id'];
             isOneToOne: false;
             referencedRelation: 'value_chain_categories';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      profile_processes: {
+        Row: {
+          created_at: string;
+          process_id: string;
+          profile_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          process_id: string;
+          profile_id: string;
+        };
+        Update: {
+          created_at?: string;
+          process_id?: string;
+          profile_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'profile_processes_process_id_fkey';
+            columns: ['process_id'];
+            isOneToOne: false;
+            referencedRelation: 'processes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_processes_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];

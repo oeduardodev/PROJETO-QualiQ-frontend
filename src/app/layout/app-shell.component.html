@@ -90,10 +90,10 @@
             >
             <span class="hidden text-left sm:block"
               ><span class="block max-w-[120px] truncate text-xs font-medium text-slate-700">{{
-                auth.profile()?.name || 'Usuário'
+                auth.profile()?.short_name || auth.profile()?.name || 'Usuário'
               }}</span>
               <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold" [class]="roleColor()">{{
-                auth.profile()?.role
+                roleLabel()
               }}</span></span
             >
             <span appIcon="ChevronDown" class="h-3.5 w-3.5 text-slate-400"></span>
@@ -112,8 +112,15 @@
                 <p class="truncate text-sm font-medium text-slate-700">
                   {{ auth.profile()?.name }}
                 </p>
-                <p class="text-xs text-slate-400">{{ auth.profile()?.role }}</p>
+                <p class="text-xs text-slate-400">{{ roleLabel() }}</p>
               </div>
+              <a
+                routerLink="/perfil"
+                (click)="userMenuOpen.set(false)"
+                class="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-600 transition hover:bg-slate-50"
+              >
+                <span appIcon="UserRound" class="h-4 w-4"></span>Meu perfil
+              </a>
               <button
                 type="button"
                 (click)="logout()"

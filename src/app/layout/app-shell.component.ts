@@ -27,23 +27,47 @@ export class AppShellComponent {
   readonly expandedGroups = signal(new Set(NAV_GROUPS.map((g) => g.id)));
   readonly expandedSubs = signal(new Set(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id))));
   readonly route = signal(this.router.url.slice(1).split('?')[0] || 'dashboard');
-  readonly groups = computed(() => visibleNavigation(this.auth.isOperador(), this.auth.isAdmin()));
+  readonly groups = computed(() =>
+    visibleNavigation(this.auth.isOperador(), this.auth.isAdmin(), (module) =>
+      this.auth.hasModuleAccess(module),
+    ),
+  );
   readonly leaves = computed(() =>
     this.groups().flatMap((group) => group.items.flatMap((item) => item.leaves)),
   );
   readonly activeLabel = computed(() =>
     this.route() === 'dashboard'
       ? 'Dashboard'
-      : (this.leaves().find((leaf) => leaf.route === this.route())?.label ?? 'Dashboard'),
+      : (this.leaves().find((leaf) => leaf.route === this.route())?.label ??
+        (this.route() === 'perfil' ? 'Meu perfil' : 'Dashboard')),
   );
   readonly subtitle = computed(() => ROUTE_SUBTITLES[this.route()] ?? '');
-  readonly initial = computed(() => (this.auth.profile()?.name ?? '?').charAt(0).toUpperCase());
+  readonly roleLabel = computed(() => {
+    const role = this.auth.role();
+    if (!role) return 'Usuário';
+    const labels: Record<NonNullable<typeof role>, string> = {
+      admin: 'Administrador',
+      gestor: 'Gestor',
+      analista: 'Analista',
+      operador: 'Operador',
+      auditor: 'Auditor',
+      visualizador: 'Assistente',
+    };
+    return labels[role];
+  });
+  readonly initial = computed(() =>
+    (this.auth.profile()?.short_name ?? this.auth.profile()?.name ?? '?').charAt(0).toUpperCase(),
+  );
   readonly roleColor = computed(() =>
     this.auth.isAdmin()
       ? 'bg-blue-50 text-blue-600'
       : this.auth.isGestor()
         ? 'bg-emerald-50 text-emerald-600'
-        : 'bg-amber-50 text-amber-600',
+        : this.auth.isAuditor()
+          ? 'bg-violet-50 text-violet-600'
+          : this.auth.isVisualizador()
+            ? 'bg-slate-100 text-slate-600'
+            : 'bg-amber-50 text-amber-600',
   );
 
   constructor() {

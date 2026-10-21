@@ -5,6 +5,21 @@ export interface NavLeaf {
   route: string;
   adminOnly?: boolean;
 }
+
+function moduleForRoute(route: string): string {
+  if (route === 'dashboard') return 'dashboard';
+  if (route === 'valor' || route === 'dimensoes') return 'strategy';
+  if (route.startsWith('indicadores/')) return 'indicators';
+  if (route.startsWith('processos/slas/')) return 'slas';
+  if (route.startsWith('processos/')) return 'processes';
+  if (route.startsWith('riscos/')) return 'risks';
+  if (route.startsWith('documentos/')) return 'documents';
+  if (route.startsWith('incidentes/')) return 'incidents';
+  if (route === 'helpdesk') return 'helpdesk';
+  if (route === 'planos-acao') return 'action_plans';
+  if (route === 'usuarios') return 'users';
+  return 'dashboard';
+}
 export interface NavSubGroup {
   id: string;
   label: string;
@@ -215,10 +230,33 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
+  {
+    id: 'administracao',
+    label: 'Administração',
+    color: 'bg-violet-400',
+    items: [
+      {
+        id: 'usuarios',
+        label: 'Usuários',
+        icon: 'Users',
+        leaves: [
+          {
+            id: 'usuarios',
+            label: 'Usuários e acessos',
+            icon: 'Users',
+            route: 'usuarios',
+            adminOnly: true,
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 export const ROUTE_SUBTITLES: Record<string, string> = {
   dashboard: 'Visão geral do sistema de gestão da qualidade',
+  usuarios: 'Perfis, responsabilidades e módulos de acesso',
+  perfil: 'Seus dados pessoais e preferências',
   valor: 'Avaliação estratégica de processos',
   dimensoes: 'Dimensões estratégicas com indicadores e planos vinculados ao SIPOC',
   'processos/gerenciamento': 'Cadastro, histórico e obsolescência de processos',
@@ -245,8 +283,11 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
 };
 
-export function visibleNavigation(isOperator: boolean, isAdmin: boolean): NavGroup[] {
-  if (isAdmin) return NAV_GROUPS;
+export function visibleNavigation(
+  isOperator: boolean,
+  isAdmin: boolean,
+  hasModuleAccess: (module: string) => boolean,
+): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items
@@ -254,7 +295,9 @@ export function visibleNavigation(isOperator: boolean, isAdmin: boolean): NavGro
         ...item,
         leaves: item.leaves.filter(
           (leaf) =>
-            leaf.id !== 'processos/gerenciamento' &&
+            (!leaf.adminOnly || isAdmin) &&
+            hasModuleAccess(moduleForRoute(leaf.route)) &&
+            (isAdmin || leaf.id !== 'processos/gerenciamento') &&
             (!isOperator || (!leaf.adminOnly && leaf.id !== 'processos/slas/gerenciamento')),
         ),
       }))

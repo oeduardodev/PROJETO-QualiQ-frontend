@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.document-integration]
 verify_jwt = true
+
+[functions.user-management]
+verify_jwt = true
