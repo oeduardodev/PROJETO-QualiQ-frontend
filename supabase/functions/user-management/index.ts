@@ -3,7 +3,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const appOrigins = (Deno.env.get('PUBLIC_APP_ORIGIN') ?? '')
+const appOrigins = [
+  Deno.env.get('PUBLIC_APP_ORIGIN') ?? '',
+  Deno.env.get('PUBLIC_APP_ADDITIONAL_ORIGINS') ?? '',
+]
+  .join(',')
   .split(',')
   .map((value) => value.trim().replace(/\/$/, ''))
   .filter(Boolean);
@@ -223,7 +227,9 @@ async function main(request: Request) {
     };
 
     if (body.action === 'create') {
-      const redirectTo = appOrigins[0] ? `${appOrigins[0]}/definir-senha` : undefined;
+      const requestOrigin = origin?.replace(/\/$/, '') ?? '';
+      const inviteOrigin = appOrigins.includes(requestOrigin) ? requestOrigin : appOrigins[0];
+      const redirectTo = inviteOrigin ? `${inviteOrigin}/definir-senha` : undefined;
       const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email, {
         data: { name, short_name },
         ...(redirectTo ? { redirectTo } : {}),

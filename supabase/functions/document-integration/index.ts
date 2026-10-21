@@ -4,7 +4,10 @@ import { pdfDefinition } from '../_shared/document-format.ts';
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const appOrigin = Deno.env.get('PUBLIC_APP_ORIGIN') ?? '';
+const appOrigins = [
+  Deno.env.get('PUBLIC_APP_ORIGIN') ?? '',
+  Deno.env.get('PUBLIC_APP_ADDITIONAL_ORIGINS') ?? '',
+].join(',');
 const admin = createClient(supabaseUrl, serviceKey);
 
 function normalizedOrigin(value: string): string | null {
@@ -16,7 +19,7 @@ function normalizedOrigin(value: string): string | null {
 }
 
 const allowedOrigins = new Set(
-  appOrigin
+  appOrigins
     .split(',')
     .map((value) => normalizedOrigin(value.trim()))
     .filter((value): value is string => value !== null),
