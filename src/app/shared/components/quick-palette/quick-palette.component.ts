@@ -20,7 +20,7 @@ import {
   type HsvColor,
 } from './color.utils';
 
-const DEFAULT_COLORS = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'];
+const DEFAULT_COLORS = ['#006ACC', '#39B2EA', '#71ED8D', '#379951', '#074D8E'];
 let nextPaletteId = 0;
 
 @Component({
@@ -48,8 +48,8 @@ export class QuickPaletteComponent implements ControlValueAccessor {
   readonly value = signal('');
   readonly disabled = signal(false);
   readonly open = signal(false);
-  readonly hsv = signal<HsvColor>(hexToHsv('#3B82F6'));
-  readonly hexDraft = signal('#3B82F6');
+  readonly hsv = signal<HsvColor>(hexToHsv('#006ACC'));
+  readonly hexDraft = signal('#006ACC');
   readonly panelTop = signal(0);
   readonly panelLeft = signal(0);
   readonly panelWidth = signal(320);
@@ -119,7 +119,7 @@ export class QuickPaletteComponent implements ControlValueAccessor {
       this.close();
       return;
     }
-    const current = normalizeHex(this.value()) ?? '#3B82F6';
+    const current = normalizeHex(this.value()) ?? '#006ACC';
     this.hsv.set(hexToHsv(current));
     this.hexDraft.set(current);
     this.positionPanel();

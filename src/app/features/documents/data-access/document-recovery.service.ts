@@ -17,6 +17,7 @@ export class DocumentRecoveryService {
 
   private db(): Promise<IDBDatabase> {
     return (this.database ??= new Promise((resolve, reject) => {
+      // Keep the original database name so existing local recovery drafts remain available.
       const request = indexedDB.open('orbis-document-recovery', 1);
       request.onupgradeneeded = () => request.result.createObjectStore('drafts');
       request.onsuccess = () => resolve(request.result);

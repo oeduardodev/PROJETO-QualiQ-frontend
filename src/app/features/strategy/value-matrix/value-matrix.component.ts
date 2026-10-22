@@ -46,7 +46,7 @@ interface ProcessSummary {
 }
 
 const MATRIX_COLORS: Record<string, string> = {
-  blue: '#3b82f6',
+  blue: '#006acc',
   green: '#10b981',
   orange: '#f97316',
   amber: '#f59e0b',

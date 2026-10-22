@@ -21,7 +21,7 @@ import { errorMessage } from '@shared/utils/error.utils';
         </span>
         <h2 class="mt-5 text-xl font-semibold text-slate-900">Defina sua senha</h2>
         <p class="mt-1 text-sm leading-6 text-slate-500">
-          Crie uma senha para acessar o Orbis. Use pelo menos 8 caracteres.
+          Crie uma senha para acessar o QualiQ. Use pelo menos 8 caracteres.
         </p>
         <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="submit()">
           <label class="block"

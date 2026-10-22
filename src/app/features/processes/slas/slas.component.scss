@@ -4,26 +4,6 @@
   gap: 12px;
 }
 
-.sla-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-
-  > .relative {
-    flex: 1 1 280px;
-    min-width: 260px;
-  }
-
-  > select {
-    min-width: 145px;
-  }
-
-  > label input {
-    min-width: 130px;
-  }
-}
-
 .sla-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

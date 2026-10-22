@@ -35,6 +35,7 @@ import type {
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
 import { EditHistoryComponent } from '@shared/components/edit-history/edit-history.component';
+import { CheckboxListComponent } from '@shared/components/checkbox-list/checkbox-list.component';
 import { ToastService } from '@shared/services/toast.service';
 import { DocumentsStore } from './documents.store';
 import { AuthService } from '@core/services/auth.service';
@@ -50,6 +51,7 @@ import { AuthService } from '@core/services/auth.service';
     DocumentViewerComponent,
     DocumentEditorComponent,
     EditHistoryComponent,
+    CheckboxListComponent,
   ],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss',

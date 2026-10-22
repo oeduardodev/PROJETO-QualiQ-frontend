@@ -79,8 +79,8 @@
         </section>
       </div>
     }
-    <div class="sla-filters">
-      <div class="relative flex-1 sm:max-w-sm">
+    <div class="sla-filters flex flex-wrap items-center gap-3">
+      <div class="relative w-full min-w-0">
         <span appIcon="Search" class="ui-search-icon"></span
         ><input
           [formControl]="search"
@@ -91,7 +91,7 @@
       </div>
       <select
         [formControl]="statusFilter"
-        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        class="min-w-[170px] flex-1 basis-[180px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
         aria-label="Filtrar por status"
       >
         <option value="all">Todos os status</option>
@@ -101,7 +101,7 @@
       </select>
       <select
         [formControl]="processFilter"
-        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        class="min-w-[220px] flex-1 basis-[230px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
         aria-label="Filtrar por processo"
       >
         <option value="all">Todos os processos</option>
@@ -111,7 +111,7 @@
       </select>
       <select
         [formControl]="criticalityFilter"
-        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        class="min-w-[195px] flex-1 basis-[180px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
         aria-label="Filtrar por criticidade"
       >
         <option value="all">Todas as criticidades</option>
@@ -121,25 +121,31 @@
         <option value="none">Não informada</option>
       </select>
       @if (!management) {
-        <label class="flex items-center gap-2 text-xs text-slate-500"
-          >Incidentes de
-          <input
-            type="date"
-            [formControl]="periodStart"
-            class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700"
-            aria-label="Início do período dos incidentes"
-          />
-        </label>
-        <label class="flex items-center gap-2 text-xs text-slate-500"
-          >até
-          <input
-            type="date"
-            [formControl]="periodEnd"
-            [min]="periodStart.value"
-            class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700"
-            aria-label="Fim do período dos incidentes"
-          />
-        </label>
+        <div
+          class="flex min-w-[min(100%,440px)] flex-[2_1_440px] flex-wrap justify-start gap-x-4 gap-y-[10px] sm:justify-end"
+          role="group"
+          aria-label="Período dos incidentes"
+        >
+          <label class="flex items-center gap-2 whitespace-nowrap text-xs text-slate-500"
+            >Incidentes de
+            <input
+              type="date"
+              [formControl]="periodStart"
+              class="w-[150px] min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700"
+              aria-label="Início do período dos incidentes"
+            />
+          </label>
+          <label class="flex items-center gap-2 whitespace-nowrap text-xs text-slate-500"
+            >até
+            <input
+              type="date"
+              [formControl]="periodEnd"
+              [min]="periodStart.value"
+              class="w-[150px] min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700"
+              aria-label="Fim do período dos incidentes"
+            />
+          </label>
+        </div>
       }
     </div>
     <section class="sla-grid" aria-label="Lista de SLAs">
@@ -279,13 +285,20 @@
 >
   @if (historySlaId(); as slaId) {
     @if (slaApprovalsById(slaId).length) {
-      <section class="mb-6 space-y-2 border-b border-slate-100 pb-5" aria-label="Decisões anteriores do SLA">
+      <section
+        class="mb-6 space-y-2 border-b border-slate-100 pb-5"
+        aria-label="Decisões anteriores do SLA"
+      >
         <h3 class="text-sm font-semibold text-slate-700">Decisões anteriores</h3>
         @for (approval of slaApprovalsById(slaId); track approval.id) {
           <p class="text-sm text-slate-600">
-            {{ management ? userName(approval.approver_id) : 'Sua decisão' }} ({{ approvalProcesses(approval) }}) ·
-            {{ approvalDecisionLabel(approval.decision) }} · {{ approval.decided_at ? formatHistoryDate(approval.decided_at) : 'Aguardando' }}
-            @if (approval.reason) { · {{ approval.reason }} }
+            {{ management ? userName(approval.approver_id) : 'Sua decisão' }} ({{
+              approvalProcesses(approval)
+            }}) · {{ approvalDecisionLabel(approval.decision) }} ·
+            {{ approval.decided_at ? formatHistoryDate(approval.decided_at) : 'Aguardando' }}
+            @if (approval.reason) {
+              · {{ approval.reason }}
+            }
           </p>
         }
       </section>
@@ -300,13 +313,21 @@
     <ol class="space-y-3">
       @for (entry of history(); track entry.id) {
         <li class="text-sm text-slate-600">
-          <strong>{{ historyActionLabel(entry.action) }}</strong> · {{ formatHistoryDate(entry.changed_at) }} · {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
-          @if (entry.justification) { <p class="text-slate-500">{{ entry.justification }}</p> }
+          <strong>{{ historyActionLabel(entry.action) }}</strong> ·
+          {{ formatHistoryDate(entry.changed_at) }} ·
+          {{ entry.changed_by ? userName(entry.changed_by) : 'Sistema' }}
+          @if (entry.justification) {
+            <p class="text-slate-500">{{ entry.justification }}</p>
+          }
           @for (change of historyChanges(entry); track change.label) {
-            <p class="text-slate-500">{{ change.label }}: {{ change.before }} → {{ change.after }}</p>
+            <p class="text-slate-500">
+              {{ change.label }}: {{ change.before }} → {{ change.after }}
+            </p>
           }
         </li>
-      } @empty { <li class="text-sm text-slate-500">Sem registros de alteração.</li> }
+      } @empty {
+        <li class="text-sm text-slate-500">Sem registros de alteração.</li>
+      }
     </ol>
   }
 </app-side-drawer>

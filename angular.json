@@ -8,7 +8,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "orbis": {
+    "qualiq": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -56,10 +56,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "orbis:build:production"
+              "buildTarget": "qualiq:build:production"
             },
             "development": {
-              "buildTarget": "orbis:build:development"
+              "buildTarget": "qualiq:build:development"
             }
           },
           "defaultConfiguration": "development"

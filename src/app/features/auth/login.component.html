@@ -1,63 +1,111 @@
-<div class="flex min-h-screen items-center justify-center bg-[#001021] p-4">
-  <div class="w-full max-w-md">
-    <div class="mb-8 text-center">
-      <img
-        src="/qualiq-logo.svg"
-        alt="QualiQ — Conheça. Decida. Melhore."
-        width="1230"
-        height="1130"
-        class="mx-auto mb-4 h-auto w-48 sm:w-52"
-      />
+<div class="login-page brand-login flex min-h-screen items-center justify-center p-4 lg:p-0">
+  <section class="login-story" aria-labelledby="login-story-title">
+    <div class="login-story-brand">
+      <img src="/qualiq-symbol.png" alt="QualiQ" width="1079" height="805" />
     </div>
-    <form
-      [formGroup]="form"
-      (ngSubmit)="submit()"
-      class="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl"
-    >
-      <label class="mb-1.5 block text-sm font-medium text-slate-300" for="email">E-mail</label>
-      <div class="relative mb-4">
-        <span appIcon="Mail" class="absolute left-3 top-3 h-4 w-4 text-slate-500"></span>
-        <input
-          id="email"
-          type="email"
-          formControlName="email"
-          autocomplete="email"
-          class="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          placeholder="seu@email.com"
+
+    <div class="login-story-stage" aria-hidden="true">
+      <div class="story-photo story-photo-team">
+        <img src="/login-equipe.webp" alt="" width="1200" height="800" />
+      </div>
+      <div class="story-photo story-photo-lead">
+          <img src="/login-profissional.webp" alt="" width="1024" height="1536" />
+      </div>
+      <div class="story-status"><span></span> Todos seus processos conectados</div>
+      <div class="story-dashboard">
+        <div class="story-dashboard-heading">
+          <span class="story-dashboard-icon" appIcon="ChartLine"></span>
+          <span>Visão da qualidade</span>
+        </div>
+        <div class="story-dashboard-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="story-dashboard-labels">
+          <span>Conheça</span><span>Decida</span><span>Melhore</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-story-copy">
+      <h1 id="login-story-title">Transforme dados em <span>decisões melhores.</span></h1>
+    </div>
+  </section>
+
+  <section class="login-auth flex w-full items-center justify-center" aria-label="Acessar o QualiQ">
+    <div class="w-full max-w-md">
+      <div class="mb-8 text-center lg:hidden">
+        <img
+          src="/qualiq-login-logo.png"
+          alt="QualiQ — Conheça. Decida. Melhore."
+          width="1701"
+          height="757"
+          class="mx-auto mb-4 h-auto w-72 sm:w-80"
         />
       </div>
-      <label class="mb-1.5 block text-sm font-medium text-slate-300" for="password">Senha</label>
-      <div class="relative mb-5">
-        <span appIcon="LockKeyhole" class="absolute left-3 top-3 h-4 w-4 text-slate-500"></span>
-        <input
-          id="password"
-          type="password"
-          formControlName="password"
-          autocomplete="current-password"
-          class="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          placeholder="••••••••"
+      <div class="login-desktop-heading">
+        <img
+          src="/qualiq-login-logo.png"
+          alt="QualiQ — Conheça. Decida. Melhore."
+          width="1701"
+          height="757"
         />
       </div>
-      @if (error()) {
-        <p
-          class="mb-4 rounded-lg border border-rose-900/70 bg-rose-950/50 p-3 text-sm text-rose-300"
-        >
-          {{ error() }}
-        </p>
-      }
-      <button
-        type="submit"
-        [disabled]="form.invalid || submitting()"
-        class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+      <form
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+        class="login-form rounded-2xl border border-slate-800 bg-slate-900/95 p-6 shadow-2xl"
       >
-        @if (submitting()) {
-          <span appIcon="LoaderCircle" class="h-4 w-4 animate-spin"></span>
+        <label class="mb-1.5 block text-sm font-medium text-slate-300" for="email">E-mail</label>
+        <div class="relative mb-4">
+          <span
+            appIcon="Mail"
+            class="login-input-icon absolute left-3 top-3 h-4 w-4 text-slate-500"
+          ></span>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            placeholder="seu@email.com"
+          />
+        </div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-300" for="password">Senha</label>
+        <div class="relative mb-5">
+          <span
+            appIcon="LockKeyhole"
+            class="login-input-icon absolute left-3 top-3 h-4 w-4 text-slate-500"
+          ></span>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            placeholder="••••••••"
+          />
+        </div>
+        @if (error()) {
+          <p
+            class="mb-4 rounded-lg border border-rose-900/70 bg-rose-950/50 p-3 text-sm text-rose-300"
+          >
+            {{ error() }}
+          </p>
         }
-        Entrar
-      </button>
-    </form>
-    <div class="mt-5 flex items-center justify-center gap-2 text-xs text-slate-500">
-      <span appIcon="ShieldCheck" class="h-4 w-4"></span> Acesso seguro e controlado
+        <button
+          type="submit"
+          [disabled]="form.invalid || submitting()"
+          class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          @if (submitting()) {
+            <span appIcon="LoaderCircle" class="h-4 w-4 animate-spin"></span>
+          }
+          Entrar
+        </button>
+      </form>
+      <div
+        class="login-security mt-5 flex items-center justify-center gap-2 text-xs text-slate-500"
+      >
+        <span appIcon="ShieldCheck" class="h-4 w-4"></span> Acesse seu espaço de trabalho.
+      </div>
     </div>
-  </div>
+  </section>
 </div>

@@ -188,7 +188,7 @@ export class SlasComponent {
     return this.risks().filter((risk) => ids.has(risk.id));
   });
   readonly summary = computed(() => [
-    { label: 'SLAs encontrados', value: this.filtered().length, icon: 'Gauge', color: '#2563eb' },
+    { label: 'SLAs encontrados', value: this.filtered().length, icon: 'Gauge', color: '#006acc' },
     {
       label: 'Incidentes no período',
       value: this.filteredTickets().length,
@@ -430,7 +430,6 @@ export class SlasComponent {
     const sla = this.slas().find((item) => item.id === id);
     return sla ? this.slaApprovals(sla) : [];
   }
-
 
   approvalDecisionLabel(decision: SlaApproval['decision']): string {
     return {

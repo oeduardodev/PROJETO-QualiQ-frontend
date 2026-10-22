@@ -331,14 +331,14 @@ export class ProcessManagementComponent {
     return (
       (
         {
-          blue: '#3b82f6',
-          green: '#10b981',
+          blue: '#006acc',
+          green: '#379951',
           orange: '#f97316',
           amber: '#f59e0b',
           rose: '#f43f5e',
           violet: '#8b5cf6',
         } as Record<string, string>
-      )[key ?? 'blue'] ?? '#3b82f6'
+      )[key ?? 'blue'] ?? '#006acc'
     );
   }
 }

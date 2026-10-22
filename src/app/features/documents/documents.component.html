@@ -679,13 +679,13 @@
         }
       </select></label
     >
-    <label class="ui-form-label flex flex-col sm:col-span-2 xl:order-2 xl:col-span-1"
-      >Aprovadores *<select multiple formControlName="approver_ids" class="flex-1">
-        @for (profile of store.profiles(); track profile.id) {
-          <option [value]="profile.id">{{ profile.name }}</option>
-        }
-      </select></label
-    >
+    <fieldset class="ui-form-label sm:col-span-2 xl:order-2 xl:col-span-1">
+      <legend>Aprovadores *</legend>
+      <app-checkbox-list
+        formControlName="approver_ids"
+        [options]="store.profiles()"
+      ></app-checkbox-list>
+    </fieldset>
     <label class="ui-form-label flex flex-col sm:col-span-2 xl:order-1 xl:col-span-3"
       >{{ editingDocument() ? 'Justificativa da alteração *' : 'Observação *'
       }}<textarea formControlName="justification" rows="3" class="flex-1"></textarea>
@@ -694,7 +694,7 @@
       @if (editingDocument()?.content_origin === 'legacy_pending') {
         <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
           Este registro contém apenas um link antigo. Importe o arquivo DOCX ou HTML para preservar
-          seu conteúdo no Orbis. O registro original permanece arquivado.
+          seu conteúdo no QualiQ. O registro original permanece arquivado.
         </p>
       }
       @if (editingDocument()?.content_origin === 'legacy_html') {

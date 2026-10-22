@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <path id="orbit" d="M64 9a55 55 0 1 1 0 110a55 55 0 1 1 0-110" />
+    <linearGradient id="brand" x1="10" y1="15" x2="118" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#39B2EA" />
+      <stop offset=".56" stop-color="#006ACC" />
+      <stop offset="1" stop-color="#5FD37A" />
+    </linearGradient>
+  </defs>
+  <text fill="url(#brand)" font-family="Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="1.1">
+    <textPath href="#orbit" textLength="330" lengthAdjust="spacing">QUALIQ • CONHEÇA • DECIDA • MELHORE • QUALIQ •</textPath>
+  </text>
+</svg>

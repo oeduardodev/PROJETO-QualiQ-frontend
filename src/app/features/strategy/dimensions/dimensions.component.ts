@@ -190,7 +190,9 @@ export class DimensionsComponent {
       if (requestId !== this.versionRequestId) return;
       this.versions.set(versions);
       const profiles = await this.profileRepository.findAll();
-      this.profileNames.set(Object.fromEntries(profiles.map((profile) => [profile.id, profile.name])));
+      this.profileNames.set(
+        Object.fromEntries(profiles.map((profile) => [profile.id, profile.name])),
+      );
       this.indicators.set(indicators);
       this.plans.set(plans);
       this.planStatuses.set(planStatuses);
@@ -438,7 +440,7 @@ export class DimensionsComponent {
     return (
       this.activeColors().find((option) => option.is_default)?.line_color ??
       this.activeColors()[0]?.line_color ??
-      '#2563eb'
+      '#006acc'
     );
   }
 
@@ -462,7 +464,9 @@ export class DimensionsComponent {
   }
 
   versionAuthor(version: DimensionVersion): string {
-    return (version.created_by && this.profileNames()[version.created_by]) || 'Usuário indisponível';
+    return (
+      (version.created_by && this.profileNames()[version.created_by]) || 'Usuário indisponível'
+    );
   }
 
   versionCreatedAt(version: DimensionVersion): string {

@@ -1,6 +1,6 @@
 <div class="flex min-h-screen bg-slate-100">
   <aside
-    class="hidden shrink-0 flex-col border-r border-slate-800 bg-slate-900 transition-all duration-300 lg:flex"
+    class="brand-sidebar hidden shrink-0 flex-col border-r border-slate-800 transition-all duration-300 lg:flex"
     [class.w-16]="collapsed()"
     [class.w-64]="!collapsed()"
   >
@@ -16,7 +16,7 @@
         aria-label="Fechar menu"
       ></button>
       <aside
-        class="relative flex w-64 animate-slide-in flex-col border-r border-slate-800 bg-slate-900"
+        class="brand-sidebar relative flex w-64 animate-slide-in flex-col border-r border-slate-800"
       >
         <ng-container [ngTemplateOutlet]="sidebar" [ngTemplateOutletContext]="{ mobile: true }" />
       </aside>
@@ -141,23 +141,20 @@
 
 <ng-template #sidebar let-mobile="mobile">
   <div
-    class="flex h-16 items-center border-b border-slate-800 px-4"
+    class="flex h-24 items-center border-b border-slate-800 px-4"
     [class.justify-center]="collapsed() && !mobile"
   >
-    <div class="flex items-center gap-2.5">
-      <span
-        class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-bold text-white shadow-lg shadow-blue-500/20"
-        >Q</span
-      >
-      @if (!collapsed() || mobile) {
-        <span class="leading-tight"
-          ><span class="block text-sm font-semibold text-white">SGQ</span
-          ><span class="block text-[10px] uppercase tracking-wider text-slate-500"
-            >Gestão da Qualidade</span
-          ></span
-        >
-      }
-    </div>
+    @if (collapsed() && !mobile) {
+      <img src="/qualiq-symbol.png" alt="QualiQ" width="1079" height="805" class="h-12 w-12 object-contain" />
+    } @else {
+      <img
+        src="/qualiq-sidebar.svg"
+        alt="QualiQ — Conheça. Decida. Melhore."
+        width="2159"
+        height="972"
+        class="h-auto w-48"
+      />
+    }
     @if (mobile) {
       <button
         type="button"
@@ -239,7 +236,7 @@
                       ></span>
                     </button>
                   }
-                  @if (expandedSubs().has(sub.id) || (collapsed() && !mobile)) {
+                  @if ((!collapsed() || mobile) && expandedSubs().has(sub.id)) {
                     @for (leaf of sub.leaves; track leaf.id) {
                       <a
                         [routerLink]="'/' + leaf.route"
@@ -247,14 +244,10 @@
                         (click)="mobileOpen.set(false)"
                         class="flex items-center rounded-lg py-2 text-sm text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
                         [class.justify-center]="collapsed() && !mobile"
-                        [class.gap-3]="!collapsed() || mobile"
                         [class.pl-12]="!collapsed() || mobile"
                         [class.pr-3]="!collapsed() || mobile"
                       >
-                        <span [appIcon]="leaf.icon" class="h-3.5 w-3.5 shrink-0"></span>
-                        @if (!collapsed() || mobile) {
-                          <span class="truncate">{{ leaf.label }}</span>
-                        }
+                        <span class="truncate">{{ leaf.label }}</span>
                       </a>
                     }
                   }

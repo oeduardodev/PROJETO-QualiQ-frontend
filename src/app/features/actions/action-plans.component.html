@@ -1,5 +1,8 @@
 ﻿@if (loading()) {
-  <div class="ui-page-loading">Carregando planos...</div>
+  <div class="ui-page-loading">
+    <span class="ui-loading-spinner" aria-hidden="true"></span>
+    <span>Carregando planos...</span>
+  </div>
 } @else if (error()) {
   <div class="ui-page-error">
     <p>{{ error() }}</p>
@@ -181,16 +184,18 @@
         >O quê? (What)<textarea rows="2" formControlName="what"></textarea>
       </label>
       <label class="ui-form-label"
-        >Por quê? (Why)<textarea rows="2" formControlName="why"></textarea></label
-      ><label class="ui-form-label">Onde? (Where)<input formControlName="where" /></label>
-      <label class="ui-form-label">Quando? (When)<input type="date" formControlName="when" /></label
-      ><label class="ui-form-label"
-        >Quem? (Who)<select multiple formControlName="participant_ids">
-          @for (p of profiles(); track p.id) {
-            <option [value]="p.id">{{ p.name }}</option>
-          }
-        </select></label
-      >
+        >Por quê?<textarea rows="2" formControlName="why"></textarea></label
+      ><label class="ui-form-label">Onde?<input formControlName="where" /></label>
+      <label class="ui-form-label"
+        >Quando? <input type="date" formControlName="when"
+      /></label>
+      <fieldset class="ui-form-label">
+        <legend>Quem?</legend>
+        <app-checkbox-list
+          formControlName="participant_ids"
+          [options]="profiles()"
+        ></app-checkbox-list>
+      </fieldset>
       <label class="ui-form-label"
         >Como? (How)<select formControlName="how_mode">
           <option value="text">Texto livre</option>

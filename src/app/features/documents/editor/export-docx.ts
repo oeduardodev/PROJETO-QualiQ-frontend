@@ -137,7 +137,7 @@ export function exportDocx(content: DocumentContent, title: string): Promise<Blo
   return Packer.toBlob(
     new Document({
       title,
-      creator: 'Orbis',
+      creator: 'QualiQ',
       styles: { default: { document: { run: { font: 'Arial', size: 24 } } } },
       numbering: {
         config: lists.map((list) => ({

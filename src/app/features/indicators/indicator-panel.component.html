@@ -1,5 +1,8 @@
 @if (loading()) {
-  <div class="ui-page-loading">Carregando indicadores...</div>
+  <div class="ui-page-loading">
+    <span class="ui-loading-spinner" aria-hidden="true"></span>
+    <span>Carregando indicadores...</span>
+  </div>
 } @else if (error()) {
   <div class="ui-page-error">
     <p>{{ error() }}</p>

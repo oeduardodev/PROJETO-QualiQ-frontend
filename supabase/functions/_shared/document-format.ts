@@ -73,7 +73,11 @@ export function imageData(node: DocumentContent) {
     let offset = 2;
     while (offset + 9 < data.length && data[offset] === 0xff) {
       const marker = data[offset + 1];
-      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+      if (
+        [0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(
+          marker,
+        )
+      ) {
         pixelHeight = view.getUint16(offset + 5);
         pixelWidth = view.getUint16(offset + 7);
         break;
@@ -83,9 +87,13 @@ export function imageData(node: DocumentContent) {
       offset += size + 2;
     }
   }
-  const positive = (value: unknown, fallback: number) => Number.isFinite(Number(value)) && Number(value) > 0 ? Math.min(10000, Number(value)) : fallback;
+  const positive = (value: unknown, fallback: number) =>
+    Number.isFinite(Number(value)) && Number(value) > 0 ? Math.min(10000, Number(value)) : fallback;
   const naturalWidth = positive(node.attrs?.['width'], positive(pixelWidth, 500));
-  const naturalHeight = positive(node.attrs?.['height'], positive(pixelHeight, 300) * naturalWidth / positive(pixelWidth, 500));
+  const naturalHeight = positive(
+    node.attrs?.['height'],
+    (positive(pixelHeight, 300) * naturalWidth) / positive(pixelWidth, 500),
+  );
   const scale = Math.min(1, 640 / naturalWidth, 900 / naturalHeight);
   return { src, data, type, width: naturalWidth * scale, height: naturalHeight * scale };
 }
@@ -197,7 +205,7 @@ function block(node: DocumentContent): PdfNode {
 
 export function pdfDefinition(content: DocumentContent, title: string) {
   return {
-    info: { title, creator: 'Orbis' },
+    info: { title, creator: 'QualiQ' },
     pageSize: 'A4',
     pageMargins: [56.7, 56.7, 56.7, 56.7],
     defaultStyle: { font: 'Roboto', fontSize: 12, lineHeight: 1.2, color: '#172033' },

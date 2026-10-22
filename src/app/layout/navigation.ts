@@ -20,6 +20,7 @@ function moduleForRoute(route: string): string {
   if (route === 'usuarios') return 'users';
   return 'dashboard';
 }
+
 export interface NavSubGroup {
   id: string;
   label: string;
@@ -56,7 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'monitoramento',
     label: 'Monitoramento',
-    color: 'bg-amber-400',
+    color: 'bg-blue-300',
     items: [
       {
         id: 'indicadores-group',
@@ -213,7 +214,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'acao',
     label: 'Melhoria',
-    color: 'bg-rose-400',
+    color: 'bg-emerald-500',
     items: [
       {
         id: 'planos-acao',
@@ -233,7 +234,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'administracao',
     label: 'Administração',
-    color: 'bg-violet-400',
+    color: 'bg-blue-600',
     items: [
       {
         id: 'usuarios',

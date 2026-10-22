@@ -75,13 +75,8 @@ export class UsersComponent {
     },
     {
       value: 'visualizador',
-      label: 'Assistente / visualizador',
+      label: 'Assistente',
       description: 'Consulta painéis e dashboards.',
-    },
-    {
-      value: 'operador',
-      label: 'Operador (perfil legado)',
-      description: 'Perfil antigo mantido para contas já cadastradas.',
     },
   ];
 

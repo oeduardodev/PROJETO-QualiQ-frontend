@@ -23,11 +23,11 @@ class PaletteHost {
 
 describe('QuickPaletteComponent', () => {
   beforeEach(() => {
-    localStorage.removeItem('orbis.quick-palette.colors.v1');
+    localStorage.removeItem('qualiq.quick-palette.colors.v1');
     TestBed.configureTestingModule({ imports: [PaletteHost] });
   });
 
-  afterEach(() => localStorage.removeItem('orbis.quick-palette.colors.v1'));
+  afterEach(() => localStorage.removeItem('qualiq.quick-palette.colors.v1'));
 
   it('keeps the existing form value and writes preset selections through ControlValueAccessor', () => {
     const fixture = TestBed.createComponent(PaletteHost);
@@ -73,7 +73,7 @@ describe('QuickPaletteComponent', () => {
     (root.querySelector('.palette-done') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(root.querySelector('.palette-popover')).toBeNull();
-    expect(localStorage.getItem('orbis.quick-palette.colors.v1')).toBeNull();
+    expect(localStorage.getItem('qualiq.quick-palette.colors.v1')).toBeNull();
 
     const secondFixture = TestBed.createComponent(PaletteHost);
     secondFixture.detectChanges();

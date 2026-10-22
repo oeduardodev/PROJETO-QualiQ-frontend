@@ -251,7 +251,7 @@ export class IndicatorPanelComponent {
     const ids = [this.selected()?.indicator.id, ...this.comparisonIds()].filter(
       (id): id is string => !!id,
     );
-    const colors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+    const colors = ['#006acc', '#db2777', '#379951', '#d97706', '#7c3aed', '#39b2ea'];
     return ids.map((id, index) => {
       const indicator = this.indicators().find((item) => item.id === id)!;
       const byMonth = new Map<string, IndicatorHistoryEntry>();

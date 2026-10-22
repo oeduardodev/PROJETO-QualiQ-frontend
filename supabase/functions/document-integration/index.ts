@@ -79,7 +79,11 @@ async function submitNative(
   ]);
   pdfMake.addVirtualFileSystem(fonts);
   const pdf = await pdfMake
-    .createPdf(pdfDefinition(document.content_json, document.title) as unknown as Parameters<typeof pdfMake.createPdf>[0])
+    .createPdf(
+      pdfDefinition(document.content_json, document.title) as unknown as Parameters<
+        typeof pdfMake.createPdf
+      >[0],
+    )
     .getBuffer();
   if (pdf.byteLength > 10485760) throw new Error('O PDF excede 10 MB. Reduza as imagens.');
   const path = `${userId}/${id}/${document.version}/${document.content_revision}/${crypto.randomUUID()}.pdf`;
@@ -142,6 +146,7 @@ async function sendCopy(id: string, userId: string) {
     headers: {
       Authorization: `Bearer ${resendKey}`,
       'Content-Type': 'application/json',
+      // Preserve the key for retries of copies created before the rebrand.
       'Idempotency-Key': `orbis-copy-${copy.id}`,
     },
     body: JSON.stringify({

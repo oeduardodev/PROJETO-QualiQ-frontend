@@ -29,7 +29,7 @@ export function textColorForBackground(value: string): '#0F172A' | '#FFFFFF' {
 }
 
 export function hexToHsv(hex: string): HsvColor {
-  const normalized = normalizeHex(hex) ?? '#3B82F6';
+  const normalized = normalizeHex(hex) ?? '#006ACC';
   const red = parseInt(normalized.slice(1, 3), 16) / 255;
   const green = parseInt(normalized.slice(3, 5), 16) / 255;
   const blue = parseInt(normalized.slice(5, 7), 16) / 255;

@@ -100,7 +100,7 @@
         <span>Brilho {{ hsv().brightness.toFixed(0) }}%</span>
       </div>
       <div class="palette-bottom">
-        <span class="palette-preview" [style.background-color]="value() || '#3B82F6'"></span>
+        <span class="palette-preview" [style.background-color]="value() || '#006ACC'"></span>
         <label class="palette-hex">
           <span>Cor HEX</span>
           <input
@@ -109,7 +109,7 @@
             autocomplete="off"
             spellcheck="false"
             maxlength="7"
-            placeholder="#3B82F6"
+            placeholder="#006ACC"
             [value]="hexDraft()"
             [attr.aria-invalid]="!validDraft()"
             (input)="onHexInput($event)"
@@ -125,7 +125,7 @@
         </button>
       </div>
       @if (!validDraft()) {
-        <p class="palette-error">Digite uma cor HEX válida, como #3B82F6.</p>
+        <p class="palette-error">Digite uma cor HEX válida, como #006ACC.</p>
       }
     </div>
   }

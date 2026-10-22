@@ -1,6 +1,10 @@
-# Orbis — Sistema de Gestão da Qualidade
+# QualiQ — Sistema de Gestão da Qualidade
 
-O **Orbis** é uma aplicação de **Sistema de Gestão da Qualidade (SGQ)** desenvolvida em **Angular 22**, mantendo os fluxos de negócio existentes, a integração com **Supabase** e a identidade visual baseada em **Tailwind CSS**.
+O **QualiQ** é uma aplicação de **Sistema de Gestão da Qualidade (SGQ)** desenvolvida em **Angular 22**, com integração ao **Supabase** e identidade visual baseada em **Tailwind CSS**. Sua proposta é transformar informação em conhecimento, decisão e melhoria contínua.
+
+## Identidade visual
+
+Os logotipos oficiais ficam em `public/qualiq-logo.svg`, `public/qualiq-horizontal.svg` e `public/qualiq-symbol.svg`. A paleta da marca usa azul (`#006ACC`, `#39B2EA`), verde (`#71ED8D`, `#379951`) e azul escuro (`#0A1128`). As cores compartilhadas estão em `tailwind.config.js`, e a tipografia Poppins é carregada localmente pelo pacote `@fontsource/poppins`.
 
 ## Requisitos
 

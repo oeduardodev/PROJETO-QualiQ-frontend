@@ -8,6 +8,7 @@ import { ProcessService } from '@features/processes/data-access/process.service'
 import { ProfileService } from '@core/services/profile.service';
 import { AuthService } from '@core/services/auth.service';
 import { SideDrawerComponent } from '@shared/components/side-drawer/side-drawer.component';
+import { CheckboxListComponent } from '@shared/components/checkbox-list/checkbox-list.component';
 import { ToastService } from '@shared/services/toast.service';
 import { errorMessage } from '@shared/utils/error.utils';
 import type {
@@ -24,7 +25,7 @@ import type {
 
 @Component({
   selector: 'app-action-plans',
-  imports: [ReactiveFormsModule, DatePipe, SideDrawerComponent],
+  imports: [ReactiveFormsModule, DatePipe, SideDrawerComponent, CheckboxListComponent],
   templateUrl: './action-plans.component.html',
   styleUrl: './action-plans.component.scss',
   host: { class: 'ui-standard-fields' },
