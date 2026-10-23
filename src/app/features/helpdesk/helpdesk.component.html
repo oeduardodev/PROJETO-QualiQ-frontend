@@ -61,10 +61,12 @@
           <div
             class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
             [style.border-color]="column.header_border"
+            (dragover)="$event.preventDefault()"
+            (drop)="onTicketDrop($event, column.key)"
           >
             @for (ticket of ticketsByStatus(column.key); track ticket.id) {
-              <article class="ui-kanban-card">
-                <button class="block w-full text-left" (click)="openEditTicket(ticket)">
+              <article class="ui-kanban-card" [draggable]="canManage(ticket)" (dragstart)="startTicketDrag($event, ticket)">
+                <button class="block w-full text-left" (click)="openTicketDetails(ticket)">
                   @if (ticket.code) {
                     <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
                       ticket.code
@@ -100,8 +102,11 @@
                     </button>
                   }
                   @if (canManage(ticket)) {
-                    <button class="ui-action-danger text-[11px]" (click)="deleteTicket(ticket)">
-                      Excluir
+                    <button class="text-[11px] font-medium text-slate-600" (click)="closeTicket(ticket)">
+                      Fechar
+                    </button>
+                    <button class="ui-action-history text-[11px]" (click)="openEditTicket(ticket)">
+                      Editar
                     </button>
                   }
                 </div>
@@ -117,7 +122,7 @@
 }
 <app-side-drawer
   [open]="formOpen()"
-  [title]="readOnly() ? 'Detalhes do Chamado' : editing() ? 'Editar Chamado' : 'Novo Chamado'"
+  [title]="viewing() ? 'Detalhes do Chamado' : editing() ? 'Editar Chamado' : 'Novo Chamado'"
   [subtitle]="editing() ? categoryLabel(editing()!.category) : ''"
   width="max-w-lg"
   (closed)="formOpen.set(false)"
@@ -164,6 +169,9 @@
       <button type="button" class="ui-button-secondary" (click)="formOpen.set(false)">
         Cancelar
       </button>
+      @if (viewing() && editing() && canManage(editing()!)) {
+        <button type="button" class="ui-button-secondary" (click)="editViewedTicket()">Editar</button>
+      }
       @if (!readOnly()) {
         <button type="submit" [disabled]="saving()" class="ui-button-primary">Salvar</button>
       }

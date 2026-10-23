@@ -74,6 +74,7 @@ export class HelpdeskComponent {
   readonly error = signal<string | null>(null);
   readonly formOpen = signal(false);
   readonly editing = signal<HelpdeskTicket | null>(null);
+  readonly viewing = signal(false);
   readonly historyTicket = signal<HelpdeskTicket | null>(null);
   readonly formError = signal<string | null>(null);
   readonly readOnly = signal(false);
@@ -163,6 +164,7 @@ export class HelpdeskComponent {
     )
       return;
     this.editing.set(null);
+    this.viewing.set(false);
     this.formError.set(null);
     this.readOnly.set(false);
     this.form.enable();
@@ -182,6 +184,7 @@ export class HelpdeskComponent {
 
   openEditTicket(ticket: HelpdeskTicket): void {
     this.editing.set(ticket);
+    this.viewing.set(false);
     this.formError.set(null);
     this.readOnly.set(!this.canManage(ticket));
     this.form.reset({
@@ -198,6 +201,31 @@ export class HelpdeskComponent {
     if (this.readOnly()) this.form.disable();
     else this.form.enable();
     this.formOpen.set(true);
+  }
+
+  openTicketDetails(ticket: HelpdeskTicket): void {
+    this.editing.set(ticket);
+    this.viewing.set(true);
+    this.readOnly.set(true);
+    this.formError.set(null);
+    this.form.reset({
+      title: ticket.title,
+      description: ticket.description ?? '',
+      category: ticket.category,
+      status: ticket.status,
+      priority: ticket.priority,
+      requester_name: ticket.requester_name ?? '',
+      assigned_to: ticket.assigned_to ?? '',
+      process_id: ticket.process_id ?? '',
+      justification: '',
+    });
+    this.form.disable();
+    this.formOpen.set(true);
+  }
+
+  editViewedTicket(): void {
+    const ticket = this.editing();
+    if (ticket && this.canManage(ticket)) this.openEditTicket(ticket);
   }
 
   async saveTicket(): Promise<void> {
@@ -231,8 +259,48 @@ export class HelpdeskComponent {
     if (!this.canManage(ticket)) return;
     const next = this.columns().find((option) => option.key === ticket.status)?.next_status_key;
     if (!next || !this.activeStatuses().some((option) => option.key === next)) return;
-    this.openEditTicket(ticket);
-    this.form.controls.status.setValue(next);
+    void this.persistStatus(ticket, next);
+  }
+
+  async moveTicket(ticket: HelpdeskTicket, status: HelpdeskStatus): Promise<void> {
+    if (!this.canManage(ticket) || ticket.status === status) return;
+    const target = this.columns().find((option) => option.key === status);
+    if (!target?.is_active) return;
+    if (target.is_terminal) {
+      this.openEditTicket(ticket);
+      this.form.controls.status.setValue(status);
+      return;
+    }
+    await this.persistStatus(ticket, status);
+  }
+
+  async closeTicket(ticket: HelpdeskTicket): Promise<void> {
+    if (!this.canManage(ticket)) return;
+    const terminal = this.activeStatuses().find((status) => status.is_terminal);
+    if (terminal && terminal.key !== ticket.status) await this.persistStatus(ticket, terminal.key);
+  }
+
+  private async persistStatus(ticket: HelpdeskTicket, status: HelpdeskStatus): Promise<void> {
+    try {
+      const updated = await this.helpdeskService.updateHelpdeskTicket(ticket.id, { status });
+      this.tickets.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      this.toast.success('Etapa do chamado atualizada');
+    } catch (e) {
+      this.toast.error(errorMessage(e, 'Erro ao atualizar etapa do chamado'));
+    }
+  }
+
+  onTicketDrop(event: DragEvent, status: HelpdeskStatus): void {
+    event.preventDefault();
+    const ticketId = event.dataTransfer?.getData('text/plain');
+    const ticket = this.tickets().find((item) => item.id === ticketId);
+    if (ticket) void this.moveTicket(ticket, status);
+  }
+
+  startTicketDrag(event: DragEvent, ticket: HelpdeskTicket): void {
+    if (!this.canManage(ticket) || !event.dataTransfer) return;
+    event.dataTransfer.setData('text/plain', ticket.id);
+    event.dataTransfer.effectAllowed = 'move';
   }
 
   async deleteTicket(ticket: HelpdeskTicket): Promise<void> {
