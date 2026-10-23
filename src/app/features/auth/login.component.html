@@ -9,7 +9,7 @@
         <img src="/login-equipe.webp" alt="" width="1200" height="800" />
       </div>
       <div class="story-photo story-photo-lead">
-          <img src="/login-profissional.webp" alt="" width="1024" height="1536" />
+        <img src="/login-profissional.webp" alt="" width="1024" height="1536" />
       </div>
       <div class="story-status"><span></span> Todos seus processos conectados</div>
       <div class="story-dashboard">
@@ -25,7 +25,7 @@
     </div>
 
     <div class="login-story-copy">
-      <h1 id="login-story-title">Transforme dados em <span>decisões melhores.</span></h1>
+      <h1 id="login-story-title">Transforme conhecimento em <span>decisões melhores.</span></h1>
     </div>
   </section>
 
@@ -100,6 +100,22 @@
           }
           Entrar
         </button>
+        <button
+          type="button"
+          (click)="sendPasswordLink()"
+          [disabled]="sendingPasswordLink()"
+          class="password-link mt-3 w-full text-center text-xs font-medium text-sky-300 hover:text-sky-200 disabled:opacity-50"
+        >
+          {{ sendingPasswordLink() ? 'Enviando link...' : 'Definir ou recuperar senha' }}
+        </button>
+        @if (passwordLinkMessage()) {
+          <p
+            class="mt-3 rounded-lg border border-emerald-900/70 bg-emerald-950/50 p-3 text-sm text-emerald-200"
+            role="status"
+          >
+            {{ passwordLinkMessage() }}
+          </p>
+        }
       </form>
       <div
         class="login-security mt-5 flex items-center justify-center gap-2 text-xs text-slate-500"
