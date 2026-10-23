@@ -143,7 +143,7 @@ export class DimensionsComponent {
   );
   readonly canManage = computed(
     () =>
-      this.auth.isAdmin() &&
+      this.auth.canEditPage('dimensoes') &&
       !this.loading() &&
       !this.error() &&
       this.selectedVersionId() === this.currentVersion()?.id,
@@ -386,14 +386,19 @@ export class DimensionsComponent {
   }
 
   openNewVersion(): void {
-    if (!this.auth.isAdmin()) return;
+    if (!this.auth.canEditPage('dimensoes')) return;
     this.versionLabel.setValue(`Planejamento ${new Date().getFullYear()}`);
     this.versionError.set(null);
     this.versionOpen.set(true);
   }
 
   async createVersion(): Promise<void> {
-    if (!this.auth.isAdmin() || this.versionSaving() || !this.versionLabel.value.trim()) return;
+    if (
+      !this.auth.canEditPage('dimensoes') ||
+      this.versionSaving() ||
+      !this.versionLabel.value.trim()
+    )
+      return;
     this.versionSaving.set(true);
     this.versionError.set(null);
     try {

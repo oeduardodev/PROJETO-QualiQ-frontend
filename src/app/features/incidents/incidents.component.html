@@ -16,7 +16,7 @@
         <p class="ui-page-subtitle">Registro, encaminhamento e acompanhamento das ocorrências</p>
       </div>
     </header>
-    @if (mode === 'realize') {
+    @if (mode === 'realize' && auth.canEditPage('incidentes/realizacao')) {
       <section class="ui-card max-w-3xl">
         <ng-container [ngTemplateOutlet]="ticketFields" />
       </section>
@@ -94,7 +94,7 @@
                       Histórico
                     </button>
                     @if (
-                      auth.isAdmin() &&
+                      auth.canEditPage('incidentes/painel') &&
                       ticket.status !== 'concluido' &&
                       ticket.status !== 'arquivado'
                     ) {
@@ -125,7 +125,7 @@
                         Enviar para validação
                       </button>
                     }
-                    @if (auth.isAdmin() && ticket.status === 'validacao') {
+                    @if (auth.canEditPage('incidentes/painel') && ticket.status === 'validacao') {
                       <button
                         class="ui-action-edit"
                         (click)="
@@ -151,8 +151,8 @@
       </div>
     }
     @if (mode === 'settings') {
-      @if (!auth.isAdmin()) {
-        <p class="ui-page-error">A parametrização é exclusiva dos administradores.</p>
+      @if (!auth.canEditPage('incidentes/parametrizacao')) {
+        <p class="ui-page-error">Você não tem autorização de edição para esta página.</p>
       } @else {
         <label class="ui-form-label max-w-sm"
           >Configurar<select
@@ -290,7 +290,7 @@
           #selectedClassification
           [value]="selectedClass()"
           (change)="selectClass(selectedClassification.value)"
-          [disabled]="!!editing() && !auth.isAdmin()"
+          [disabled]="!!editing() && !auth.canEditPage('incidentes/painel')"
         >
           <option value="">Selecionar...</option>
           @for (c of classifications(); track c.id) {
@@ -330,7 +330,7 @@
             class="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs font-normal text-blue-800"
           >
             A classificação {{ className(selectedClass()) }} não possui tipos ativos vinculados.
-            @if (auth.isAdmin()) {
+            @if (auth.canEditPage('incidentes/parametrizacao')) {
               Para cadastrar ou ativar um tipo, acesse
               <a
                 class="font-medium text-blue-700 underline"
@@ -427,7 +427,7 @@
         } @empty {
           <p class="text-xs text-slate-500">Nenhum plano vinculado.</p>
         }
-        @if (canTreat(ticket) || auth.isAdmin()) {
+        @if (canTreat(ticket) || auth.canEditPage('incidentes/painel')) {
           <a
             class="ui-button-secondary"
             routerLink="/planos-acao"

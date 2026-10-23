@@ -139,12 +139,17 @@ export class IncidentsComponent {
     this.types().filter((t) => t.active && t.classification_id === this.selectedClass()),
   );
   readonly managers = computed(() =>
-    this.profiles().filter((p) => p.role.toLowerCase() === 'gestor' || p.role.toLowerCase() === 'admin' || p.role.toLowerCase() === 'supervisor'),
+    this.profiles().filter(
+      (p) =>
+        p.role.toLowerCase() === 'gestor' ||
+        p.role.toLowerCase() === 'admin' ||
+        p.role.toLowerCase() === 'supervisor',
+    ),
   );
   readonly filteredTickets = computed(() =>
     this.tickets().filter(
       (t) =>
-        (this.auth.isAdmin() ||
+        (this.auth.role() === 'admin' ||
           t.assigned_to === this.auth.user()?.id ||
           t.created_by === this.auth.user()?.id) &&
         [t.code, t.title].join(' ').toLowerCase().includes(this.search().toLowerCase()) &&
@@ -243,16 +248,20 @@ export class IncidentsComponent {
 
   canTreat(ticket: Ticket): boolean {
     return (
-      ticket.assigned_to === this.auth.user()?.id && ['analise', 'plano'].includes(ticket.status)
+      this.auth.canEditPage('incidentes/painel') &&
+      ticket.assigned_to === this.auth.user()?.id &&
+      ['analise', 'plano'].includes(ticket.status)
     );
   }
 
   canEdit(): boolean {
     const t = this.editing();
     return (
-      !t ||
-      (this.auth.isAdmin() && !['concluido', 'arquivado'].includes(t.status)) ||
-      this.canTreat(t)
+      (!t && this.auth.canEditPage('incidentes/realizacao')) ||
+      (!!t &&
+        this.auth.canEditPage('incidentes/painel') &&
+        !['concluido', 'arquivado'].includes(t.status)) ||
+      (!!t && this.canTreat(t))
     );
   }
 
@@ -399,7 +408,7 @@ export class IncidentsComponent {
   }
 
   openClassification(item?: IncidentClassification): void {
-    if (!this.auth.isAdmin()) return;
+    if (!this.auth.canEditPage('incidentes/parametrizacao')) return;
     this.configKind.set('classification');
     this.editingClass.set(item ?? null);
     this.editingType.set(null);
@@ -418,7 +427,7 @@ export class IncidentsComponent {
   }
 
   openType(item?: IncidentType): void {
-    if (!this.auth.isAdmin()) return;
+    if (!this.auth.canEditPage('incidentes/parametrizacao')) return;
     this.configKind.set('type');
     this.editingType.set(item ?? null);
     this.editingClass.set(null);
@@ -435,7 +444,7 @@ export class IncidentsComponent {
   }
 
   async saveConfig(): Promise<void> {
-    if (!this.auth.isAdmin() || this.saving()) return;
+    if (!this.auth.canEditPage('incidentes/parametrizacao') || this.saving()) return;
     const v = this.config.getRawValue();
     const isClass = this.configKind() === 'classification';
     const schemaError = isClass ? validateSchema(this.schema()) : null;
@@ -502,7 +511,12 @@ export class IncidentsComponent {
   }
 
   async generateLink(): Promise<void> {
-    if (!this.auth.isAdmin() || this.saving() || !this.linkClass.value || !this.linkProcess.value)
+    if (
+      !this.auth.canEditPage('incidentes/parametrizacao') ||
+      this.saving() ||
+      !this.linkClass.value ||
+      !this.linkProcess.value
+    )
       return;
     this.saving.set(true);
     this.publicLink.set('');

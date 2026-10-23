@@ -336,8 +336,8 @@ export class IndicatorPanelComponent {
   }
 
   canAnalyze(indicator: Indicator): boolean {
-    if (!this.auth.can('create', 'indicators')) return false;
-    if (this.auth.isAdmin()) return true;
+    if (!this.auth.canEditPage('indicadores/painel')) return false;
+    if (this.auth.role() === 'admin') return true;
     const process = this.processes().find((item) => item.id === indicator.process_id);
     return !!process && process.category_id === this.auth.profile()?.category_id;
   }

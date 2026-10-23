@@ -78,7 +78,7 @@ export const NAV_GROUPS: NavGroup[] = [
           },
           {
             id: 'indicadores/cadastro',
-            label: 'Ficha do Indicador (Admin)',
+            label: 'Ficha do Indicador',
             icon: 'Target',
             route: 'indicadores/cadastro',
             adminOnly: true,
@@ -137,7 +137,7 @@ export const NAV_GROUPS: NavGroup[] = [
           },
           {
             id: 'riscos/gerenciamento',
-            label: 'Gerenciamento de Riscos (Admin)',
+            label: 'Gerenciamento de Riscos',
             icon: 'Shield',
             route: 'riscos/gerenciamento',
             adminOnly: true,
@@ -196,7 +196,7 @@ export const NAV_GROUPS: NavGroup[] = [
           },
           {
             id: 'incidentes/parametrizacao',
-            label: 'Parametrização e Tipos (Admin)',
+            label: 'Parametrização e Tipos',
             icon: 'SlidersHorizontal',
             route: 'incidentes/parametrizacao',
             adminOnly: true,
@@ -285,9 +285,8 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
 };
 
 export function visibleNavigation(
-  isOperator: boolean,
-  isAdmin: boolean,
   hasModuleAccess: (module: string) => boolean,
+  canEditPage: (page: string) => boolean,
 ): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
@@ -296,10 +295,10 @@ export function visibleNavigation(
         ...item,
         leaves: item.leaves.filter(
           (leaf) =>
-            (!leaf.adminOnly || isAdmin) &&
+            (!leaf.adminOnly ||
+              (leaf.route === 'usuarios' ? hasModuleAccess('users') : canEditPage(leaf.route))) &&
             hasModuleAccess(moduleForRoute(leaf.route)) &&
-            (isAdmin || leaf.id !== 'processos/gerenciamento') &&
-            (!isOperator || (!leaf.adminOnly && leaf.id !== 'processos/slas/gerenciamento')),
+            (leaf.route !== 'processos/slas/gerenciamento' || canEditPage(leaf.route)),
         ),
       }))
       .filter((item) => item.leaves.length),

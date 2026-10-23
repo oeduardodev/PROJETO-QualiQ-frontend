@@ -188,6 +188,7 @@ export class SipocComponent {
   }
 
   openCreateNode(type: NodeType): void {
+    if (!this.auth.canEditPage('processos/sipoc')) return;
     this.editingNode.set(null);
     this.nodeType.set(type);
     this.nodeForm.reset({ title: '', description: '', justification: '' });
@@ -207,6 +208,7 @@ export class SipocComponent {
   }
 
   openNodeEditor(node: SipocNode): void {
+    if (!this.auth.canEditPage('processos/sipoc')) return;
     this.editingNode.set(node);
     this.nodeType.set(node.node_type);
     this.nodeForm.reset({
@@ -329,6 +331,7 @@ export class SipocComponent {
   }
 
   async saveNode(): Promise<void> {
+    if (!this.auth.canEditPage('processos/sipoc')) return;
     if (this.nodeForm.invalid || !this.processControl.value) {
       this.nodeError.set('Título é obrigatório.');
       return;
@@ -389,6 +392,7 @@ export class SipocComponent {
   }
 
   async removeNode(): Promise<void> {
+    if (!this.auth.canEditPage('processos/sipoc')) return;
     const current = this.editingNode();
     if (!current || !(await this.alertDialog.confirm('Excluir este item?'))) return;
     try {

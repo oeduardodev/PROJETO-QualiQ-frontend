@@ -172,9 +172,11 @@ export class ActionPlansComponent {
   }
 
   canEdit(plan: ActionPlan | null = this.editing()): boolean {
-    return !plan
-      ? this.auth.isAdmin() || this.auth.isGestor()
-      : plan.active && (this.auth.isAdmin() || plan.owner_id === this.auth.user()?.id);
+    return (
+      this.auth.canEditPage('planos-acao') &&
+      (!plan ||
+        (plan.active && (this.auth.role() === 'admin' || plan.owner_id === this.auth.user()?.id)))
+    );
   }
 
   open(plan?: ActionPlan, ticketId = ''): void {
@@ -281,13 +283,14 @@ export class ActionPlansComponent {
   }
 
   begin(plan: ActionPlan, action: string, label: string, task?: ActionPlanTask): void {
+    if (!this.auth.canEditPage('planos-acao')) return;
     this.reason.reset();
     this.operation.set({ plan, action, label, task });
   }
 
   async confirmOperation(): Promise<void> {
     const op = this.operation();
-    if (!op || this.busy()) return;
+    if (!this.auth.canEditPage('planos-acao') || !op || this.busy()) return;
     if (!this.reason.value.trim()) {
       this.toast.error('Informe a justificativa.');
       return;
@@ -309,7 +312,8 @@ export class ActionPlansComponent {
 
   async addComment(): Promise<void> {
     const plan = this.editing();
-    if (!plan || this.busy() || !this.comment.value.trim()) return;
+    if (!this.auth.canEditPage('planos-acao') || !plan || this.busy() || !this.comment.value.trim())
+      return;
     this.busy.set(true);
     try {
       const saved = await this.service.comment(plan.id, this.comment.value.trim());
@@ -323,6 +327,7 @@ export class ActionPlansComponent {
   }
 
   async upload(event: Event): Promise<void> {
+    if (!this.auth.canEditPage('planos-acao')) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     const plan = this.editing();

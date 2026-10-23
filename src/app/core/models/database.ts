@@ -657,8 +657,20 @@ export interface Profile {
   receive_email_alerts?: boolean;
   is_department_head?: boolean;
   module_access?: string[];
+  edit_access?: string[];
+  custom_role_id?: string | null;
+  custom_role_name?: string | null;
+  avatar_path?: string | null;
   process_ids?: string[];
   created_at: string;
+}
+
+export interface CustomRole {
+  id: string;
+  name: string;
+  description: string;
+  module_access: string[];
+  edit_access: string[];
 }
 
 export interface ProfileProcess {

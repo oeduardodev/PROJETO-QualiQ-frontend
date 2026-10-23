@@ -7,6 +7,7 @@ import { AuthService } from '@core/services/auth.service';
 import { OperationInboxService } from '@core/services/operation-inbox.service';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { NAV_GROUPS, ROUTE_SUBTITLES, visibleNavigation } from './navigation';
+import { UserManagementService } from '@features/users/data-access/user-management.service';
 
 @Component({
   selector: 'app-shell',
@@ -19,6 +20,7 @@ export class AppShellComponent {
   readonly inbox = inject(OperationInboxService);
   readonly inboxOpen = signal(false);
   readonly auth = inject(AuthService);
+  private readonly userManagement = inject(UserManagementService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly collapsed = signal(false);
@@ -28,8 +30,9 @@ export class AppShellComponent {
   readonly expandedSubs = signal(new Set(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id))));
   readonly route = signal(this.router.url.slice(1).split('?')[0] || 'dashboard');
   readonly groups = computed(() =>
-    visibleNavigation(this.auth.isOperador(), this.auth.isAdmin(), (module) =>
-      this.auth.hasModuleAccess(module),
+    visibleNavigation(
+      (module) => this.auth.hasModuleAccess(module),
+      (page) => this.auth.canEditPage(page),
     ),
   );
   readonly leaves = computed(() =>
@@ -43,6 +46,7 @@ export class AppShellComponent {
   );
   readonly subtitle = computed(() => ROUTE_SUBTITLES[this.route()] ?? '');
   readonly roleLabel = computed(() => {
+    if (this.auth.profile()?.custom_role_name) return this.auth.profile()!.custom_role_name!;
     const role = this.auth.role();
     if (!role) return 'Usuário';
     const labels: Record<NonNullable<typeof role>, string> = {
@@ -57,6 +61,9 @@ export class AppShellComponent {
   });
   readonly initial = computed(() =>
     (this.auth.profile()?.short_name ?? this.auth.profile()?.name ?? '?').charAt(0).toUpperCase(),
+  );
+  readonly avatarUrl = computed(() =>
+    this.userManagement.avatarUrl(this.auth.profile()?.avatar_path),
   );
   readonly roleColor = computed(() =>
     this.auth.isAdmin()

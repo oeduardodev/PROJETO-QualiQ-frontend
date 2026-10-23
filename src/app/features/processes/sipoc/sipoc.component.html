@@ -23,7 +23,7 @@
         >
           <span appIcon="Info" class="h-4 w-4"></span>Metodologia
         </button>
-        @if (auth.isAdmin()) {
+        @if (auth.canEditPage('processos/gerenciamento')) {
           <a
             href="/processos/gerenciamento"
             class="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
@@ -117,7 +117,11 @@
                   [class.border-violet-400]="node.node_type === 'P' && selectedStepId() === node.id"
                   [class.bg-violet-50]="node.node_type === 'P'"
                 >
-                  <button class="block w-full text-left" (click)="openNode(node)">
+                  <button
+                    class="block w-full text-left"
+                    [disabled]="node.node_type !== 'P' && !auth.canEditPage('processos/sipoc')"
+                    (click)="openNode(node)"
+                  >
                     <span class="flex items-start justify-between gap-1"
                       ><span
                         class="text-sm font-medium"
@@ -162,12 +166,14 @@
                   }}
                 </p>
               }
-              <button
-                class="w-full rounded-lg border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-600"
-                (click)="openCreateNode(column.type)"
-              >
-                + Adicionar
-              </button>
+              @if (auth.canEditPage('processos/sipoc')) {
+                <button
+                  class="w-full rounded-lg border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                  (click)="openCreateNode(column.type)"
+                >
+                  + Adicionar
+                </button>
+              }
             </div>
           </section>
         }
@@ -230,13 +236,15 @@
                 Histórico
               </button>
             }
-            <button
-              type="button"
-              class="ui-action-edit text-xs font-medium"
-              (click)="editSelectedStep()"
-            >
-              Editar etapa
-            </button>
+            @if (auth.canEditPage('processos/sipoc')) {
+              <button
+                type="button"
+                class="ui-action-edit text-xs font-medium"
+                (click)="editSelectedStep()"
+              >
+                Editar etapa
+              </button>
+            }
           </div>
         </div>
         <div class="mt-4 grid grid-cols-5 gap-1.5 text-center">

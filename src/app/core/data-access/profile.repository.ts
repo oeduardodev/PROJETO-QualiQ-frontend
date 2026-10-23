@@ -32,12 +32,23 @@ export class ProfileRepository {
         }),
         timeout,
       ]);
-      return result && !result.error && result.data ? result.data : (basicProfile as Profile);
+      return result && !result.error && result.data
+        ? result.data
+        : this.restrictedFallback(basicProfile as Profile);
     } catch {
-      return basicProfile as Profile;
+      return this.restrictedFallback(basicProfile as Profile);
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  private restrictedFallback(profile: Profile): Profile {
+    return {
+      ...profile,
+      custom_role_id: 'profile-unavailable',
+      module_access: [],
+      edit_access: [],
+    };
   }
 
   async findAll(): Promise<Profile[]> {

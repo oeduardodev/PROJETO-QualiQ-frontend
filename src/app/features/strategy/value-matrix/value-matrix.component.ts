@@ -233,13 +233,13 @@ export class ValueMatrixComponent {
   }
 
   toggleManageMode(): void {
-    if (!this.auth.isAdmin() || this.reordering()) return;
+    if (!this.auth.canEditPage('valor') || this.reordering()) return;
     this.manageMode.update((active) => !active);
     this.draggedProcessId.set(null);
   }
 
   openCreateCategory(): void {
-    if (!this.auth.isAdmin() || !this.manageMode()) return;
+    if (!this.auth.canEditPage('valor') || !this.manageMode()) return;
     this.editingCategory.set(null);
     this.categoryError.set(null);
     this.categoryForm.reset({
@@ -252,7 +252,7 @@ export class ValueMatrixComponent {
   }
 
   openEditCategory(category: ValueChainCategory): void {
-    if (!this.auth.isAdmin() || !this.manageMode()) return;
+    if (!this.auth.canEditPage('valor') || !this.manageMode()) return;
     this.editingCategory.set(category);
     this.categoryError.set(null);
     this.categoryForm.reset({
@@ -266,7 +266,7 @@ export class ValueMatrixComponent {
 
   async saveCategory(): Promise<void> {
     if (
-      !this.auth.isAdmin() ||
+      !this.auth.canEditPage('valor') ||
       !this.manageMode() ||
       this.categoryForm.invalid ||
       this.categorySaving()
@@ -319,7 +319,7 @@ export class ValueMatrixComponent {
   }
 
   async moveCategory(categoryId: string, direction: -1 | 1): Promise<void> {
-    if (!this.auth.isAdmin() || !this.manageMode() || this.reordering()) return;
+    if (!this.auth.canEditPage('valor') || !this.manageMode() || this.reordering()) return;
     const lanes = [...this.categories()];
     const index = lanes.findIndex((lane) => lane.id === categoryId);
     const next = index + direction;
@@ -345,14 +345,19 @@ export class ValueMatrixComponent {
   }
 
   onDragStart(event: DragEvent, process: Process): void {
-    if (!this.auth.isAdmin() || !this.manageMode() || this.reordering()) return;
+    if (!this.auth.canEditPage('valor') || !this.manageMode() || this.reordering()) return;
     this.draggedProcessId.set(process.id);
     event.dataTransfer?.setData('text/plain', process.id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
   }
 
   onDragOver(event: DragEvent): void {
-    if (this.auth.isAdmin() && this.manageMode() && !this.reordering() && this.draggedProcessId()) {
+    if (
+      this.auth.canEditPage('valor') &&
+      this.manageMode() &&
+      !this.reordering() &&
+      this.draggedProcessId()
+    ) {
       event.preventDefault();
     }
   }
@@ -361,7 +366,8 @@ export class ValueMatrixComponent {
     event.preventDefault();
     const sourceId = this.draggedProcessId();
     this.draggedProcessId.set(null);
-    if (!this.auth.isAdmin() || !this.manageMode() || !sourceId || sourceId === targetId) return;
+    if (!this.auth.canEditPage('valor') || !this.manageMode() || !sourceId || sourceId === targetId)
+      return;
     const lane = this.categories().find((item) => item.id === categoryId);
     if (!lane) return;
     const from = lane.processes.findIndex((item) => item.id === sourceId);
@@ -380,7 +386,7 @@ export class ValueMatrixComponent {
   }
 
   private async reorderProcesses(categoryId: string, from: number, to: number): Promise<void> {
-    if (!this.auth.isAdmin() || !this.manageMode() || this.reordering()) return;
+    if (!this.auth.canEditPage('valor') || !this.manageMode() || this.reordering()) return;
     const lane = this.categories().find((item) => item.id === categoryId);
     if (!lane) return;
     const positions = lane.processes.map((process) => process.order_index);

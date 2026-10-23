@@ -1,0 +1,95 @@
+.permission-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  flex: none;
+  border-radius: 9999px;
+  background: #a9b5c5;
+  transition: background-color 150ms ease;
+}
+
+.permission-switch::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 18%);
+  content: '';
+  transition: transform 150ms ease;
+}
+
+.peer:checked + .permission-switch {
+  background: #0565e8;
+}
+
+.peer:checked + .permission-switch::after {
+  transform: translateX(18px);
+}
+
+.peer:focus-visible + .permission-switch {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.peer:disabled + .permission-switch {
+  opacity: 0.5;
+}
+
+.permission-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.permission-icon-blue {
+  background: #e9f1ff;
+  color: #2563eb;
+}
+.permission-icon-violet {
+  background: #f0edff;
+  color: #7c3aed;
+}
+.permission-icon-emerald {
+  background: #e2f9ed;
+  color: #10b981;
+}
+.permission-icon-slate {
+  background: #e9eef5;
+  color: #475569;
+}
+.permission-icon-amber {
+  background: #fff1d8;
+  color: #f59e0b;
+}
+.permission-icon-rose {
+  background: #ffe8ea;
+  color: #ef4444;
+}
+.permission-icon-cyan {
+  background: #e0f7fa;
+  color: #0891b2;
+}
+.permission-icon-orange {
+  background: #fff0e4;
+  color: #f97316;
+}
+.permission-icon-indigo {
+  background: #e9edff;
+  color: #4f46e5;
+}
+.permission-icon-teal {
+  background: #dff8f4;
+  color: #0d9488;
+}
+.permission-icon-purple {
+  background: #f4e9ff;
+  color: #9333ea;
+}

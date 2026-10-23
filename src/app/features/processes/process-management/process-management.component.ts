@@ -64,7 +64,7 @@ export class ProcessManagementComponent {
     complexity_score: new FormControl(5, { nonNullable: true }),
     maturity_level: new FormControl(1, { nonNullable: true }),
   });
-  readonly canManage = computed(() => this.auth.isAdmin());
+  readonly canManage = computed(() => this.auth.canEditPage('processos/gerenciamento'));
   readonly filtered = signal<Process[]>([]);
 
   constructor() {

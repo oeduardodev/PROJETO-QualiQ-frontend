@@ -24,7 +24,7 @@
         >
           <span appIcon="Info" class="h-4 w-4"></span>Metodologia
         </button>
-        @if (auth.isAdmin()) {
+        @if (auth.canEditPage('valor')) {
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium"
@@ -42,7 +42,7 @@
         }
       </div>
     </div>
-    @if (auth.isAdmin() && manageMode()) {
+    @if (auth.canEditPage('valor') && manageMode()) {
       <div
         class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
       >
@@ -103,7 +103,7 @@
               >
                 Histórico
               </button>
-              @if (auth.isAdmin() && manageMode()) {
+              @if (auth.canEditPage('valor') && manageMode()) {
                 <button
                   type="button"
                   class="matrix-icon-button"
@@ -142,13 +142,13 @@
                 <div
                   class="matrix-process-card group flex items-center gap-1 rounded-xl border bg-white px-2 py-2 transition hover:-translate-y-0.5 hover:shadow-md"
                   [class.matrix-dragging]="draggedProcessId() === process.id"
-                  [draggable]="auth.isAdmin() && manageMode() && !reordering()"
+                  [draggable]="auth.canEditPage('valor') && manageMode() && !reordering()"
                   (dragstart)="onDragStart($event, process)"
                   (dragend)="draggedProcessId.set(null)"
                   (dragover)="onDragOver($event)"
                   (drop)="onDrop($event, category.id, process.id)"
                 >
-                  @if (auth.isAdmin() && manageMode()) {
+                  @if (auth.canEditPage('valor') && manageMode()) {
                     <span
                       class="cursor-grab px-1 text-xs text-slate-400"
                       title="Arraste para ordenar"
@@ -177,7 +177,7 @@
                     }
                     <span appIcon="ChevronRight" class="h-4 w-4 shrink-0 text-slate-300"></span>
                   </button>
-                  @if (auth.isAdmin() && manageMode()) {
+                  @if (auth.canEditPage('valor') && manageMode()) {
                     <div class="flex shrink-0 items-center gap-0.5">
                       <button
                         type="button"

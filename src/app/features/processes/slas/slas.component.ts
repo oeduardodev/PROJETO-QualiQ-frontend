@@ -105,7 +105,7 @@ export class SlasComponent {
     notification_type_ids: new FormControl<string[]>([], { nonNullable: true }),
     justification: new FormControl('', { nonNullable: true }),
   });
-  readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
+  readonly canManage = computed(() => this.auth.canEditPage('processos/slas/gerenciamento'));
   readonly inputs = computed(() =>
     this.nodes().filter(
       (node) =>

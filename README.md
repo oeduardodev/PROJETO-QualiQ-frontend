@@ -42,6 +42,10 @@ public/env.js
 
 Por segurança e para evitar configurações específicas de ambiente no repositório, tanto o arquivo `.env` quanto o `public/env.js` gerado não são versionados.
 
+Para o primeiro acesso de usuários convidados, configure em **Supabase Auth → URL Configuration** o endereço `https://SEU-DOMINIO/definir-senha` na lista de redirecionamentos permitidos (e `http://localhost:4200/definir-senha` no desenvolvimento). A Edge Function `user-management` usa `PUBLIC_APP_ORIGIN` para enviar o convite a essa rota. Se o endereço não estiver permitido, o Supabase pode usar a Site URL no lugar.
+
+Em **Supabase Auth → Email Templates**, substitua o conteúdo dos modelos **Invite User** e **Reset Password** pelos arquivos `supabase/templates/invite-user.html` e `supabase/templates/reset-password.html`. Esses modelos levam o token à tela do app; a confirmação ocorre quando a pessoa envia a senha, evitando que a leitura automática do link por filtros de e-mail consuma o convite. Se usar SMTP próprio com rastreamento de cliques, desative o rastreamento para os e-mails de autenticação.
+
 ## Opções configuráveis no Supabase
 
 As opções dos formulários são consultadas no banco ao abrir a tela. Para alterar nomes, ordem ou disponibilidade, edite as tabelas de referência no Supabase e recarregue a página:
@@ -322,7 +326,13 @@ Essa divisão mantém a interface consistente sem transformar o arquivo global d
 
 ## Fluxos de Operação
 
-As migrações `20261016130000` a `20261016134000` implementam os fluxos auditados de documentos, cópias controladas, incidentes e planos de ação. Aplique-as no projeto Supabase antes de publicar o frontend. A criação e o reinício da revisão de documentos exigem perfil Admin; o responsável pode editar e enviar seu documento, e todos os aprovadores cadastrados precisam decidir com justificativa antes da publicação. A publicação preserva uma versão do conteúdo nativo. Cópias controladas usam o PDF imutável daquela versão, gerado no backend.
+### Usuários, cargos e foto de perfil
+
+A migração `20261022120000_custom_roles_edit_access_avatars.sql` cria cargos personalizados, autorizações de edição por página e o bucket de fotos. Aplique essa migração e reimplante a Edge Function `user-management` antes de publicar o frontend. Em **Usuários → Configuração**, um cargo define os módulos e as permissões iniciais. No cadastro de cada pessoa, o administrador pode ajustar a leitura por módulo e a edição por submódulo. O módulo de Usuários também pode ser concedido para consulta ou edição. As permissões de cada pessoa são salvas no perfil, de modo que ajustes individuais não são sobrescritos ao editar o cargo.
+
+Em **Meu perfil**, a pessoa pode enviar uma imagem JPG, PNG ou WebP de até 2 MB. A foto aparece no menu e na lista de usuários.
+
+As migrações `20261016130000` a `20261016134000` implementam os fluxos auditados de documentos, cópias controladas, incidentes e planos de ação. Aplique-as no projeto Supabase antes de publicar o frontend. A criação e o reinício da revisão de documentos exigem autorização de edição em Gerenciamento de Documentos; o responsável pode editar e enviar seu documento, e todos os aprovadores cadastrados precisam decidir com justificativa antes da publicação. A publicação preserva uma versão do conteúdo nativo. Cópias controladas usam o PDF imutável daquela versão, gerado no backend.
 
 O módulo de Documentos usa um editor nativo Tiptap, sem API ou redirecionamento ao Google Docs. Aplique a migração `20261018170000_native_documents.sql` e reimplante a Edge Function `document-integration` antes de publicar este frontend. A função gera os PDFs de aprovação e mantém o envio de cópias por e-mail. Configure `PUBLIC_APP_ORIGIN`; origens adicionais podem ser incluídas em `PUBLIC_APP_ADDITIONAL_ORIGINS` (separadas por vírgula), usado também por `user-management`. Para e-mail, configure `RESEND_API_KEY` e `RESEND_FROM`. Os antigos segredos `GOOGLE_*` não são mais utilizados.
 

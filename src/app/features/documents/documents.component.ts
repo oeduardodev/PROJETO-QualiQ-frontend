@@ -112,7 +112,7 @@ export class DocumentsComponent implements OnDestroy {
   );
   readonly today = new Date().toLocaleDateString('en-CA');
   readonly locked = DOCUMENTS_LOCKED;
-  readonly canManageTypes = computed(() => this.auth.isAdmin() || this.auth.isGestor());
+  readonly canManageTypes = computed(() => this.auth.canEditPage('documentos/hierarquia'));
   readonly searchValue = signal('');
   readonly search = new FormControl('', { nonNullable: true });
   readonly documentOpen = signal(false);
@@ -587,7 +587,7 @@ export class DocumentsComponent implements OnDestroy {
   }
 
   duplicateDocument(document: GEDDocument): void {
-    if (!this.auth.isAdmin() || this.documentOpen()) return;
+    if (!this.auth.canEditPage('documentos/gerenciamento') || this.documentOpen()) return;
     if (!document.content_json && !document.content_html && document.drive_link) {
       this.toast.error('Importe o conteúdo do documento antigo antes de duplicar.');
       return;
@@ -637,8 +637,8 @@ export class DocumentsComponent implements OnDestroy {
     return document
       ? !document.deleted_at &&
           ['rascunho', 'em_revisao'].includes(document.status) &&
-          (this.auth.isAdmin() || document.owner_id === this.auth.user()?.id)
-      : this.auth.isAdmin();
+          this.auth.canEditPage('documentos/gerenciamento')
+      : this.auth.canEditPage('documentos/gerenciamento');
   }
 
   steps() {

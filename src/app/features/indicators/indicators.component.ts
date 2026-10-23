@@ -465,7 +465,8 @@ export class IndicatorsComponent {
   }
 
   openCreateIndicator(): void {
-    if (!this.auth.isAdmin() || !this.activeStatusOptions().length) return;
+    if (!this.auth.canEditPage('indicadores/cadastro') || !this.activeStatusOptions().length)
+      return;
     this.editing.set(null);
     this.formError.set(null);
     this.form.reset({
@@ -494,7 +495,7 @@ export class IndicatorsComponent {
   }
 
   openEditIndicator(indicator: Indicator): void {
-    if (!this.auth.isAdmin()) return;
+    if (!this.auth.canEditPage('indicadores/cadastro')) return;
     this.editing.set(indicator);
     this.formError.set(null);
     this.form.reset({
@@ -532,7 +533,7 @@ export class IndicatorsComponent {
   }
 
   async saveIndicator(): Promise<void> {
-    if (this.formSaving() || !this.auth.isAdmin()) return;
+    if (this.formSaving() || !this.auth.canEditPage('indicadores/cadastro')) return;
     this.formError.set(null);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -676,8 +677,8 @@ export class IndicatorsComponent {
   }
 
   canAnalyze(indicator: Indicator): boolean {
-    if (!this.auth.can('create', 'indicators')) return false;
-    if (this.auth.isAdmin()) return true;
+    if (!this.auth.canEditPage('indicadores/alimentacao')) return false;
+    if (this.auth.role() === 'admin') return true;
     const process = this.processes().find((item) => item.id === indicator.process_id);
     return !!process && process.category_id === this.auth.profile()?.category_id;
   }

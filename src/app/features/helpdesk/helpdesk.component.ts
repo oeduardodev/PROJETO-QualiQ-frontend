@@ -155,6 +155,7 @@ export class HelpdeskComponent {
   }
 
   openCreateTicket(): void {
+    if (!this.auth.canEditPage('helpdesk')) return;
     if (
       !this.activeCategories().length ||
       !this.activePriorities().length ||
@@ -248,7 +249,10 @@ export class HelpdeskComponent {
 
   canManage(ticket: HelpdeskTicket): boolean {
     return (
-      this.auth.isAdmin() || this.auth.isGestor() || ticket.created_by === this.auth.user()?.id
+      this.auth.canEditPage('helpdesk') &&
+      (this.auth.role() === 'admin' ||
+        this.auth.isGestor() ||
+        ticket.created_by === this.auth.user()?.id)
     );
   }
 

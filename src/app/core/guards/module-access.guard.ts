@@ -14,8 +14,15 @@ export const moduleAccessGuard: CanActivateFn = async (route) => {
   // The root component handles unauthenticated sessions.
   if (!auth.profile()) return true;
 
-  if (route.data['adminOnly'] && !auth.isAdmin()) return router.createUrlTree(['/perfil']);
-  if (route.data['adminOrGestor'] && !auth.isAdmin() && !auth.isGestor()) {
+  const page = route.routeConfig?.path ?? '';
+  if (route.data['adminOnly'] && page === 'usuarios' && !auth.hasModuleAccess('users')) {
+    return router.createUrlTree(['/perfil']);
+  }
+  if (
+    (route.data['adminOnly'] || route.data['adminOrGestor']) &&
+    page !== 'usuarios' &&
+    !auth.canEditPage(page)
+  ) {
     return router.createUrlTree(['/perfil']);
   }
   const module = route.data['module'];

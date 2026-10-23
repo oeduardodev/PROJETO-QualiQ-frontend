@@ -13,7 +13,7 @@
       <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
         <span appIcon="Info" class="h-4 w-4"></span> Metodologia
       </button>
-      @if (auth.isAdmin() && !loading() && !error()) {
+      @if (auth.canEditPage('dimensoes') && !loading() && !error()) {
         <button class="ui-button-secondary" (click)="openNewVersion()">
           <span appIcon="GitBranch" class="h-4 w-4"></span> Nova versão
         </button>

@@ -24,8 +24,34 @@ const modules = new Set([
   'incidents',
   'helpdesk',
   'action_plans',
+  'users',
 ]);
 const inactiveBan = '876000h';
+const pageModules: Record<string, string> = {
+  dashboard: 'dashboard',
+  valor: 'strategy',
+  dimensoes: 'strategy',
+  'indicadores/painel': 'indicators',
+  'indicadores/alimentacao': 'indicators',
+  'indicadores/cadastro': 'indicators',
+  'processos/gerenciamento': 'processes',
+  'processos/sipoc': 'processes',
+  'processos/slas/painel': 'slas',
+  'processos/slas/gerenciamento': 'slas',
+  'riscos/painel': 'risks',
+  'riscos/gerenciamento': 'risks',
+  'documentos/painel': 'documents',
+  'documentos/hierarquia': 'documents',
+  'documentos/gerenciamento': 'documents',
+  'documentos/copias': 'documents',
+  'incidentes/realizacao': 'incidents',
+  'incidentes/painel': 'incidents',
+  'incidentes/parametrizacao': 'incidents',
+  helpdesk: 'helpdesk',
+  'planos-acao': 'action_plans',
+  usuarios: 'users',
+};
+const pages = new Set(Object.keys(pageModules));
 
 function cors(origin: string | null) {
   const allowedOrigin = origin && appOrigins.includes(origin.replace(/\/$/, '')) ? origin : '';
@@ -72,6 +98,15 @@ function stringArray(value: unknown, allowed?: Set<string>): string[] {
   return result;
 }
 
+function accessSelection(body: Record<string, unknown>) {
+  const module_access = stringArray(body.module_access, modules);
+  const edit_access = stringArray(body.edit_access, pages);
+  if (edit_access.some((page) => !module_access.includes(pageModules[page]))) {
+    throw new Error('Habilite o módulo antes de permitir edição em uma página.');
+  }
+  return { module_access, edit_access };
+}
+
 async function main(request: Request) {
   const origin = request.headers.get('Origin');
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors(origin) });
@@ -89,7 +124,7 @@ async function main(request: Request) {
 
   const { data: actor } = await admin
     .from('profiles')
-    .select('role,is_active')
+    .select('role,is_active,custom_role_id,edit_access,module_access')
     .eq('id', userData.user.id)
     .maybeSingle();
   if (!actor?.is_active) return json({ error: 'Usuário inativo.' }, 403, origin);
@@ -100,6 +135,19 @@ async function main(request: Request) {
       const name = requiredText(body.name, 'o nome completo', 200);
       const short_name = requiredText(body.short_name, 'o nome abreviado', 80);
       const birth_date = optionalDate(body.birth_date);
+      const avatar_path = body.avatar_path;
+      if (avatar_path !== undefined && avatar_path !== null) {
+        if (
+          typeof avatar_path !== 'string' ||
+          !new RegExp(`^${userData.user.id}/[a-zA-Z0-9_-]+\\.(jpg|png|webp)$`).test(avatar_path)
+        ) {
+          throw new Error('Foto de perfil inválida.');
+        }
+        const { data: avatar, error: avatarError } = await admin.storage
+          .from('profile-avatars')
+          .info(avatar_path);
+        if (avatarError || !avatar) throw new Error('Envie a foto antes de salvar o perfil.');
+      }
       const { error } = await admin
         .from('profiles')
         .update({
@@ -107,6 +155,7 @@ async function main(request: Request) {
           short_name,
           birth_date,
           receive_email_alerts: body.receive_email_alerts === true,
+          ...(avatar_path !== undefined ? { avatar_path } : {}),
         })
         .eq('id', userData.user.id);
       if (error) throw error;
@@ -125,15 +174,57 @@ async function main(request: Request) {
         .select('process_id')
         .eq('profile_id', userData.user.id);
       if (assignmentError) throw assignmentError;
+      let custom_role_name: string | null = null;
+      if (profile.custom_role_id) {
+        const { data: customRole } = await admin
+          .from('custom_roles')
+          .select('name')
+          .eq('id', profile.custom_role_id)
+          .maybeSingle();
+        custom_role_name = customRole?.name ?? null;
+      }
       return json(
-        { ...profile, process_ids: (assignments ?? []).map((item) => item.process_id) },
+        {
+          ...profile,
+          custom_role_name,
+          process_ids: (assignments ?? []).map((item) => item.process_id),
+        },
         200,
         origin,
       );
     }
 
-    if (actor.role !== 'admin')
-      return json({ error: 'Somente administradores podem gerir usuários.' }, 403, origin);
+    if (actor.role !== 'admin' || !actor.module_access?.includes('users'))
+      return json({ error: 'Sem acesso ao módulo de usuários.' }, 403, origin);
+    if (body.action === 'list_roles') {
+      const { data, error } = await admin.from('custom_roles').select('*').order('name');
+      if (error) throw error;
+      return json({ roles: data ?? [] }, 200, origin);
+    }
+    if (body.action === 'create_role' || body.action === 'update_role') {
+      if (!actor.edit_access?.includes('usuarios'))
+        return json({ error: 'Edição de usuários não autorizada.' }, 403, origin);
+      const name = requiredText(body.name, 'o nome do cargo', 80);
+      const description =
+        typeof body.description === 'string' ? body.description.trim().slice(0, 500) : '';
+      const access = accessSelection(body);
+      if (body.action === 'create_role') {
+        const { data, error } = await admin
+          .from('custom_roles')
+          .insert({ name, description, ...access })
+          .select('id')
+          .single();
+        if (error) throw error;
+        return json({ ok: true, id: data.id }, 200, origin);
+      }
+      if (typeof body.id !== 'string') throw new Error('Cargo inválido.');
+      const { error } = await admin
+        .from('custom_roles')
+        .update({ name, description, ...access })
+        .eq('id', body.id);
+      if (error) throw error;
+      return json({ ok: true, id: body.id }, 200, origin);
+    }
     if (body.action === 'list') {
       const [
         { data: profiles, error: profileError },
@@ -150,10 +241,16 @@ async function main(request: Request) {
         ids.push(item.process_id);
         assigned.set(item.profile_id, ids);
       }
+      const { data: customRoles, error: roleError } = await admin
+        .from('custom_roles')
+        .select('id,name');
+      if (roleError) throw roleError;
+      const roleNames = new Map((customRoles ?? []).map((role) => [role.id, role.name]));
       return json(
         {
           users: (profiles ?? []).map((profile) => ({
             ...profile,
+            custom_role_name: profile.custom_role_id ? roleNames.get(profile.custom_role_id) : null,
             process_ids: assigned.get(profile.id) ?? [],
           })),
         },
@@ -164,13 +261,26 @@ async function main(request: Request) {
     if (body.action !== 'create' && body.action !== 'update') {
       return json({ error: 'Ação inválida.' }, 400, origin);
     }
+    if (!actor.edit_access?.includes('usuarios'))
+      return json({ error: 'Edição de usuários não autorizada.' }, 403, origin);
 
     const name = requiredText(body.name, 'o nome completo', 200);
     const short_name = requiredText(body.short_name, 'o nome abreviado', 80);
     const registration_code = requiredText(body.registration_code, 'a matrícula ou documento', 80);
     const email = requiredText(body.email, 'um e-mail válido', 254).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Informe um e-mail válido.');
-    const role = requiredText(body.role, 'um perfil de acesso', 30).toLowerCase();
+    const custom_role_id = body.custom_role_id || null;
+    let role = requiredText(body.role, 'um perfil de acesso', 30).toLowerCase();
+    if (custom_role_id) {
+      if (typeof custom_role_id !== 'string') throw new Error('Cargo inválido.');
+      const { data: customRole, error } = await admin
+        .from('custom_roles')
+        .select('id')
+        .eq('id', custom_role_id)
+        .maybeSingle();
+      if (error || !customRole) throw new Error('Cargo não encontrado.');
+      role = 'admin';
+    }
     if (!roles.has(role)) throw new Error('Perfil de acesso inválido.');
     let category_id: string | null = null;
     if (role === 'gestor') {
@@ -188,10 +298,7 @@ async function main(request: Request) {
     const is_department_head = body.is_department_head === true;
     const birth_date = optionalDate(body.birth_date);
     const process_ids = stringArray(body.process_ids);
-    let module_access = stringArray(body.module_access, modules);
-    if (role === 'admin') module_access = [...modules];
-    if (role === 'visualizador') module_access = ['dashboard'];
-    if (!module_access.includes('dashboard')) module_access.unshift('dashboard');
+    const { module_access, edit_access } = accessSelection(body);
 
     if (process_ids.length) {
       const { data: processes, error } = await admin
@@ -219,11 +326,13 @@ async function main(request: Request) {
       registration_code,
       birth_date,
       role,
+      custom_role_id,
       category_id,
       is_active,
       receive_email_alerts,
       is_department_head,
       module_access,
+      edit_access,
     };
 
     if (body.action === 'create') {

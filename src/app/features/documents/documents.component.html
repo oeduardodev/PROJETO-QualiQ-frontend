@@ -15,7 +15,7 @@
         <p class="ui-page-subtitle">{{ subtitle }}</p>
       </div>
       <div class="flex gap-2">
-        @if (mode === 'management' && auth.isAdmin()) {
+        @if (mode === 'management' && auth.canEditPage('documentos/gerenciamento')) {
           <button
             class="ui-button-primary"
             [class.ui-locked]="locked"
@@ -301,7 +301,7 @@
                         Reprovar
                       </button>
                     }
-                    @if (auth.isAdmin()) {
+                    @if (auth.canEditPage('documentos/gerenciamento')) {
                       @if (document.status === 'aprovado') {
                         <button
                           class="text-xs text-blue-600"
@@ -371,7 +371,7 @@
                 <button class="ui-action-history text-xs" (click)="openWorkflow(document)">
                   Histórico
                 </button>
-                @if (auth.isAdmin()) {
+                @if (auth.canEditPage('documentos/gerenciamento')) {
                   <button
                     class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 hover:text-amber-700"
                     (click)="begin(document, 'revise', 'Reiniciar Workflow')"
@@ -471,7 +471,7 @@
                   {{ copy.status }}{{ copyOverdue(copy) ? ' · Atrasada' : '' }}
                 </td>
                 <td class="ui-table-cell">
-                  @if (auth.isAdmin()) {
+                  @if (auth.canEditPage('documentos/copias')) {
                     @if (copy.status === 'solicitada') {
                       <button class="ui-action-edit mr-2" (click)="beginCopy(copy, 'aprovada')">
                         Aprovar</button
@@ -513,7 +513,7 @@
     }
   </div>
 }
-@if (mode === 'management' && auth.isAdmin()) {
+@if (mode === 'management' && auth.canEditPage('documentos/gerenciamento')) {
   <section class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
     <button class="ui-button-secondary" (click)="showDeleted.set(!showDeleted())">
       Lixeira ({{ deletedDocuments().length }})
@@ -566,7 +566,7 @@
         <button class="ui-button-secondary mt-2" (click)="preview(document)">
           Visualizar documento
         </button>
-        @if (auth.isAdmin() && !document.deleted_at) {
+        @if (auth.canEditPage('documentos/gerenciamento') && !document.deleted_at) {
           <button class="ui-button-secondary mt-2" (click)="duplicateDocument(document)">
             Duplicar como rascunho
           </button>

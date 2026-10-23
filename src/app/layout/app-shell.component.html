@@ -86,8 +86,13 @@
           >
             <span
               class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-600"
-              >{{ initial() }}</span
             >
+              @if (avatarUrl(); as photo) {
+                <img [src]="photo" alt="" class="h-9 w-9 rounded-full object-cover" />
+              } @else {
+                {{ initial() }}
+              }
+            </span>
             <span class="hidden text-left sm:block"
               ><span class="block max-w-[120px] truncate text-xs font-medium text-slate-700">{{
                 auth.profile()?.short_name || auth.profile()?.name || 'Usuário'
@@ -145,7 +150,13 @@
     [class.justify-center]="collapsed() && !mobile"
   >
     @if (collapsed() && !mobile) {
-      <img src="/qualiq-symbol.png" alt="QualiQ" width="1079" height="805" class="h-12 w-12 object-contain" />
+      <img
+        src="/qualiq-symbol.png"
+        alt="QualiQ"
+        width="1079"
+        height="805"
+        class="h-12 w-12 object-contain"
+      />
     } @else {
       <img
         src="/qualiq-sidebar.svg"

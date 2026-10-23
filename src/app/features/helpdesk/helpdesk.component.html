@@ -13,16 +13,19 @@
       </div>
       <div class="flex gap-2">
         <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
-          <span appIcon="Info" class="h-4 w-4"></span>Metodologia</button
-        ><button
-          class="ui-button-primary"
-          [disabled]="
-            !activeCategories().length || !activePriorities().length || !activeStatuses().length
-          "
-          (click)="openCreateTicket()"
-        >
-          <span appIcon="Plus" class="h-4 w-4"></span>Novo Chamado
+          <span appIcon="Info" class="h-4 w-4"></span>Metodologia
         </button>
+        @if (auth.canEditPage('helpdesk')) {
+          <button
+            class="ui-button-primary"
+            [disabled]="
+              !activeCategories().length || !activePriorities().length || !activeStatuses().length
+            "
+            (click)="openCreateTicket()"
+          >
+            <span appIcon="Plus" class="h-4 w-4"></span>Novo Chamado
+          </button>
+        }
       </div>
     </div>
     <div class="flex flex-col gap-3 sm:flex-row">

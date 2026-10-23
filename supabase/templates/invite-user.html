@@ -1,0 +1,11 @@
+<h2>Você foi convidado para acessar o QualiQ</h2>
+<p>
+  Use este botão para abrir o cadastro da sua senha. O link leva ao formulário para a conta
+  {{ .Email }}.
+</p>
+<p>
+  <a href="{{ .RedirectTo }}?type=invite&amp;token_hash={{ .TokenHash }}&amp;email={{ .Email }}">
+    Definir minha senha
+  </a>
+</p>
+<p>Se você não esperava este convite, pode ignorar esta mensagem.</p>

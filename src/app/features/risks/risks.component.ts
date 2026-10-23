@@ -133,8 +133,8 @@ export class RisksComponent {
     owner_id: new FormControl('', { nonNullable: true }),
     justification: new FormControl('', { nonNullable: true }),
   });
-  readonly canManage = computed(() => this.auth.isAdmin() || this.auth.isGestor());
-  readonly canApprove = this.auth.isAdmin;
+  readonly canManage = computed(() => this.auth.canEditPage('riscos/gerenciamento'));
+  readonly canApprove = computed(() => this.auth.canEditPage('riscos/gerenciamento'));
   readonly visibleRisks = computed(() =>
     this.management
       ? this.risks()

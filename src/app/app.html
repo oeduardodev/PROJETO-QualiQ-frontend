@@ -1,5 +1,7 @@
 @if (publicIncident) {
   <app-public-incident />
+} @else if (passwordSetup) {
+  <app-set-password />
 } @else if (auth.loading()) {
   <div class="ui-loading-screen flex min-h-screen items-center justify-center bg-slate-100">
     <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
