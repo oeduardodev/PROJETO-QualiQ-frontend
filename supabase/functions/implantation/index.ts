@@ -163,11 +163,14 @@ Deno.serve(async (request: Request) => {
       const monthlyLimit = Number(body.ai_monthly_limit);
       if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 0 || monthlyLimit > 1_000_000)
         throw new Error('Limite mensal inválido.');
+      const adminEmail = text(body.admin_email, 'o e-mail do administrador', 254);
+      if (adminEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail))
+        throw new Error('E-mail do administrador inválido.');
       const values = {
         name,
         legal_name: text(body.legal_name, 'a razão social', 200),
         registration_number: text(body.registration_number, 'o documento', 80),
-        contact_email: text(body.contact_email, 'o e-mail', 254),
+        admin_email: adminEmail,
         status,
         plan_id: planId,
         ai_mode: aiMode,
@@ -234,11 +237,14 @@ Deno.serve(async (request: Request) => {
       const establishmentId = uuid(body.establishment_id);
       const { data: establishment, error: establishmentError } = await admin
         .from('establishments')
-        .select('id,status')
+        .select('id,status,admin_email')
         .eq('id', establishmentId)
         .single();
       if (establishmentError || establishment.status !== 'active')
         throw new Error('Ative o estabelecimento antes de criar o administrador.');
+      const email = establishment.admin_email?.trim().toLowerCase();
+      if (!email)
+        throw new Error('Informe o e-mail do administrador no cadastro do estabelecimento.');
       const { count, error: countError } = await admin
         .from('profiles')
         .select('id', { count: 'exact', head: true })
@@ -246,8 +252,6 @@ Deno.serve(async (request: Request) => {
       if (countError) throw countError;
       if (count !== 0) throw new Error('O estabelecimento já possui usuários.');
       const name = text(body.name, 'o nome', 200, true)!;
-      const email = text(body.email, 'o e-mail', 254, true)!.toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('E-mail inválido.');
       const shortName = name.split(' ')[0];
       const { data: enabled } = await admin
         .from('establishment_modules')

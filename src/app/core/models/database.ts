@@ -653,7 +653,7 @@ export interface Establishment {
   name: string;
   legal_name: string | null;
   registration_number: string | null;
-  contact_email: string | null;
+  admin_email: string | null;
   status: 'active' | 'suspended' | 'inactive';
   plan_id: 'start' | 'pro' | 'corporate';
   ai_mode: 'disabled' | 'enabled';

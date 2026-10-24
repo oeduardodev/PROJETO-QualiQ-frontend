@@ -38,7 +38,6 @@ export class ImplantationComponent {
   readonly error = signal('');
   readonly notice = signal('');
   readonly adminName = signal('');
-  readonly adminEmail = signal('');
   readonly adminCode = signal('');
   readonly form = signal<EstablishmentForm>(this.emptyForm());
   readonly selected = computed(
@@ -52,7 +51,7 @@ export class ImplantationComponent {
       return (
         (this.statusFilter() === 'all' || item.status === this.statusFilter()) &&
         (!query ||
-          [item.name, item.legal_name, item.registration_number, item.contact_email].some((value) =>
+          [item.name, item.legal_name, item.registration_number, item.admin_email].some((value) =>
             value?.toLocaleLowerCase('pt-BR').includes(query),
           ))
       );
@@ -83,7 +82,7 @@ export class ImplantationComponent {
       name: '',
       legal_name: null,
       registration_number: null,
-      contact_email: null,
+      admin_email: null,
       status: 'active',
       plan_id: 'start',
       ai_mode: 'disabled',
@@ -138,7 +137,7 @@ export class ImplantationComponent {
       name: item.name,
       legal_name: item.legal_name,
       registration_number: item.registration_number,
-      contact_email: item.contact_email,
+      admin_email: item.admin_email,
       status: item.status,
       plan_id: item.plan_id,
       ai_mode: item.ai_mode,
@@ -226,13 +225,11 @@ export class ImplantationComponent {
         action: 'create_admin',
         establishment_id: this.selectedId(),
         name: this.adminName(),
-        email: this.adminEmail(),
         registration_code: this.adminCode(),
       });
       const current = this.selected();
       if (current) await this.select(current);
       this.adminName.set('');
-      this.adminEmail.set('');
       this.adminCode.set('');
       this.notice.set('Administrador convidado. O acesso será concluído pelo e-mail enviado.');
     } catch (error) {

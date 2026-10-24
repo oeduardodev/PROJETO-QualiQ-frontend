@@ -104,7 +104,7 @@
             >
             <span class="mt-1 block text-xs text-slate-500"
               >{{ planName(item.plan_id) }} ·
-              {{ item.contact_email || 'Sem e-mail de contato' }}</span
+              {{ item.admin_email || 'Sem administrador definido' }}</span
             >
           </button>
         } @empty {
@@ -150,13 +150,13 @@
               name="registration_number"
           /></label>
           <label class="text-sm text-slate-700"
-            >E-mail de contato<input
+            >E-mail do administrador<input
               type="email"
               maxlength="254"
               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              [ngModel]="form().contact_email"
-              (ngModelChange)="patchForm({ contact_email: $event })"
-              name="contact_email"
+              [ngModel]="form().admin_email"
+              (ngModelChange)="patchForm({ admin_email: $event })"
+              name="admin_email"
           /></label>
           <label class="text-sm text-slate-700"
             >Plano<select
@@ -294,9 +294,9 @@
             <form class="border-t border-slate-200 pt-5" (ngSubmit)="createAdmin()">
               <h4 class="font-medium text-slate-800">Administrador inicial</h4>
               <p class="mt-1 text-xs text-slate-500">
-                Um convite será enviado para definir a senha.
+                Um convite será enviado para o e-mail do administrador informado no cadastro.
               </p>
-              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+              <div class="mt-3 grid gap-2 sm:grid-cols-2">
                 <input
                   required
                   placeholder="Nome completo"
@@ -305,15 +305,6 @@
                   [ngModel]="adminName()"
                   (ngModelChange)="adminName.set($event)"
                   name="adminName"
-                /><input
-                  required
-                  type="email"
-                  placeholder="E-mail"
-                  aria-label="E-mail do administrador"
-                  class="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  [ngModel]="adminEmail()"
-                  (ngModelChange)="adminEmail.set($event)"
-                  name="adminEmail"
                 /><input
                   placeholder="Matrícula (opcional)"
                   aria-label="Matrícula do administrador"
@@ -326,7 +317,7 @@
               <button
                 type="submit"
                 class="ui-button-primary mt-3"
-                [disabled]="busy() || form().status !== 'active'"
+                [disabled]="busy() || form().status !== 'active' || !form().admin_email"
               >
                 Convidar administrador
               </button>
