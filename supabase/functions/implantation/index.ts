@@ -10,8 +10,11 @@ const origins = new Set(
     .map((value) => value.trim().replace(/\/$/, ''))
     .filter(Boolean),
 );
-// The secondary local port is used when another QualiQ dev server owns 4200.
+// Local dev ports
+origins.add('http://localhost:4200');
 origins.add('http://localhost:4300');
+origins.add('http://127.0.0.1:4200');
+origins.add('http://127.0.0.1:4300');
 const admin = createClient(url, serviceKey);
 const baseModules = [
   'dashboard',
@@ -163,13 +166,21 @@ Deno.serve(async (request: Request) => {
       const monthlyLimit = Number(body.ai_monthly_limit);
       if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 0 || monthlyLimit > 1_000_000)
         throw new Error('Limite mensal inválido.');
+      const adminName = text(body.admin_name, 'o nome do administrador', 200);
       const adminEmail = text(body.admin_email, 'o e-mail do administrador', 254);
       if (adminEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail))
         throw new Error('E-mail do administrador inválido.');
+      if (!adminEmail && adminName) {
+        throw new Error('Informe o e-mail do administrador junto ao nome do administrador.');
+      }
+      if (adminEmail && !adminName) {
+        throw new Error('Informe o nome do administrador junto ao e-mail do administrador.');
+      }
       const values = {
         name,
         legal_name: text(body.legal_name, 'a razão social', 200),
         registration_number: text(body.registration_number, 'o documento', 80),
+        admin_name: adminName,
         admin_email: adminEmail,
         status,
         plan_id: planId,
@@ -237,7 +248,7 @@ Deno.serve(async (request: Request) => {
       const establishmentId = uuid(body.establishment_id);
       const { data: establishment, error: establishmentError } = await admin
         .from('establishments')
-        .select('id,status,admin_email')
+        .select('id,status,admin_email,admin_name')
         .eq('id', establishmentId)
         .single();
       if (establishmentError || establishment.status !== 'active')
@@ -251,7 +262,10 @@ Deno.serve(async (request: Request) => {
         .eq('establishment_id', establishmentId);
       if (countError) throw countError;
       if (count !== 0) throw new Error('O estabelecimento já possui usuários.');
-      const name = text(body.name, 'o nome', 200, true)!;
+      const name =
+        text(body.name, 'o nome do administrador', 200, true) ??
+        establishment.admin_name?.trim() ??
+        text(establishment.admin_email?.split('@')[0], 'o nome do administrador', 200, true)!;
       const shortName = name.split(' ')[0];
       const { data: enabled } = await admin
         .from('establishment_modules')
@@ -262,7 +276,11 @@ Deno.serve(async (request: Request) => {
         .map((item) => item.module_id)
         .filter((id) => id === 'helpdesk');
       const requestOrigin = origin?.replace(/\/$/, '') ?? '';
-      const inviteOrigin = origins.has(requestOrigin) ? requestOrigin : [...origins][0];
+      const inviteOrigin = origins.has(requestOrigin)
+        ? requestOrigin
+        : Deno.env.get('PUBLIC_APP_ORIGIN')?.replace(/\/$/, '') && origins.has(Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, ''))
+          ? Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, '')
+          : [...origins][0];
       const redirectTo = inviteOrigin ? `${inviteOrigin}/definir-senha` : undefined;
       const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
         email,

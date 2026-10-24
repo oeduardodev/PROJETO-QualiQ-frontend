@@ -5,6 +5,10 @@ const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const appOrigins = [
   Deno.env.get('PUBLIC_APP_ORIGIN') ?? '',
+  'http://localhost:4200',
+  'http://127.0.0.1:4200',
+  'http://localhost:4300',
+  'http://127.0.0.1:4300',
   Deno.env.get('PUBLIC_APP_ADDITIONAL_ORIGINS') ?? '',
 ]
   .join(',')
@@ -385,7 +389,11 @@ async function main(request: Request) {
 
     if (body.action === 'create') {
       const requestOrigin = origin?.replace(/\/$/, '') ?? '';
-      const inviteOrigin = appOrigins.includes(requestOrigin) ? requestOrigin : appOrigins[0];
+      const inviteOrigin = appOrigins.includes(requestOrigin)
+        ? requestOrigin
+        : Deno.env.get('PUBLIC_APP_ORIGIN')?.replace(/\/$/, '') && appOrigins.includes(Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, ''))
+          ? Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, '')
+          : appOrigins[0];
       const redirectTo = inviteOrigin ? `${inviteOrigin}/definir-senha` : undefined;
       const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email, {
         data: { name, short_name },

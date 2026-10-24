@@ -104,7 +104,7 @@
             >
             <span class="mt-1 block text-xs text-slate-500"
               >{{ planName(item.plan_id) }} ·
-              {{ item.admin_email || 'Sem administrador definido' }}</span
+              {{ item.admin_name || item.admin_email || 'Sem administrador definido' }}</span
             >
           </button>
         } @empty {
@@ -125,7 +125,7 @@
         </div>
         <form class="grid gap-3 sm:grid-cols-2" (ngSubmit)="save()">
           <label class="sm:col-span-2 text-sm text-slate-700"
-            >Nome *<input
+            >Nome da Empresa *<input
               required
               maxlength="200"
               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -149,15 +149,25 @@
               (ngModelChange)="patchForm({ registration_number: $event })"
               name="registration_number"
           /></label>
-          <label class="text-sm text-slate-700"
-            >E-mail do administrador<input
-              type="email"
-              maxlength="254"
-              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              [ngModel]="form().admin_email"
-              (ngModelChange)="patchForm({ admin_email: $event })"
-              name="admin_email"
-          /></label>
+          <div class="grid gap-1 sm:col-span-2 sm:grid-cols-2">
+            <label class="text-sm text-slate-700"
+              >Nome do administrador<input
+                maxlength="200"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                [ngModel]="form().admin_name"
+                (ngModelChange)="patchForm({ admin_name: $event })"
+                name="admin_name"
+            /></label>
+            <label class="text-sm text-slate-700"
+              >E-mail do administrador<input
+                type="email"
+                maxlength="254"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                [ngModel]="form().admin_email"
+                (ngModelChange)="patchForm({ admin_email: $event })"
+                name="admin_email"
+            /></label>
+          </div>
           <label class="text-sm text-slate-700"
             >Plano<select
               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -290,39 +300,32 @@
               }
             </div>
           </div>
-          @if (!users().length) {
-            <form class="border-t border-slate-200 pt-5" (ngSubmit)="createAdmin()">
-              <h4 class="font-medium text-slate-800">Administrador inicial</h4>
-              <p class="mt-1 text-xs text-slate-500">
-                Um convite será enviado para o e-mail do administrador informado no cadastro.
-              </p>
-              <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                <input
-                  required
-                  placeholder="Nome completo"
-                  aria-label="Nome do administrador"
-                  class="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  [ngModel]="adminName()"
-                  (ngModelChange)="adminName.set($event)"
-                  name="adminName"
-                /><input
-                  placeholder="Matrícula (opcional)"
-                  aria-label="Matrícula do administrador"
-                  class="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  [ngModel]="adminCode()"
-                  (ngModelChange)="adminCode.set($event)"
-                  name="adminCode"
-                />
+          <div class="border-t border-slate-200 pt-5">
+            <h4 class="font-medium text-slate-800">Administradores</h4>
+            @if (users().length) {
+              <div class="mt-3 space-y-2">
+                @for (user of users(); track user.id) {
+                  <div class="flex justify-between gap-3 rounded-lg bg-slate-50 p-3 text-sm">
+                    <span>{{ user.name }} <span class="text-slate-500">· {{ user.email }}</span></span>
+                    <span class="text-slate-500">{{ user.role }}{{ user.is_active ? '' : ' · inativo' }}</span>
+                  </div>
+                }
               </div>
+            } @else {
+              <p class="mt-1 text-xs text-slate-500">
+                Nenhum administrador vinculado. O convite será enviado para o e-mail do administrador
+                informado no cadastro.
+              </p>
               <button
-                type="submit"
+                type="button"
                 class="ui-button-primary mt-3"
                 [disabled]="busy() || form().status !== 'active' || !form().admin_email"
+                (click)="createAdmin()"
               >
                 Convidar administrador
               </button>
-            </form>
-          }
+            }
+          </div>
         }
       </section>
     } @else {

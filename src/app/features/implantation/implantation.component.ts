@@ -37,8 +37,6 @@ export class ImplantationComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
-  readonly adminName = signal('');
-  readonly adminCode = signal('');
   readonly form = signal<EstablishmentForm>(this.emptyForm());
   readonly selected = computed(
     () => this.establishments().find((item) => item.id === this.selectedId()) ?? null,
@@ -51,7 +49,13 @@ export class ImplantationComponent {
       return (
         (this.statusFilter() === 'all' || item.status === this.statusFilter()) &&
         (!query ||
-          [item.name, item.legal_name, item.registration_number, item.admin_email].some((value) =>
+          [
+            item.name,
+            item.legal_name,
+            item.registration_number,
+            item.admin_name,
+            item.admin_email,
+          ].some((value) =>
             value?.toLocaleLowerCase('pt-BR').includes(query),
           ))
       );
@@ -82,6 +86,7 @@ export class ImplantationComponent {
       name: '',
       legal_name: null,
       registration_number: null,
+      admin_name: null,
       admin_email: null,
       status: 'active',
       plan_id: 'start',
@@ -137,6 +142,7 @@ export class ImplantationComponent {
       name: item.name,
       legal_name: item.legal_name,
       registration_number: item.registration_number,
+      admin_name: item.admin_name,
       admin_email: item.admin_email,
       status: item.status,
       plan_id: item.plan_id,
@@ -224,13 +230,9 @@ export class ImplantationComponent {
       await this.invoke({
         action: 'create_admin',
         establishment_id: this.selectedId(),
-        name: this.adminName(),
-        registration_code: this.adminCode(),
       });
       const current = this.selected();
       if (current) await this.select(current);
-      this.adminName.set('');
-      this.adminCode.set('');
       this.notice.set('Administrador convidado. O acesso será concluído pelo e-mail enviado.');
     } catch (error) {
       this.error.set(this.message(error));
