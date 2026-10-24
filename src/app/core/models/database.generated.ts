@@ -3471,7 +3471,8 @@ export type Database = {
         | 'binario_booleano'
         | 'outro';
       sla_criticality_level: 'baixa' | 'media' | 'alta' | 'critica';
-      user_role: 'admin' | 'gestor' | 'operador' | 'analista' | 'auditor' | 'visualizador';
+      user_role:
+        'admin' | 'gestor' | 'operador' | 'analista' | 'auditor' | 'visualizador' | 'implantacao';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -3635,7 +3636,15 @@ export const Constants = {
         'outro',
       ],
       sla_criticality_level: ['baixa', 'media', 'alta', 'critica'],
-      user_role: ['admin', 'gestor', 'operador', 'analista', 'auditor', 'visualizador'],
+      user_role: [
+        'admin',
+        'gestor',
+        'operador',
+        'analista',
+        'auditor',
+        'visualizador',
+        'implantacao',
+      ],
     },
   },
 } as const;

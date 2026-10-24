@@ -123,6 +123,8 @@ Gera o build de produção da aplicação e valida possíveis erros de compilaç
 
 ## Arquitetura
 
+O isolamento multi-tenant, a conta global de Implantação, os planos, módulos e o procedimento de migração estão descritos em [Implantação e isolamento por estabelecimento](docs/implantation-multitenant.md).
+
 A aplicação segue uma organização baseada em responsabilidades, separando infraestrutura, regras de acesso a dados, funcionalidades e elementos compartilhados.
 
 ```text

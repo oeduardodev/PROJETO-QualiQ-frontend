@@ -60,10 +60,31 @@ async function submitNative(
   authorization: string,
 ) {
   if (typeof reason !== 'string' || !reason.trim()) throw new Error('Informe a justificativa.');
-  const { data: document, error } = await admin.from('documents').select('*').eq('id', id).single();
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role,establishment_id,edit_access,is_active')
+    .eq('id', userId)
+    .single();
+  const { data: establishment } = await admin
+    .from('establishments')
+    .select('status')
+    .eq('id', profile?.establishment_id ?? '')
+    .maybeSingle();
+  if (
+    !profile?.is_active ||
+    !profile.establishment_id ||
+    establishment?.status !== 'active' ||
+    !profile.edit_access?.includes('documentos/gerenciamento')
+  )
+    throw new Error('Envio não autorizado.');
+  const { data: document, error } = await admin
+    .from('documents')
+    .select('*')
+    .eq('id', id)
+    .eq('establishment_id', profile.establishment_id)
+    .single();
   if (error || !document || document.updated_at !== expected)
     throw new Error('Documento alterado. Recarregue a página.');
-  const { data: profile } = await admin.from('profiles').select('role').eq('id', userId).single();
   if (
     !profile ||
     (profile.role.toLowerCase() !== 'admin' && document.owner_id !== userId) ||
@@ -112,13 +133,28 @@ async function submitNative(
 }
 
 async function sendCopy(id: string, userId: string) {
-  const { data: profile } = await admin.from('profiles').select('role').eq('id', userId).single();
-  if (profile?.role?.toLowerCase() !== 'admin')
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role,is_active,establishment_id')
+    .eq('id', userId)
+    .single();
+  const { data: establishment } = await admin
+    .from('establishments')
+    .select('status')
+    .eq('id', profile?.establishment_id ?? '')
+    .maybeSingle();
+  if (
+    profile?.role?.toLowerCase() !== 'admin' ||
+    !profile.is_active ||
+    !profile.establishment_id ||
+    establishment?.status !== 'active'
+  )
     throw new Error('Somente administradores podem enviar cópias.');
   const { data: copy, error } = await admin
     .from('controlled_copies')
     .select('*,documents(title,code)')
     .eq('id', id)
+    .eq('establishment_id', profile.establishment_id)
     .single();
   if (error || !copy || !['aprovada', 'entregue'].includes(copy.status) || copy.emailed_at)
     throw new Error('Cópia não aprovada ou já enviada.');

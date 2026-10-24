@@ -16,6 +16,10 @@ interface TableDefinition<Row, Generated extends keyof Row = never> {
 export interface AppDatabase {
   public: {
     Tables: {
+      establishments: TableDefinition<Establishment>;
+      establishment_modules: TableDefinition<EstablishmentModule>;
+      module_catalog: TableDefinition<ModuleCatalogEntry>;
+      plans: TableDefinition<QualiqPlan>;
       value_chain_categories: TableDefinition<ValueChainCategory>;
       processes: TableDefinition<Process>;
       process_history: TableDefinition<ProcessHistory>;
@@ -644,6 +648,40 @@ export interface ActionPlan {
 
 export type UserRole = GeneratedDatabase['public']['Enums']['user_role'];
 
+export interface Establishment {
+  id: string;
+  name: string;
+  legal_name: string | null;
+  registration_number: string | null;
+  contact_email: string | null;
+  status: 'active' | 'suspended' | 'inactive';
+  plan_id: 'start' | 'pro' | 'corporate';
+  ai_mode: 'disabled' | 'enabled';
+  ai_monthly_limit: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EstablishmentModule {
+  establishment_id: string;
+  module_id: string;
+  enabled: boolean;
+  updated_at: string;
+}
+
+export interface ModuleCatalogEntry {
+  id: string;
+  name: string;
+  is_base: boolean;
+  implemented: boolean;
+}
+
+export interface QualiqPlan {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Profile {
   id: string;
   name: string;
@@ -652,6 +690,7 @@ export interface Profile {
   registration_code?: string | null;
   birth_date?: string | null;
   role: UserRole;
+  establishment_id?: string | null;
   category_id: string | null;
   is_active?: boolean;
   receive_email_alerts?: boolean;

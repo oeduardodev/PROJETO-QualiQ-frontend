@@ -255,6 +255,7 @@ export const NAV_GROUPS: NavGroup[] = [
 ];
 
 export const ROUTE_SUBTITLES: Record<string, string> = {
+  implantacao: 'Estabelecimentos, planos e módulos',
   dashboard: 'Visão geral do sistema de gestão da qualidade',
   usuarios: 'Perfis, responsabilidades e módulos de acesso',
   perfil: 'Seus dados pessoais e preferências',

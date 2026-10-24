@@ -26,6 +26,7 @@ const modules = new Set([
   'action_plans',
   'users',
 ]);
+const baseModules = new Set([...modules].filter((module) => module !== 'helpdesk'));
 const inactiveBan = '876000h';
 const pageModules: Record<string, string> = {
   dashboard: 'dashboard',
@@ -124,10 +125,29 @@ async function main(request: Request) {
 
   const { data: actor } = await admin
     .from('profiles')
-    .select('role,is_active,custom_role_id,edit_access,module_access')
+    .select('role,is_active,custom_role_id,edit_access,module_access,establishment_id')
     .eq('id', userData.user.id)
     .maybeSingle();
   if (!actor?.is_active) return json({ error: 'Usuário inativo.' }, 403, origin);
+  if (actor.role === 'implantacao') {
+    const body = await request.json();
+    if (body.action !== 'get_self')
+      return json({ error: 'Acesso restrito ao módulo Implantação.' }, 403, origin);
+    const { data: profile, error } = await admin
+      .from('profiles')
+      .select('*')
+      .eq('id', userData.user.id)
+      .single();
+    return error ? json({ error: error.message }, 400, origin) : json(profile, 200, origin);
+  }
+  if (!actor.establishment_id) return json({ error: 'Estabelecimento ausente.' }, 403, origin);
+  const { data: establishment } = await admin
+    .from('establishments')
+    .select('status')
+    .eq('id', actor.establishment_id)
+    .single();
+  if (establishment?.status !== 'active')
+    return json({ error: 'Estabelecimento indisponível.' }, 403, origin);
 
   try {
     const body = await request.json();
@@ -197,7 +217,11 @@ async function main(request: Request) {
     if (actor.role !== 'admin' || !actor.module_access?.includes('users'))
       return json({ error: 'Sem acesso ao módulo de usuários.' }, 403, origin);
     if (body.action === 'list_roles') {
-      const { data, error } = await admin.from('custom_roles').select('*').order('name');
+      const { data, error } = await admin
+        .from('custom_roles')
+        .select('*')
+        .eq('establishment_id', actor.establishment_id)
+        .order('name');
       if (error) throw error;
       return json({ roles: data ?? [] }, 200, origin);
     }
@@ -211,7 +235,7 @@ async function main(request: Request) {
       if (body.action === 'create_role') {
         const { data, error } = await admin
           .from('custom_roles')
-          .insert({ name, description, ...access })
+          .insert({ name, description, ...access, establishment_id: actor.establishment_id })
           .select('id')
           .single();
         if (error) throw error;
@@ -221,7 +245,8 @@ async function main(request: Request) {
       const { error } = await admin
         .from('custom_roles')
         .update({ name, description, ...access })
-        .eq('id', body.id);
+        .eq('id', body.id)
+        .eq('establishment_id', actor.establishment_id);
       if (error) throw error;
       return json({ ok: true, id: body.id }, 200, origin);
     }
@@ -230,8 +255,15 @@ async function main(request: Request) {
         { data: profiles, error: profileError },
         { data: assignments, error: assignmentError },
       ] = await Promise.all([
-        admin.from('profiles').select('*').order('name'),
-        admin.from('profile_processes').select('profile_id,process_id'),
+        admin
+          .from('profiles')
+          .select('*')
+          .eq('establishment_id', actor.establishment_id)
+          .order('name'),
+        admin
+          .from('profile_processes')
+          .select('profile_id,process_id')
+          .eq('establishment_id', actor.establishment_id),
       ]);
       if (profileError) throw profileError;
       if (assignmentError) throw assignmentError;
@@ -243,7 +275,8 @@ async function main(request: Request) {
       }
       const { data: customRoles, error: roleError } = await admin
         .from('custom_roles')
-        .select('id,name');
+        .select('id,name')
+        .eq('establishment_id', actor.establishment_id);
       if (roleError) throw roleError;
       const roleNames = new Map((customRoles ?? []).map((role) => [role.id, role.name]));
       return json(
@@ -277,6 +310,7 @@ async function main(request: Request) {
         .from('custom_roles')
         .select('id')
         .eq('id', custom_role_id)
+        .eq('establishment_id', actor.establishment_id)
         .maybeSingle();
       if (error || !customRole) throw new Error('Cargo não encontrado.');
       role = 'admin';
@@ -289,6 +323,7 @@ async function main(request: Request) {
         .from('value_chain_categories')
         .select('id')
         .eq('id', category_id)
+        .eq('establishment_id', actor.establishment_id)
         .maybeSingle();
       if (error) throw error;
       if (!category) throw new Error('A área selecionada não existe.');
@@ -299,12 +334,23 @@ async function main(request: Request) {
     const birth_date = optionalDate(body.birth_date);
     const process_ids = stringArray(body.process_ids);
     const { module_access, edit_access } = accessSelection(body);
+    if (module_access.some((module) => !baseModules.has(module))) {
+      const { data: enabled } = await admin
+        .from('establishment_modules')
+        .select('module_id')
+        .eq('establishment_id', actor.establishment_id)
+        .eq('enabled', true);
+      const allowed = new Set((enabled ?? []).map((item) => item.module_id));
+      if (module_access.some((module) => !baseModules.has(module) && !allowed.has(module)))
+        throw new Error('Módulo adicional não habilitado para este estabelecimento.');
+    }
 
     if (process_ids.length) {
       const { data: processes, error } = await admin
         .from('processes')
         .select('id')
-        .in('id', process_ids);
+        .in('id', process_ids)
+        .eq('establishment_id', actor.establishment_id);
       if (error) throw error;
       if ((processes ?? []).length !== process_ids.length)
         throw new Error('Um ou mais processos selecionados não existem.');
@@ -315,6 +361,7 @@ async function main(request: Request) {
       .select('id')
       .ilike('registration_code', registration_code)
       .neq('id', body.id ?? '00000000-0000-0000-0000-000000000000')
+      .eq('establishment_id', actor.establishment_id)
       .maybeSingle();
     if (codeError) throw codeError;
     if (codeMatch) throw new Error('Esta matrícula ou documento já está em uso.');
@@ -333,6 +380,7 @@ async function main(request: Request) {
       is_department_head,
       module_access,
       edit_access,
+      establishment_id: actor.establishment_id,
     };
 
     if (body.action === 'create') {
@@ -355,7 +403,13 @@ async function main(request: Request) {
         if (process_ids.length) {
           const { error: processError } = await admin
             .from('profile_processes')
-            .insert(process_ids.map((process_id) => ({ profile_id: invited.user.id, process_id })));
+            .insert(
+              process_ids.map((process_id) => ({
+                profile_id: invited.user.id,
+                process_id,
+                establishment_id: actor.establishment_id,
+              })),
+            );
           if (processError) throw processError;
         }
         if (!is_active) {
@@ -374,10 +428,12 @@ async function main(request: Request) {
     if (typeof body.id !== 'string') throw new Error('Usuário inválido.');
     const { data: current, error: currentError } = await admin
       .from('profiles')
-      .select('email')
+      .select('email,role')
       .eq('id', body.id)
+      .eq('establishment_id', actor.establishment_id)
       .single();
     if (currentError) throw currentError;
+    if (current.role === 'implantacao') throw new Error('Papel global protegido.');
 
     const emailChanged = (current.email ?? '').toLowerCase() !== email;
     if (emailChanged) {
@@ -397,17 +453,25 @@ async function main(request: Request) {
     const { error: profileError } = await admin
       .from('profiles')
       .update(profileValues)
-      .eq('id', body.id);
+      .eq('id', body.id)
+      .eq('establishment_id', actor.establishment_id);
     if (profileError) throw profileError;
     const { error: clearError } = await admin
       .from('profile_processes')
       .delete()
-      .eq('profile_id', body.id);
+      .eq('profile_id', body.id)
+      .eq('establishment_id', actor.establishment_id);
     if (clearError) throw clearError;
     if (process_ids.length) {
       const { error } = await admin
         .from('profile_processes')
-        .insert(process_ids.map((process_id) => ({ profile_id: body.id, process_id })));
+        .insert(
+          process_ids.map((process_id) => ({
+            profile_id: body.id,
+            process_id,
+            establishment_id: actor.establishment_id,
+          })),
+        );
       if (error) throw error;
     }
     return json({ ok: true, id: body.id }, 200, origin);

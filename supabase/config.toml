@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.user-management]
 verify_jwt = true
+
+[functions.implantation]
+verify_jwt = true

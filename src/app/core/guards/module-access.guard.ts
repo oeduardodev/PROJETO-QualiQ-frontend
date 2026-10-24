@@ -15,6 +15,9 @@ export const moduleAccessGuard: CanActivateFn = async (route) => {
   if (!auth.profile()) return true;
 
   const page = route.routeConfig?.path ?? '';
+  if (auth.isImplantation()) {
+    return page === 'implantacao' ? true : router.createUrlTree(['/implantacao']);
+  }
   if (route.data['adminOnly'] && page === 'usuarios' && !auth.hasModuleAccess('users')) {
     return router.createUrlTree(['/perfil']);
   }

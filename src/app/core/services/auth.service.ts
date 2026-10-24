@@ -9,6 +9,7 @@ type PermissionAction = 'read' | 'create' | 'update' | 'delete';
 type AppRole = UserRole;
 
 const DEFAULT_MODULES: Record<AppRole, string[]> = {
+  implantacao: ['implantation'],
   admin: [
     'dashboard',
     'strategy',
@@ -98,12 +99,15 @@ export class AuthService {
   readonly session = signal<Session | null>(null);
   readonly user = signal<User | null>(null);
   readonly profile = signal<Profile | null>(null);
+  readonly establishmentStatus = signal<string | null>(null);
+  readonly enabledAdditionalModules = signal<string[]>([]);
   readonly loading = signal(true);
   readonly role = computed<AppRole | null>(() => {
     const role = this.profile()?.role?.toLowerCase();
     return role && role in DEFAULT_MODULES ? (role as AppRole) : null;
   });
   readonly isAdmin = computed(() => this.role() === 'admin' && !this.profile()?.custom_role_id);
+  readonly isImplantation = computed(() => this.role() === 'implantacao');
   readonly isGestor = computed(() => this.role() === 'gestor' && !this.profile()?.custom_role_id);
   readonly isOperador = computed(
     () =>
@@ -122,8 +126,18 @@ export class AuthService {
   async initialize(): Promise<void> {
     if (this.initialized) return;
     this.initialized = true;
-    this.supabase.auth.onAuthStateChange((_event, session) => {
-      setTimeout(() => void this.applySession(session), 0);
+    this.supabase.auth.onAuthStateChange((event, session) => {
+      setTimeout(() => {
+        // Refreshing an access token does not change the signed-in user. Keep
+        // the current route and feature component mounted while the tab wakes up.
+        if (event === 'TOKEN_REFRESHED' && session && session.user.id === this.user()?.id) {
+          this.session.set(session);
+          this.user.set(session.user);
+          void this.loadEstablishment(this.profile(), this.sessionRequestId).catch(() => undefined);
+          return;
+        }
+        void this.applySession(session);
+      }, 0);
     });
     try {
       const { data, error } = await this.withTimeout(this.supabase.auth.getSession(), 10000);
@@ -199,7 +213,16 @@ export class AuthService {
   hasModuleAccess(module: string): boolean {
     const role = this.role();
     if (!role) return false;
+    if (role === 'implantacao') return module === 'implantation';
+    if (this.establishmentStatus() !== 'active') return false;
     if (module === 'profile') return true;
+    if (
+      ['helpdesk', 'strategy_tools', 'surveys', 'education', 'custom_dashboards'].includes(
+        module,
+      ) &&
+      !this.enabledAdditionalModules().includes(module)
+    )
+      return false;
     const explicitModules = this.profile()?.module_access;
     return explicitModules
       ? explicitModules.includes(module)
@@ -209,7 +232,38 @@ export class AuthService {
   async refreshProfile(): Promise<void> {
     const user = this.user();
     if (!user) return;
-    this.profile.set(await this.profiles.findById(user.id));
+    const profile = await this.profiles.findById(user.id);
+    this.profile.set(profile);
+    await this.loadEstablishment(profile);
+  }
+
+  private async loadEstablishment(
+    profile: Profile | null,
+    requestId = this.sessionRequestId,
+  ): Promise<void> {
+    if (this.profile()?.id !== profile?.id || this.establishmentStatus() === null) {
+      this.establishmentStatus.set(null);
+      this.enabledAdditionalModules.set([]);
+    }
+    if (!profile?.establishment_id || profile.role === 'implantacao') return;
+    const [{ data: establishment }, { data: modules }] = await this.withTimeout(
+      Promise.all([
+        this.supabase
+          .from('establishments')
+          .select('status')
+          .eq('id', profile.establishment_id)
+          .maybeSingle(),
+        this.supabase
+          .from('establishment_modules')
+          .select('module_id')
+          .eq('establishment_id', profile.establishment_id)
+          .eq('enabled', true),
+      ]),
+      5000,
+    );
+    if (requestId !== this.sessionRequestId || profile.id !== this.profile()?.id) return;
+    this.establishmentStatus.set(establishment?.status ?? null);
+    this.enabledAdditionalModules.set(modules?.map((m) => m.module_id) ?? []);
   }
 
   private async applySession(session: Session | null): Promise<void> {
@@ -219,6 +273,7 @@ export class AuthService {
     this.user.set(session?.user ?? null);
     if (!session) {
       this.profile.set(null);
+      this.establishmentStatus.set(null);
       this.loading.set(false);
       return;
     }
@@ -234,6 +289,7 @@ export class AuthService {
         void this.supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
       } else {
         this.profile.set(profile);
+        await this.loadEstablishment(profile);
       }
     } catch {
       if (requestId === this.sessionRequestId) this.profile.set(null);

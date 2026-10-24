@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
     );
     if (!profileResponse.ok) throw new Error('Não foi possível verificar o perfil.');
     const profiles = (await profileResponse.json()) as { role: string }[];
-    if (!['Admin', 'Gestor'].includes(profiles[0]?.role)) {
+    if (!['admin', 'gestor'].includes(profiles[0]?.role?.toLowerCase())) {
       return new Response(JSON.stringify({ error: 'Acesso negado.' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -262,6 +262,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const indicatorResponse = await fetch(
+      `${supabaseUrl}/rest/v1/indicators?select=id&id=eq.${encodeURIComponent(body.indicator.id)}&limit=1`,
+      { headers: userHeaders },
+    );
+    if (!indicatorResponse.ok || !((await indicatorResponse.json()) as { id: string }[]).length) {
+      return new Response(JSON.stringify({ error: 'Indicador não disponível.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const apiKey = Deno.env.get('AI_API_KEY');
     if (!apiKey) {
       return new Response(
@@ -277,10 +288,13 @@ Deno.serve(async (req: Request) => {
     });
     if (!quotaResponse.ok) throw new Error('Não foi possível verificar o limite de uso.');
     if ((await quotaResponse.json()) !== true) {
-      return new Response(JSON.stringify({ error: 'Limite de análises atingido nesta hora.' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: 'Limite mensal de análises atingido ou IA desativada.' }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const systemPrompt = buildSystemPrompt();

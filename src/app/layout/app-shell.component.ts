@@ -30,10 +30,33 @@ export class AppShellComponent {
   readonly expandedSubs = signal(new Set(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id))));
   readonly route = signal(this.router.url.slice(1).split('?')[0] || 'dashboard');
   readonly groups = computed(() =>
-    visibleNavigation(
-      (module) => this.auth.hasModuleAccess(module),
-      (page) => this.auth.canEditPage(page),
-    ),
+    this.auth.isImplantation()
+      ? [
+          {
+            id: 'implantation',
+            label: 'Administração global',
+            color: 'bg-blue-400',
+            items: [
+              {
+                id: 'establishments',
+                label: 'Implantação',
+                icon: 'Building2',
+                leaves: [
+                  {
+                    id: 'implantacao',
+                    label: 'Implantação',
+                    icon: 'Building2',
+                    route: 'implantacao',
+                  },
+                ],
+              },
+            ],
+          },
+        ]
+      : visibleNavigation(
+          (module) => this.auth.hasModuleAccess(module),
+          (page) => this.auth.canEditPage(page),
+        ),
   );
   readonly leaves = computed(() =>
     this.groups().flatMap((group) => group.items.flatMap((item) => item.leaves)),
@@ -51,6 +74,7 @@ export class AppShellComponent {
     if (!role) return 'Usuário';
     const labels: Record<NonNullable<typeof role>, string> = {
       admin: 'Administrador',
+      implantacao: 'Implantação',
       gestor: 'Gestor',
       analista: 'Analista',
       operador: 'Operador',
@@ -78,6 +102,12 @@ export class AppShellComponent {
   );
 
   constructor() {
+    // The first route can activate while the login screen is visible, before
+    // the profile is available to the route guard. Re-enter the global area
+    // when the shell mounts with the completed authentication state.
+    if (this.auth.isImplantation() && this.router.url !== '/implantacao') {
+      void this.router.navigateByUrl('/implantacao');
+    }
     void this.inbox.load();
     this.router.events
       .pipe(

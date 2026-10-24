@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { SupabaseService } from '@core/supabase/supabase.service';
 import type { CustomRole, Profile } from '@core/models/database';
 
@@ -24,6 +24,8 @@ export interface UserManagementPayload {
 
 @Injectable({ providedIn: 'root' })
 export class UserManagementService {
+  private readonly signedAvatars = signal<Record<string, string>>({});
+  private readonly pendingAvatars = new Set<string>();
   private readonly client = inject(SupabaseService).client;
 
   async listUsers(): Promise<Profile[]> {
@@ -76,9 +78,21 @@ export class UserManagementService {
   }
 
   avatarUrl(path: string | null | undefined): string | null {
-    return path
-      ? this.client.storage.from('profile-avatars').getPublicUrl(path).data.publicUrl
-      : null;
+    if (!path) return null;
+    const cached = this.signedAvatars()[path];
+    if (cached) return cached;
+    if (!this.pendingAvatars.has(path)) {
+      this.pendingAvatars.add(path);
+      void this.client.storage
+        .from('profile-avatars')
+        .createSignedUrl(path, 3600)
+        .then(({ data }) => {
+          if (data?.signedUrl)
+            this.signedAvatars.update((urls) => ({ ...urls, [path]: data.signedUrl }));
+        })
+        .finally(() => this.pendingAvatars.delete(path));
+    }
+    return null;
   }
 
   async save(

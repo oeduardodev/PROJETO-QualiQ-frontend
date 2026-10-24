@@ -3,6 +3,13 @@ import { moduleAccessGuard } from '@core/guards/module-access.guard';
 
 export const routes: Routes = [
   {
+    path: 'implantacao',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'implantation' },
+    loadComponent: () =>
+      import('@features/implantation/implantation.component').then((m) => m.ImplantationComponent),
+  },
+  {
     path: 'dashboard',
     canActivate: [moduleAccessGuard],
     data: { module: 'dashboard' },

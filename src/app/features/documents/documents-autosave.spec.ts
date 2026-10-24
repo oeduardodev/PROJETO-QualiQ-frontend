@@ -40,7 +40,14 @@ describe('native document autosave', () => {
             snapshot: { data: { mode: 'management' }, queryParamMap: convertToParamMap({}) },
           },
         },
-        { provide: AuthService, useValue: { isAdmin: () => true, user: () => ({ id: 'user-1' }) } },
+        {
+          provide: AuthService,
+          useValue: {
+            isAdmin: () => true,
+            canEditPage: () => true,
+            user: () => ({ id: 'user-1' }),
+          },
+        },
         { provide: DocumentService, useValue: service },
         {
           provide: DocumentsStore,
