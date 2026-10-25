@@ -42,9 +42,9 @@ public/env.js
 
 Por segurança e para evitar configurações específicas de ambiente no repositório, tanto o arquivo `.env` quanto o `public/env.js` gerado não são versionados.
 
-Para o primeiro acesso de usuários convidados, configure em **Supabase Auth → URL Configuration** o endereço `https://SEU-DOMINIO/definir-senha` na lista de redirecionamentos permitidos (e `http://localhost:4200/definir-senha` no desenvolvimento). A Edge Function `user-management` usa `PUBLIC_APP_ORIGIN` para enviar o convite a essa rota. Se o endereço não estiver permitido, o Supabase pode usar a Site URL no lugar.
+Para o primeiro acesso de usuários convidados na homologação, `supabase/config.toml` define a Site URL como `https://qualiq-homo.vercel.app` e permite `https://qualiq-homo.vercel.app/definir-senha`. Aplique essas configurações com `npx supabase config push` no projeto de homologação. Para outro domínio, ajuste os dois endereços antes de aplicar. As Edge Functions de convite usam `PUBLIC_APP_ORIGIN` para enviar o usuário a essa rota. Se o endereço não estiver permitido, o Supabase usa a Site URL no lugar.
 
-Em **Supabase Auth → Email Templates**, substitua o conteúdo dos modelos **Invite User** e **Reset Password** pelos arquivos `supabase/templates/invite-user.html` e `supabase/templates/reset-password.html`. Esses modelos levam o token à tela do app; a confirmação ocorre quando a pessoa envia a senha, evitando que a leitura automática do link por filtros de e-mail consuma o convite. Se usar SMTP próprio com rastreamento de cliques, desative o rastreamento para os e-mails de autenticação.
+Os arquivos `supabase/templates/invite-user.html` e `supabase/templates/reset-password.html` contêm modelos opcionais para **Invite User** e **Reset Password**. O Supabase não permite alterar esses modelos no plano gratuito com o provedor de e-mail padrão. Nesse caso, o aplicativo recebe o link padrão na Site URL e abre a tela de definição de senha. Se configurar SMTP próprio, os modelos podem ser aplicados para levar o token à tela do app antes da confirmação; desative o rastreamento de cliques nos e-mails de autenticação.
 
 ## Opções configuráveis no Supabase
 

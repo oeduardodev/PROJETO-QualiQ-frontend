@@ -4,6 +4,10 @@ verify_jwt = true
 [functions.document-integration]
 verify_jwt = true
 
+[auth]
+site_url = "https://qualiq-homo.vercel.app"
+additional_redirect_urls = ["https://qualiq-homo.vercel.app/definir-senha"]
+
 [functions.user-management]
 verify_jwt = true
 
