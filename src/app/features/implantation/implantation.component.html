@@ -316,10 +316,18 @@
                 Nenhum administrador vinculado. O convite será enviado para o e-mail do administrador
                 informado no cadastro.
               </p>
+              @if (
+                !selected()?.admin_name ||
+                !selected()?.admin_email ||
+                form().admin_name !== selected()?.admin_name ||
+                form().admin_email !== selected()?.admin_email
+              ) {
+                <p class="mt-1 text-xs text-amber-700">Salve o nome e o e-mail antes de convidar.</p>
+              }
               <button
                 type="button"
                 class="ui-button-primary mt-3"
-                [disabled]="busy() || form().status !== 'active' || !form().admin_email"
+                [disabled]="busy() || !canInviteAdmin()"
                 (click)="createAdmin()"
               >
                 Convidar administrador

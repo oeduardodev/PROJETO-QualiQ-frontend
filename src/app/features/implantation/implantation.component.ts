@@ -41,6 +41,18 @@ export class ImplantationComponent {
   readonly selected = computed(
     () => this.establishments().find((item) => item.id === this.selectedId()) ?? null,
   );
+  readonly canInviteAdmin = computed(() => {
+    const saved = this.selected();
+    const draft = this.form();
+    return Boolean(
+      saved?.status === 'active' &&
+        saved.admin_name?.trim() &&
+        saved.admin_email?.trim() &&
+        draft.status === saved.status &&
+        draft.admin_name === saved.admin_name &&
+        draft.admin_email === saved.admin_email,
+    );
+  });
   readonly baseModules = computed(() => this.catalog().filter((item) => item.is_base));
   readonly additionalModules = computed(() => this.catalog().filter((item) => !item.is_base));
   readonly filtered = computed(() =>
@@ -222,17 +234,18 @@ export class ImplantationComponent {
   }
 
   async createAdmin(): Promise<void> {
-    if (!this.selectedId() || this.busy()) return;
+    const current = this.selected();
+    if (!current || !this.canInviteAdmin() || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     this.notice.set('');
     try {
       await this.invoke({
         action: 'create_admin',
-        establishment_id: this.selectedId(),
+        establishment_id: current.id,
+        name: current.admin_name,
       });
-      const current = this.selected();
-      if (current) await this.select(current);
+      await this.select(current);
       this.notice.set('Administrador convidado. O acesso será concluído pelo e-mail enviado.');
     } catch (error) {
       this.error.set(this.message(error));

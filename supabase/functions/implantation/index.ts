@@ -262,10 +262,12 @@ Deno.serve(async (request: Request) => {
         .eq('establishment_id', establishmentId);
       if (countError) throw countError;
       if (count !== 0) throw new Error('O estabelecimento já possui usuários.');
-      const name =
-        text(body.name, 'o nome do administrador', 200, true) ??
-        establishment.admin_name?.trim() ??
-        text(establishment.admin_email?.split('@')[0], 'o nome do administrador', 200, true)!;
+      const name = text(
+        establishment.admin_name,
+        'o nome do administrador no cadastro do estabelecimento',
+        200,
+        true,
+      )!;
       const shortName = name.split(' ')[0];
       const { data: enabled } = await admin
         .from('establishment_modules')
