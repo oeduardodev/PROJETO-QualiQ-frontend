@@ -586,6 +586,9 @@ export interface ActionPlanTask {
 export interface OperationInbox {
   id: string;
   user_id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  event_type: string;
   title: string;
   route: string;
   record_id: string;

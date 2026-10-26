@@ -341,3 +341,11 @@ O módulo de Documentos usa um editor nativo Tiptap, sem API ou redirecionamento
 O editor oferece formatação, tabelas, imagens PNG/JPEG incorporadas, links, listas, quebras de página e exportação local em DOCX, PDF e ODT. O salvamento automático começa após preencher os campos obrigatórios, incluindo a justificativa. Falhas e conflitos mantêm o rascunho aberto, com recuperação local por usuário. A exclusão é lógica e permite restauração, preservando auditoria e vínculos. Consulte [a arquitetura, implantação e migração dos documentos](docs/native-documents.md) para o procedimento completo e as limitações de conversão.
 
 As solicitações de cópia são aprovadas pelo Admin, podem ser enviadas por e-mail, registram entrega e devolução e destacam atrasos. As classificações de incidente definem questionário, ferramenta de análise e prazo; links públicos aceitam respostas sem cadastro e a triagem administrativa encaminha ao gestor. Planos reúnem origens manuais, incidentes e análises de indicadores, com tarefas, controlador, evidências e aprovação do progresso. A caixa de entrada mostra atribuições aos usuários vinculados.
+
+### Notificações entre usuários
+
+A migração `20261026120000_user_notifications.sql` amplia a caixa de entrada para atribuições em planos de ação, documentos, processos, riscos, incidentes e chamados de Helpdesk. Ela registra quem fez a atribuição, o destinatário, o horário e o estado de leitura. Cada pessoa recebe uma única notificação ao ser incluída em um registro; edições que mantêm os mesmos destinatários não geram avisos repetidos. Solicitações de revisão de planos também são registradas. A política de acesso permite que cada usuário consulte e marque como lidas somente as próprias notificações no seu estabelecimento.
+
+O botão **Avisos** atualiza em tempo real via Supabase Realtime. A rota `/avisos` oferece histórico paginado, filtro de não lidas e marcação de leitura. No Helpdesk, **Atribuído a** seleciona um usuário cadastrado; os nomes de registros antigos permanecem visíveis.
+
+Aplique a migração no Supabase antes de publicar o frontend e gere novamente os tipos do banco com `npm run db:types` após a aplicação. Para validar o comportamento da migração em um PostgreSQL temporário, execute `node scripts/test-user-notifications-db.mjs` com `initdb`, `pg_ctl` e `psql` no PATH.

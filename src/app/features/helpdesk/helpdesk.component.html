@@ -65,7 +65,11 @@
             (drop)="onTicketDrop($event, column.key)"
           >
             @for (ticket of ticketsByStatus(column.key); track ticket.id) {
-              <article class="ui-kanban-card" [draggable]="canManage(ticket)" (dragstart)="startTicketDrag($event, ticket)">
+              <article
+                class="ui-kanban-card"
+                [draggable]="canManage(ticket)"
+                (dragstart)="startTicketDrag($event, ticket)"
+              >
                 <button class="block w-full text-left" (click)="openTicketDetails(ticket)">
                   @if (ticket.code) {
                     <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
@@ -88,6 +92,11 @@
                     <span>{{ categoryLabel(ticket.category) }}</span
                     ><span>{{ ticket.requester_name || '—' }}</span>
                   </div>
+                  @if (ticket.assigned_to) {
+                    <p class="mt-1 text-[10px] text-slate-500">
+                      Atribuído a {{ assigneeName(ticket.assigned_to) }}
+                    </p>
+                  }
                 </button>
                 <div class="ui-kanban-card-footer">
                   <button class="ui-action-history text-[11px]" (click)="historyTicket.set(ticket)">
@@ -102,7 +111,10 @@
                     </button>
                   }
                   @if (canManage(ticket)) {
-                    <button class="text-[11px] font-medium text-slate-600" (click)="closeTicket(ticket)">
+                    <button
+                      class="text-[11px] font-medium text-slate-600"
+                      (click)="closeTicket(ticket)"
+                    >
                       Fechar
                     </button>
                     <button class="ui-action-history text-[11px]" (click)="openEditTicket(ticket)">
@@ -156,7 +168,20 @@
         }
       </select></label
     ><label class="ui-form-label">Solicitante<input formControlName="requester_name" /></label
-    ><label class="ui-form-label">Atribuído a<input formControlName="assigned_to" /></label>
+    ><label class="ui-form-label"
+      >Atribuído a
+      <select formControlName="assigned_to">
+        <option value="">Sem responsável</option>
+        @if (isLegacyAssignee(editing()?.assigned_to)) {
+          <option [value]="editing()!.assigned_to">
+            {{ editing()!.assigned_to }} (registro anterior)
+          </option>
+        }
+        @for (user of users(); track user.id) {
+          <option [value]="user.id">{{ user.name }}</option>
+        }
+      </select>
+    </label>
     @if (editing() && !readOnly()) {
       <label class="ui-form-label sm:col-span-2">
         Justificativa da alteração *<textarea rows="3" formControlName="justification"></textarea>
@@ -170,7 +195,9 @@
         Cancelar
       </button>
       @if (viewing() && editing() && canManage(editing()!)) {
-        <button type="button" class="ui-button-secondary" (click)="editViewedTicket()">Editar</button>
+        <button type="button" class="ui-button-secondary" (click)="editViewedTicket()">
+          Editar
+        </button>
       }
       @if (!readOnly()) {
         <button type="submit" [disabled]="saving()" class="ui-button-primary">Salvar</button>

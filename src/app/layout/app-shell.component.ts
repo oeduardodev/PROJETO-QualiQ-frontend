@@ -1,5 +1,5 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { Component, DestroyRef, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -12,11 +12,11 @@ import { UserManagementService } from '@features/users/data-access/user-manageme
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, IconDirective],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, DatePipe, IconDirective],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnDestroy {
   readonly inbox = inject(OperationInboxService);
   readonly inboxOpen = signal(false);
   readonly auth = inject(AuthService);
@@ -65,7 +65,11 @@ export class AppShellComponent {
     this.route() === 'dashboard'
       ? 'Dashboard'
       : (this.leaves().find((leaf) => leaf.route === this.route())?.label ??
-        (this.route() === 'perfil' ? 'Meu perfil' : 'Dashboard')),
+        (this.route() === 'perfil'
+          ? 'Meu perfil'
+          : this.route() === 'avisos'
+            ? 'Notificações'
+            : 'Dashboard')),
   );
   readonly subtitle = computed(() => ROUTE_SUBTITLES[this.route()] ?? '');
   readonly roleLabel = computed(() => {
@@ -108,7 +112,11 @@ export class AppShellComponent {
     if (this.auth.isImplantation() && this.router.url !== '/implantacao') {
       void this.router.navigateByUrl('/implantacao');
     }
-    void this.inbox.load();
+    effect(() => {
+      const userId = this.auth.user()?.id;
+      if (userId && !this.auth.isImplantation()) this.inbox.start(userId);
+      else this.inbox.stop();
+    });
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -116,8 +124,11 @@ export class AppShellComponent {
       )
       .subscribe((event) => {
         this.route.set(event.urlAfterRedirects.slice(1).split('?')[0] || 'dashboard');
-        void this.inbox.load();
       });
+  }
+
+  ngOnDestroy(): void {
+    this.inbox.stop();
   }
 
   toggleGroup(id: string): void {

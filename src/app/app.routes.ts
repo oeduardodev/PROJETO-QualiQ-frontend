@@ -199,6 +199,15 @@ export const routes: Routes = [
     loadComponent: () => import('@features/users/users.component').then((m) => m.UsersComponent),
   },
   {
+    path: 'avisos',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'profile' },
+    loadComponent: () =>
+      import('@features/notifications/notifications.component').then(
+        (m) => m.NotificationsComponent,
+      ),
+  },
+  {
     path: 'definir-senha',
     loadComponent: () =>
       import('@features/auth/set-password.component').then((m) => m.SetPasswordComponent),

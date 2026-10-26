@@ -212,7 +212,9 @@ export class RisksComponent {
         classifications,
         users,
       ] = await Promise.all([
-        this.riskService.fetchRisks(this.management),
+        this.riskService.fetchRisks(
+          this.management || !!this.route.snapshot.queryParamMap.get('id'),
+        ),
         this.processService.fetchProcesses(),
         this.processService.fetchSipocNodes(),
         this.riskService.fetchRiskTypes(),
@@ -231,6 +233,9 @@ export class RisksComponent {
       this.contingencyPlanStatuses.set(contingencyStatuses);
       this.matrixClassifications.set(classifications);
       this.users.set(users);
+      const target = this.route.snapshot.queryParamMap.get('id');
+      const selected = risks.find((risk) => risk.id === target);
+      if (selected && this.selectedRisk()?.id !== selected.id) void this.openDetail(selected);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar riscos'));
     } finally {

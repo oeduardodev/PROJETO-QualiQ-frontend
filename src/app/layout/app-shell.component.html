@@ -46,40 +46,72 @@
         @if (!auth.isImplantation()) {
           <div class="relative">
             <button
-              class="ui-button-secondary"
+              type="button"
+              class="relative flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
               (click)="inboxOpen.set(!inboxOpen()); inbox.load()"
               [attr.aria-expanded]="inboxOpen()"
+              [attr.aria-label]="'Notificações: ' + inbox.unreadCount() + ' não lidas'"
+              aria-haspopup="true"
+              title="Notificações"
             >
-              Avisos ({{ inbox.items().length }})
+              <span appIcon="Bell" class="h-5 w-5"></span>
+              @if (inbox.unreadCount()) {
+                <span
+                  class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold text-white"
+                  aria-hidden="true"
+                  >{{ inbox.unreadCount() > 99 ? '99+' : inbox.unreadCount() }}</span
+                >
+              }
             </button>
             @if (inboxOpen()) {
+              <button
+                type="button"
+                class="fixed inset-0 z-20 cursor-default"
+                aria-label="Fechar notificações"
+                (click)="inboxOpen.set(false)"
+              ></button>
               <div
-                class="absolute right-0 z-30 mt-2 w-72 max-h-80 overflow-auto rounded-lg border bg-white p-3 shadow-lg"
+                class="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-white p-3 shadow-lg"
               >
+                <div class="mb-2 flex items-center justify-between gap-2 border-b pb-2">
+                  <strong class="text-sm text-slate-700">Notificações</strong>
+                  @if (inbox.unreadCount()) {
+                    <button type="button" class="text-xs text-blue-700" (click)="inbox.readAll()">
+                      Marcar todas como lidas
+                    </button>
+                  }
+                </div>
                 @if (inbox.error()) {
-                  <p class="text-xs text-rose-600">Não foi possível carregar os avisos.</p>
+                  <p class="text-xs text-rose-600">Não foi possível carregar as notificações.</p>
                 }
-                @for (item of inbox.items(); track item.id) {
-                  <a
-                    class="block border-b py-3 text-sm text-blue-700"
-                    [routerLink]="item.route"
-                    [queryParams]="{ id: item.record_id }"
-                    (click)="inbox.read(item); inboxOpen.set(false)"
-                    >{{ item.title }}</a
-                  >
-                } @empty {
-                  <p class="text-sm text-slate-500">Nenhum aviso pendente.</p>
-                }
+                <div class="max-h-80 overflow-y-auto overflow-x-hidden">
+                  @for (item of inbox.items(); track item.id) {
+                    <a
+                      class="block w-full break-words border-b border-slate-100 py-3 text-sm text-slate-800 transition hover:bg-blue-50 focus-visible:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+                      [routerLink]="item.route"
+                      [queryParams]="inbox.queryParams(item)"
+                      (click)="inbox.read(item); inboxOpen.set(false)"
+                    >
+                      <span class="block">{{ item.title }}</span>
+                      <span class="text-xs text-slate-500">
+                        {{ item.actor_name || 'Sistema' }} ·
+                        {{ item.created_at | date: 'dd/MM/yyyy HH:mm' }}
+                      </span>
+                    </a>
+                  } @empty {
+                    <p class="py-3 text-sm text-slate-500">Nenhuma notificação pendente.</p>
+                  }
+                </div>
+                <a
+                  routerLink="/avisos"
+                  class="mt-2 block text-center text-sm font-medium text-blue-700"
+                  (click)="inboxOpen.set(false)"
+                  >Ver histórico completo</a
+                >
               </div>
             }
           </div>
         }
-        <div
-          class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 sm:flex"
-        >
-          <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span
-          ><span class="text-xs font-medium text-slate-600">Sistema ativo</span>
-        </div>
         <div class="relative">
           <button
             type="button"

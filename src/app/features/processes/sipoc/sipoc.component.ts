@@ -9,7 +9,7 @@ import { RiskService } from '@features/risks/data-access/risk.service';
 import { DocumentService } from '@features/documents/data-access/document.service';
 import { SlaService } from '@features/processes/data-access/sla.service';
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
 import type {
@@ -60,6 +60,7 @@ export class SipocComponent {
   private readonly riskService = inject(RiskService);
   private readonly documentService = inject(DocumentService);
   private readonly slaService = inject(SlaService);
+  private readonly route = inject(ActivatedRoute);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly alertDialog = inject(AlertDialogService);
@@ -148,7 +149,12 @@ export class SipocComponent {
       ]);
       this.processes.set(processes);
       this.categories.set(categories);
-      if (processes.length) this.processControl.setValue(processes[0].id);
+      const target = this.route.snapshot.queryParamMap.get('id');
+      const selected = processes.find((process) => process.id === target);
+      if (selected) {
+        this.processControl.setValue(selected.id);
+        void this.openProcessDetail();
+      } else if (processes.length) this.processControl.setValue(processes[0].id);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar processos'));
     } finally {

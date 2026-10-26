@@ -3,6 +3,8 @@ import { errorMessage } from '@shared/utils/error.utils';
 import { toHelpdeskTicketPayload } from './data-access/helpdesk-ticket.mapper';
 import { HelpdeskService } from '@features/helpdesk/data-access/helpdesk.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
+import { ProfileRepository } from '@core/data-access/profile.repository';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,6 +17,7 @@ import type {
   HelpdeskStatusOption,
   HelpdeskTicket,
   Process,
+  Profile,
 } from '@core/models/database';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
@@ -41,6 +44,8 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 export class HelpdeskComponent {
   private readonly helpdeskService = inject(HelpdeskService);
   private readonly processService = inject(ProcessService);
+  private readonly profilesRepository = inject(ProfileRepository);
+  private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   private readonly alertDialog = inject(AlertDialogService);
   readonly auth = inject(AuthService);
@@ -70,6 +75,7 @@ export class HelpdeskComponent {
     ),
   );
   readonly processes = signal<Process[]>([]);
+  readonly users = signal<Profile[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly formOpen = signal(false);
@@ -127,18 +133,23 @@ export class HelpdeskComponent {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [tickets, processes, categories, priorities, statuses] = await Promise.all([
+      const [tickets, processes, categories, priorities, statuses, users] = await Promise.all([
         this.helpdeskService.fetchHelpdeskTickets(),
         this.processService.fetchProcesses(),
         this.helpdeskService.fetchCategories(),
         this.helpdeskService.fetchPriorities(),
         this.helpdeskService.fetchStatuses(),
+        this.profilesRepository.findAssignableUsers(),
       ]);
       this.tickets.set(tickets);
       this.processes.set(processes);
       this.categories.set(categories);
       this.priorities.set(priorities);
       this.columns.set(statuses);
+      this.users.set(users);
+      const target = this.route.snapshot.queryParamMap.get('id');
+      const selected = tickets.find((ticket) => ticket.id === target);
+      if (selected && this.editing()?.id !== selected.id) this.openTicketDetails(selected);
     } catch (e) {
       this.error.set(errorMessage(e, 'Erro ao carregar helpdesk'));
     } finally {
@@ -230,6 +241,15 @@ export class HelpdeskComponent {
 
   async saveTicket(): Promise<void> {
     if (this.readOnly() || this.form.invalid) return;
+    const assignee = this.form.controls.assigned_to.value;
+    if (
+      assignee &&
+      !this.users().some((user) => user.id === assignee) &&
+      assignee !== this.editing()?.assigned_to
+    ) {
+      this.formError.set('Selecione um usuário válido para o chamado.');
+      return;
+    }
     if (this.editing() && !this.form.controls.justification.value.trim()) {
       this.formError.set('Informe a justificativa da alteração.');
       return;
@@ -283,7 +303,9 @@ export class HelpdeskComponent {
   private async persistStatus(ticket: HelpdeskTicket, status: HelpdeskStatus): Promise<void> {
     try {
       const updated = await this.helpdeskService.updateHelpdeskTicket(ticket.id, { status });
-      this.tickets.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      this.tickets.update((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
       this.toast.success('Etapa do chamado atualizada');
     } catch (e) {
       this.toast.error(errorMessage(e, 'Erro ao atualizar etapa do chamado'));
@@ -338,6 +360,14 @@ export class HelpdeskComponent {
 
   priorityForeground(value: HelpdeskPriority): string {
     return this.priorities().find((option) => option.key === value)?.badge_foreground ?? '#475569';
+  }
+
+  assigneeName(value: string | null): string {
+    return this.users().find((user) => user.id === value)?.name ?? value ?? '—';
+  }
+
+  isLegacyAssignee(value: string | null | undefined): boolean {
+    return !!value && !this.users().some((user) => user.id === value);
   }
 
   private defaultCategory(): HelpdeskCategory {
