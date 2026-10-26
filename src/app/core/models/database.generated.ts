@@ -778,6 +778,7 @@ export type Database = {
           id: string;
           priority: string;
           process_id: string | null;
+          requester_id: string | null;
           requester_name: string | null;
           status: string;
           title: string;
@@ -794,6 +795,7 @@ export type Database = {
           id?: string;
           priority?: string;
           process_id?: string | null;
+          requester_id?: string | null;
           requester_name?: string | null;
           status: string;
           title: string;
@@ -810,6 +812,7 @@ export type Database = {
           id?: string;
           priority?: string;
           process_id?: string | null;
+          requester_id?: string | null;
           requester_name?: string | null;
           status?: string;
           title?: string;
@@ -836,6 +839,20 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'processes';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'helpdesk_tickets_requester_id_fkey';
+            columns: ['requester_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'helpdesk_tickets_requester_id_tenant_fk';
+            columns: ['establishment_id', 'requester_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['establishment_id', 'id'];
           },
           {
             foreignKeyName: 'helpdesk_tickets_status_fkey';

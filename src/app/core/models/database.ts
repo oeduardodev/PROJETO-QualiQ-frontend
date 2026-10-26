@@ -555,6 +555,7 @@ export interface HelpdeskTicket {
   category: HelpdeskCategory;
   status: HelpdeskStatus;
   priority: HelpdeskPriority;
+  requester_id: string | null;
   requester_name: string | null;
   assigned_to: string | null;
   process_id: string | null;

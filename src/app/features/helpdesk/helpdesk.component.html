@@ -90,7 +90,7 @@
                   </p>
                   <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400">
                     <span>{{ categoryLabel(ticket.category) }}</span
-                    ><span>{{ ticket.requester_name || '—' }}</span>
+                    ><span>{{ requesterName(ticket) }}</span>
                   </div>
                   @if (ticket.assigned_to) {
                     <p class="mt-1 text-[10px] text-slate-500">
@@ -167,7 +167,19 @@
           <option [value]="process.id">{{ process.title }}</option>
         }
       </select></label
-    ><label class="ui-form-label">Solicitante<input formControlName="requester_name" /></label
+    ><label class="ui-form-label"
+      >Solicitante<select formControlName="requester_id">
+        <option value="">Sem solicitante</option>
+        @for (user of users(); track user.id) {
+          <option [value]="user.id">{{ user.name }}</option>
+        }
+      </select>
+      @if (editing()?.requester_name && !editing()?.requester_id) {
+        <span class="mt-1 block text-xs text-slate-500">
+          Registro anterior: {{ editing()!.requester_name }}. Selecione um usuário cadastrado para
+          atualizar.
+        </span>
+      }</label
     ><label class="ui-form-label"
       >Atribuído a
       <select formControlName="assigned_to">

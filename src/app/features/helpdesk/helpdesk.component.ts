@@ -105,7 +105,7 @@ export class HelpdeskComponent {
       nonNullable: true,
       validators: Validators.required,
     }),
-    requester_name: new FormControl('', { nonNullable: true }),
+    requester_id: new FormControl('', { nonNullable: true }),
     assigned_to: new FormControl('', { nonNullable: true }),
     process_id: new FormControl('', { nonNullable: true }),
     justification: new FormControl('', { nonNullable: true }),
@@ -185,7 +185,7 @@ export class HelpdeskComponent {
       category: this.defaultCategory(),
       status: this.defaultStatus(),
       priority: this.defaultPriority(),
-      requester_name: '',
+      requester_id: this.auth.user()?.id ?? '',
       assigned_to: '',
       process_id: '',
       justification: '',
@@ -204,7 +204,7 @@ export class HelpdeskComponent {
       category: ticket.category,
       status: ticket.status,
       priority: ticket.priority,
-      requester_name: ticket.requester_name ?? '',
+      requester_id: ticket.requester_id ?? '',
       assigned_to: ticket.assigned_to ?? '',
       process_id: ticket.process_id ?? '',
       justification: '',
@@ -225,7 +225,7 @@ export class HelpdeskComponent {
       category: ticket.category,
       status: ticket.status,
       priority: ticket.priority,
-      requester_name: ticket.requester_name ?? '',
+      requester_id: ticket.requester_id ?? '',
       assigned_to: ticket.assigned_to ?? '',
       process_id: ticket.process_id ?? '',
       justification: '',
@@ -241,6 +241,13 @@ export class HelpdeskComponent {
 
   async saveTicket(): Promise<void> {
     if (this.readOnly() || this.form.invalid) return;
+    const current = this.editing();
+    const requesterId = this.form.controls.requester_id.value;
+    const requester = this.users().find((user) => user.id === requesterId);
+    if (requesterId && !requester && requesterId !== current?.requester_id) {
+      this.formError.set('Selecione um usuário cadastrado para solicitante.');
+      return;
+    }
     const assignee = this.form.controls.assigned_to.value;
     if (
       assignee &&
@@ -258,8 +265,15 @@ export class HelpdeskComponent {
     try {
       const value = this.form.getRawValue();
       const { justification, ...fields } = value;
-      const payload = toHelpdeskTicketPayload(fields);
-      const current = this.editing();
+      const payload = toHelpdeskTicketPayload({
+        ...fields,
+        requester_name:
+          requester?.name ??
+          (requesterId || !this.form.controls.requester_id.dirty
+            ? current?.requester_name
+            : null) ??
+          null,
+      });
       const saved = current
         ? await this.helpdeskService.updateHelpdeskTicket(current.id, payload, justification.trim())
         : await this.helpdeskService.createHelpdeskTicket(payload);
@@ -368,6 +382,14 @@ export class HelpdeskComponent {
 
   isLegacyAssignee(value: string | null | undefined): boolean {
     return !!value && !this.users().some((user) => user.id === value);
+  }
+
+  requesterName(ticket: HelpdeskTicket): string {
+    return (
+      this.users().find((user) => user.id === ticket.requester_id)?.name ??
+      ticket.requester_name ??
+      '—'
+    );
   }
 
   private defaultCategory(): HelpdeskCategory {
