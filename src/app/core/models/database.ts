@@ -28,6 +28,7 @@ interface TableDefinition<Row, Generated extends keyof Row = never> {
 export interface AppDatabase {
   public: {
     Tables: {
+      system_settings: TableDefinition<SystemSettings>;
       establishments: TableDefinition<Establishment>;
       establishment_modules: TableDefinition<EstablishmentModule>;
       module_catalog: TableDefinition<ModuleCatalogEntry>;
@@ -414,6 +415,12 @@ export interface AppDatabase {
     };
     Enums: GeneratedDatabase['public']['Enums'];
   };
+}
+
+export interface SystemSettings {
+  id: boolean;
+  active_maintenance: boolean;
+  updated_at: string;
 }
 
 export interface ValueChainCategory {

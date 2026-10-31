@@ -1,25 +1,32 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthService } from '@core/services/auth.service';
 import { App } from './app';
 
 describe('App', () => {
-  beforeEach(() =>
-    TestBed.configureTestingModule({
-      imports: [App],
-    }).compileComponents(),
-  );
+  const auth = {
+    initialize: vi.fn(async () => undefined),
+    loading: signal(false),
+    session: signal(null),
+    profile: signal(null),
+  };
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+  beforeEach(async () => {
+    auth.initialize.mockClear();
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [{ provide: AuthService, useValue: auth }],
+    }).compileComponents();
   });
 
-  it('should render the authentication screen when there is no active session', async () => {
+  it('initializes authentication and shows login without a session', async () => {
     const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain(
-      'Transforme conhecimento em decisões melhores.',
-    );
+
+    expect(auth.initialize).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.querySelector('app-login')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-maintenance')).toBeNull();
   });
 });

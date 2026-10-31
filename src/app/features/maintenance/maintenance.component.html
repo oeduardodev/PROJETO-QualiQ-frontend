@@ -1,0 +1,67 @@
+<main class="maintenance-page">
+  <div class="maintenance-noise" aria-hidden="true"></div>
+
+  <header class="maintenance-header">
+    <div  aria-label="QualiQ">
+      <img src="/qualiq-horizontal.png" alt="" width="90" height="70" />
+    </div>
+    <div class="maintenance-indicator">
+      <span class="indicator-light" aria-hidden="true"></span>
+      {{ maintenance.status() === 'unavailable' ? 'Verificando serviço' : 'Em manutenção' }}
+    </div>
+  </header>
+
+  <div class="maintenance-content">
+    <section class="maintenance-copy" aria-labelledby="maintenance-title">
+      <div class="maintenance-eyebrow"> UMA PAUSA PARA EVOLUIR</div>
+      <h1 id="maintenance-title">
+        @if (maintenance.status() === 'unavailable') {
+          o Sistema está <em>Indisponível.</em>
+        } @else {
+          Estamos preparando <em>algo melhor.</em>
+        }
+      </h1>
+      <p class="maintenance-description">
+        @if (maintenance.status() === 'unavailable') {
+          Não foi possível confirmar a disponibilidade do QualiQ agora. Tente verificar novamente depois.
+        } @else {
+          O QualiQ está temporariamente indisponível enquanto realizamos melhorias. Assim que
+          concluirmos, seu espaço de trabalho estará pronto para você.
+        }
+      </p>
+
+      <div class="maintenance-actions">
+        <button
+          type="button"
+          class="maintenance-check"
+          (click)="checkAvailability()"
+          [disabled]="maintenance.refreshing()"
+        >
+          <span [appIcon]="maintenance.refreshing() ? 'LoaderCircle' : 'ArrowRight'"></span>
+          {{ maintenance.refreshing() ? 'Verificando...' : 'Verificar disponibilidade' }}
+        </button>
+        <p>Esta página verifica automaticamente quando o acesso voltar.</p>
+      </div>
+    </section>
+
+    <div class="maintenance-art" aria-hidden="true">
+      <div class="art-grid"></div>
+      <div class="art-halo art-halo-one"></div>
+      <div class="art-halo art-halo-two"></div>
+      <div class="art-orbit art-orbit-one"><i></i></div>
+      <div class="art-orbit art-orbit-two"><i></i></div>
+      <div class="art-core">
+        <div class="art-core-inner">
+          <img src="/qualiq-symbol.png" alt="" width="950" height="700" />
+        </div>
+      </div>
+      <div class="art-label art-label-top"><span></span> MELHORIA CONTÍNUA</div>
+      <div class="art-label art-label-bottom">QUALIQ <strong>↗</strong> EM EVOLUÇÃO</div>
+    </div>
+  </div>
+
+  <footer class="maintenance-footer">
+    <span>CONHEÇA <i></i> DECIDA <i></i> MELHORE</span>
+    <span>QualiQ © {{ year }}</span>
+  </footer>
+</main>
