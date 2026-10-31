@@ -1,0 +1,670 @@
+@if (loading()) {
+  <div class="ui-page-loading">Carregando educação continuada...</div>
+} @else if (error()) {
+  <div class="ui-page-error" role="alert">
+    {{ error() }} <button class="ui-button-secondary" (click)="load()">Tentar novamente</button>
+  </div>
+} @else {
+  <div class="space-y-6">
+    <header class="ui-page-header">
+      <div>
+        <h2 class="ui-page-title">Educação Continuada</h2>
+        <p class="ui-page-subtitle">
+          @if (mode === 'painel') {
+            Indicadores dos treinamentos sob sua responsabilidade
+          } @else if (mode === 'gerenciamento') {
+            Monte treinamentos, trilhas, materiais e avaliações
+          } @else {
+            Aprenda no seu ritmo e acompanhe sua conclusão
+          }
+        </p>
+      </div>
+      @if (mode === 'gerenciamento' && !selectedItem()) {
+        <div class="flex gap-2">
+          <button class="ui-button-secondary" (click)="newItem('track')">Nova trilha</button>
+          <button class="ui-button-primary" (click)="newItem('training')">Novo treinamento</button>
+        </div>
+      }
+    </header>
+
+    @if (notice()) {
+      <div
+        class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+        role="status"
+      >
+        {{ notice() }}
+      </div>
+    }
+
+    @if (mode === 'painel') {
+      <section
+        class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Resumo da educação continuada"
+      >
+        <article class="ui-card">
+          <span class="metric-label">Treinamentos e trilhas</span
+          ><strong class="metric-value">{{ ownerItems().length }}</strong>
+        </article>
+        <article class="ui-card">
+          <span class="metric-label">Participações</span
+          ><strong class="metric-value">{{ totalParticipants() }}</strong>
+        </article>
+        <article class="ui-card">
+          <span class="metric-label">Conclusões com presença</span
+          ><strong class="metric-value">{{ totalCompletions() }} · {{ completionRate() }}%</strong>
+        </article>
+        <article class="ui-card">
+          <span class="metric-label">Tempo de acesso</span
+          ><strong class="metric-value">{{ formatTime(totalAccessSeconds()) }}</strong>
+        </article>
+      </section>
+      @if (!ownerItems().length) {
+        <div class="ui-empty-state">Você ainda não estruturou treinamentos ou trilhas.</div>
+      } @else {
+        <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-600">
+              <tr>
+                <th>Treinamento ou trilha</th>
+                <th>Participantes</th>
+                <th>Concluídos</th>
+                <th>Conclusão</th>
+                <th>Tempo de acesso</th>
+                <th>Tentativas</th>
+                <th>Aprovação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of ownerItems(); track item.id) {
+                <tr class="border-t border-slate-100">
+                  <td>
+                    <button
+                      class="text-left font-semibold text-blue-700 hover:underline"
+                      [attr.aria-expanded]="expandedId() === item.id"
+                      (click)="expandedId.set(expandedId() === item.id ? null : item.id)"
+                    >
+                      {{ item.title }}</button
+                    ><span class="block text-xs text-slate-500"
+                      >{{ item.kind === 'track' ? 'Trilha' : 'Treinamento' }} ·
+                      {{ item.published ? 'Publicado' : 'Rascunho' }}</span
+                    >
+                  </td>
+                  <td>{{ participants(item).length }}</td>
+                  <td>{{ completionCount(item) }}</td>
+                  <td>
+                    <div class="progress-track">
+                      <span [style.width.%]="completionPercent(item)"></span>
+                    </div>
+                    {{ completionPercent(item) }}%
+                  </td>
+                  <td>{{ formatTime(accessSeconds(item)) }}</td>
+                  <td>{{ attemptsForItem(item) }}</td>
+                  <td>{{ passRate(item) }}%</td>
+                </tr>
+                @if (expandedId() === item.id) {
+                  <tr class="border-t border-slate-100 bg-slate-50/70">
+                    <td colspan="7">
+                      <h4 class="mb-2 font-semibold">Participantes</h4>
+                      @for (participant of participantDetails(item); track participant.id) {
+                        <div
+                          class="grid gap-1 border-t border-slate-200 py-2 text-xs sm:grid-cols-4"
+                        >
+                          <span>{{ participant.name }}</span
+                          ><span>Tempo: {{ formatTime(participant.seconds) }}</span
+                          ><span>{{
+                            participant.completed ? 'Presença assinada' : 'Em andamento'
+                          }}</span
+                          ><span
+                            >Melhor nota:
+                            {{
+                              participant.bestScore === null ? '—' : participant.bestScore + '%'
+                            }}</span
+                          >
+                        </div>
+                      } @empty {
+                        <p class="text-xs text-slate-500">Ainda não há participantes.</p>
+                      }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    } @else if (selectedItem(); as item) {
+      <button class="ui-button-secondary" (click)="back()">← Voltar à lista</button>
+      <section class="ui-card space-y-3">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-blue-600">{{
+              item.kind === 'track' ? 'Trilha do conhecimento' : 'Treinamento'
+            }}</span>
+            <h3 class="text-xl font-semibold text-slate-800">{{ item.title }}</h3>
+            <p class="mt-1 whitespace-pre-line text-sm text-slate-600">{{ item.description }}</p>
+          </div>
+          @if (mode === 'gerenciamento') {
+            <div class="flex flex-wrap gap-2">
+              <button class="ui-button-secondary" (click)="editItem(item)">Editar</button>
+              <button class="ui-button-secondary" [disabled]="busy()" (click)="togglePublish(item)">
+                {{ item.published ? 'Retirar publicação' : 'Publicar' }}
+              </button>
+              <button class="ui-button-secondary text-rose-700" (click)="deleteItem(item)">
+                Excluir
+              </button>
+            </div>
+          }
+        </div>
+        @if (item.action_plan_id) {
+          <p class="text-xs text-slate-500">
+            Plano de ação vinculado: {{ planName(item.action_plan_id) }}
+          </p>
+        }
+        @if (mode !== 'gerenciamento') {
+          <div class="flex items-center gap-3 text-sm">
+            <div class="progress-track flex-1">
+              <span [style.width.%]="itemProgress(item)"></span>
+            </div>
+            <strong>{{ itemProgress(item) }}%</strong>
+          </div>
+        }
+      </section>
+
+      @if (mode === 'gerenciamento') {
+        @if (item.kind === 'track') {
+          <section class="ui-card space-y-4">
+            <h4 class="font-semibold text-slate-800">Treinamentos da trilha</h4>
+            @for (course of coursesFor(item.id); track course.id) {
+              <div class="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                <span>{{ course.position }}. {{ courseName(course.training_id) }}</span
+                ><button
+                  class="text-sm text-rose-700"
+                  [disabled]="item.published"
+                  (click)="removeCourse(course)"
+                >
+                  Remover
+                </button>
+              </div>
+            }
+            @if (!item.published) {
+              <div class="flex flex-wrap gap-2">
+                <select [(ngModel)]="courseToAdd" aria-label="Treinamento a incluir">
+                  <option value="">Selecione um treinamento</option>
+                  @for (training of items(); track training.id) {
+                    @if (
+                      training.kind === 'training' &&
+                      training.published &&
+                      !courseInTrack(item.id, training.id)
+                    ) {
+                      <option [value]="training.id">{{ training.title }}</option>
+                    }
+                  }</select
+                ><button class="ui-button-primary" [disabled]="!courseToAdd" (click)="addCourse()">
+                  Adicionar à trilha
+                </button>
+              </div>
+            }
+          </section>
+        } @else {
+          <section class="ui-card space-y-4">
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-slate-800">Etapas e materiais</h4>
+              <button class="ui-button-primary" [disabled]="item.published" (click)="newStage()">
+                Adicionar etapa
+              </button>
+            </div>
+            @for (stage of stagesFor(item.id); track stage.id) {
+              <article class="rounded-xl border border-slate-200 p-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <strong>{{ stage.position }}. {{ stage.title }}</strong>
+                    <p class="text-xs text-slate-500">
+                      {{ stage.resource_kind }}
+                      @if (stage.duration_seconds) {
+                        · {{ formatTime(stage.duration_seconds) }}
+                      }
+                    </p>
+                    <a
+                      class="text-xs text-blue-700 underline"
+                      [href]="stage.resource_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >Abrir material</a
+                    >
+                  </div>
+                  <div class="flex gap-3 text-sm">
+                    <button
+                      class="text-blue-700"
+                      [disabled]="item.published"
+                      (click)="editStage(stage)"
+                    >
+                      Editar</button
+                    ><button
+                      class="text-rose-700"
+                      [disabled]="item.published"
+                      (click)="deleteStage(stage)"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium">Avaliações</span
+                    ><button
+                      class="text-sm text-blue-700"
+                      [disabled]="item.published"
+                      (click)="newQuiz(stage)"
+                    >
+                      Adicionar avaliação
+                    </button>
+                  </div>
+                  @for (quiz of quizzesFor(stage.id); track quiz.id) {
+                    <div
+                      class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                    >
+                      <span
+                        >{{ quiz.title }} · {{ quiz.cue_seconds }}s · mínimo
+                        {{ quiz.passing_score }}%</span
+                      >
+                      <div class="flex gap-3">
+                        <button
+                          class="text-blue-700"
+                          [disabled]="item.published"
+                          (click)="manageQuestions(quiz)"
+                        >
+                          Questões</button
+                        ><button
+                          class="text-blue-700"
+                          [disabled]="item.published"
+                          (click)="editQuiz(quiz)"
+                        >
+                          Editar</button
+                        ><button
+                          class="text-rose-700"
+                          [disabled]="item.published"
+                          (click)="deleteQuiz(quiz)"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <p class="text-sm text-slate-500">Adicione a primeira etapa antes de publicar.</p>
+            }
+          </section>
+        }
+      } @else if (item.kind === 'track') {
+        <section class="ui-card space-y-3">
+          <h4 class="font-semibold">Sequência da trilha</h4>
+          @for (course of coursesFor(item.id); track course.id) {
+            <button
+              class="course-row"
+              [disabled]="!canOpenCourse(course)"
+              (click)="openCourse(course)"
+            >
+              <span>{{ course.position }}. {{ courseName(course.training_id) }}</span
+              ><span>{{
+                signed(course.training_id)
+                  ? 'Concluído'
+                  : canOpenCourse(course)
+                    ? 'Abrir →'
+                    : 'Bloqueado'
+              }}</span>
+            </button>
+          }
+        </section>
+      } @else if (selectedStage(); as stage) {
+        <button class="ui-button-secondary" (click)="backToItem()">← Voltar às etapas</button>
+        <section class="ui-card space-y-4">
+          <div>
+            <h4 class="text-lg font-semibold">{{ stage.title }}</h4>
+            <p class="text-sm text-slate-500">
+              Tempo estudado: {{ formatDuration(mine(stage.id)?.watched_seconds ?? 0) }}
+              @if (stage.duration_seconds) {
+                / {{ formatDuration(stage.duration_seconds) }}
+              }
+            </p>
+          </div>
+          @if (stage.resource_kind === 'youtube') {
+            <div class="video-frame"><div id="education-youtube-player"></div></div>
+          } @else if (stage.resource_kind === 'audio') {
+            <audio
+              #audioPlayer
+              class="w-full"
+              controls
+              [src]="stage.resource_url"
+              (play)="onAudioPlay()"
+              (pause)="onAudioPause()"
+              (timeupdate)="onMediaTime()"
+              (ended)="onAudioPause()"
+            ></audio>
+          } @else if (stage.resource_kind === 'pdf') {
+            <iframe
+              class="pdf-frame"
+              [src]="safePdf(stage.resource_url)"
+              title="Documento do treinamento"
+              referrerpolicy="no-referrer"
+            ></iframe>
+          } @else {
+            <a
+              class="ui-button-secondary inline-flex"
+              [href]="stage.resource_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Abrir material em outra guia ↗</a
+            >
+          }
+          @if (stage.resource_kind === 'pdf') {
+            <a
+              class="text-sm text-blue-700 underline"
+              [href]="stage.resource_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Abrir PDF em outra guia</a
+            >
+          }
+          @if (mine(stage.id)?.replay_required) {
+            <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+              É necessário rever o material antes de tentar novamente.
+            </p>
+          }
+          @if (activeQuiz(); as quiz) {
+            <div class="rounded-xl border-2 border-blue-200 bg-blue-50/50 p-4">
+              <h5 class="font-semibold">{{ quiz.title }}</h5>
+              <p class="mb-4 text-sm text-slate-600">
+                Nota mínima: {{ quiz.passing_score }}%. O material permanece pausado durante a
+                avaliação.
+              </p>
+              @for (question of publicQuestions(); track question.id; let index = $index) {
+                <fieldset class="mb-4">
+                  <legend class="mb-2 text-sm font-medium">
+                    {{ index + 1 }}. {{ question.prompt }}
+                  </legend>
+                  @for (option of question.options; track $index; let optionIndex = $index) {
+                    <label class="flex items-center gap-2 py-1 text-sm"
+                      ><input
+                        type="radio"
+                        [name]="'question-' + question.id"
+                        [value]="optionIndex"
+                        [checked]="answers[index] === optionIndex"
+                        (change)="answers[index] = optionIndex"
+                      />{{ option }}</label
+                    >
+                  }
+                </fieldset>
+              }
+              <button
+                class="ui-button-primary"
+                [disabled]="busy() || !publicQuestions().length"
+                (click)="submitQuiz()"
+              >
+                Enviar respostas
+              </button>
+            </div>
+          } @else {
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm text-slate-500">
+                {{ quizzesFor(stage.id).length }} avaliação(ões) nesta etapa
+              </p>
+              <button
+                class="ui-button-primary"
+                [disabled]="busy() || !canCompleteStage()"
+                (click)="completeStage()"
+              >
+                Concluir etapa
+              </button>
+            </div>
+          }
+        </section>
+      } @else {
+        <section class="ui-card space-y-3">
+          <h4 class="font-semibold">Etapas do treinamento</h4>
+          @for (stage of stagesFor(item.id); track stage.id) {
+            <button class="course-row" [disabled]="!canOpenStage(stage)" (click)="openStage(stage)">
+              <span
+                >{{ stage.position }}. {{ stage.title }}
+                <small class="block text-slate-500"
+                  >{{ stage.resource_kind }} · {{ quizzesFor(stage.id).length }} avaliações</small
+                ></span
+              ><span>{{
+                mine(stage.id)?.completed_at
+                  ? 'Concluído'
+                  : canOpenStage(stage)
+                    ? 'Abrir →'
+                    : 'Bloqueado'
+              }}</span>
+            </button>
+          }
+        </section>
+      }
+
+      @if (mode !== 'gerenciamento' && !signed(item.id) && canSign(item)) {
+        <section class="ui-card space-y-3">
+          <h4 class="font-semibold">Assinatura de presença</h4>
+          <p class="text-sm text-slate-600">
+            Declaro que concluí {{ item.kind === 'track' ? 'esta trilha' : 'este treinamento' }}.
+            Digite seu nome completo cadastrado para registrar a presença com data e hora.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <input
+              class="min-w-64 flex-1"
+              [(ngModel)]="signature"
+              placeholder="Nome completo"
+              aria-label="Nome completo para assinatura"
+            /><button
+              class="ui-button-primary"
+              [disabled]="busy() || !signature.trim()"
+              (click)="signAttendance()"
+            >
+              Assinar presença
+            </button>
+          </div>
+        </section>
+      } @else if (mode !== 'gerenciamento' && signed(item.id)) {
+        <div
+          class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800"
+        >
+          Presença assinada · treinamento concluído
+        </div>
+      }
+    } @else {
+      <div class="relative max-w-md">
+        <input
+          class="ui-search-input"
+          [value]="search()"
+          (input)="search.set($any($event.target).value)"
+          placeholder="Buscar treinamento ou trilha"
+          aria-label="Buscar treinamento ou trilha"
+        />
+      </div>
+      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        @for (item of visibleItems(); track item.id) {
+          <button class="ui-card item-card text-left" (click)="openItem(item)">
+            <span class="text-xs font-semibold uppercase text-blue-600">{{
+              item.kind === 'track' ? 'Trilha' : 'Treinamento'
+            }}</span>
+            <h3 class="mt-2 text-lg font-semibold text-slate-800">{{ item.title }}</h3>
+            <p class="mt-2 line-clamp-3 text-sm text-slate-600">{{ item.description }}</p>
+            <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
+              <span>{{
+                item.kind === 'track'
+                  ? coursesFor(item.id).length + ' treinamentos'
+                  : stagesFor(item.id).length + ' etapas'
+              }}</span
+              ><span>{{
+                mode === 'gerenciamento'
+                  ? item.published
+                    ? 'Publicado'
+                    : 'Rascunho'
+                  : signed(item.id)
+                    ? 'Concluído'
+                    : itemProgress(item) + '%'
+              }}</span>
+            </div>
+          </button>
+        } @empty {
+          <div class="ui-empty-state col-span-full">Nenhum treinamento encontrado.</div>
+        }
+      </section>
+    }
+
+    @if (mode === 'gerenciamento' && editorOpen()) {
+      <div class="editor-backdrop">
+        <section
+          class="editor-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Editar treinamento ou trilha"
+        >
+          <h3 class="text-lg font-semibold">
+            {{ editingItemId() ? 'Editar' : 'Criar' }}
+            {{ itemDraft.kind === 'track' ? 'trilha' : 'treinamento' }}
+          </h3>
+          <label class="ui-form-label"
+            >Título<input [(ngModel)]="itemDraft.title" maxlength="180"
+          /></label>
+          <label class="ui-form-label"
+            >Descrição<textarea [(ngModel)]="itemDraft.description" rows="4"></textarea>
+          </label>
+          <label class="ui-form-label"
+            >Plano de ação vinculado<select [(ngModel)]="itemDraft.action_plan_id">
+              <option value="">Nenhum</option>
+              @for (plan of plans(); track plan.id) {
+                <option [value]="plan.id">{{ plan.title }}</option>
+              }
+            </select></label
+          >
+          <div class="flex justify-end gap-2">
+            <button class="ui-button-secondary" (click)="editorOpen.set(false)">Cancelar</button
+            ><button
+              class="ui-button-primary"
+              [disabled]="busy() || !itemDraft.title.trim()"
+              (click)="saveItem()"
+            >
+              Salvar
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+    @if (mode === 'gerenciamento' && stageEditorOpen()) {
+      <div class="editor-backdrop">
+        <section class="editor-panel" role="dialog" aria-modal="true" aria-label="Editar etapa">
+          <h3 class="text-lg font-semibold">Etapa do treinamento</h3>
+          <label class="ui-form-label">Título<input [(ngModel)]="stageDraft.title" /></label>
+          <label class="ui-form-label"
+            >Tipo de material<select [(ngModel)]="stageDraft.resource_kind">
+              <option value="youtube">Vídeo do YouTube</option>
+              <option value="audio">Áudio</option>
+              <option value="pdf">Documento PDF</option>
+              <option value="link">Outro link</option>
+            </select></label
+          >
+          <label class="ui-form-label"
+            >Link HTTPS<input
+              [(ngModel)]="stageDraft.resource_url"
+              type="url"
+              placeholder="https://..."
+          /></label>
+          @if (stageDraft.resource_kind === 'youtube' || stageDraft.resource_kind === 'audio') {
+            <label class="ui-form-label"
+              >Duração em segundos<input
+                [(ngModel)]="stageDraft.duration_seconds"
+                type="number"
+                min="1"
+                max="86400"
+              /><small>Informe a duração exata do material para liberar a conclusão.</small></label
+            >
+          }
+          <div class="flex justify-end gap-2">
+            <button class="ui-button-secondary" (click)="stageEditorOpen.set(false)">
+              Cancelar</button
+            ><button class="ui-button-primary" [disabled]="busy()" (click)="saveStage()">
+              Salvar
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+    @if (mode === 'gerenciamento' && quizEditorOpen()) {
+      <div class="editor-backdrop">
+        <section class="editor-panel" role="dialog" aria-modal="true" aria-label="Editar avaliação">
+          <h3 class="text-lg font-semibold">Avaliação</h3>
+          <label class="ui-form-label">Título<input [(ngModel)]="quizDraft.title" /></label
+          ><label class="ui-form-label"
+            >Momento da avaliação (segundos)<input
+              [(ngModel)]="quizDraft.cue_seconds"
+              type="number"
+              min="0"
+            /><small
+              >Em vídeos e áudios, o player pausa quando o aluno alcança este ponto. Use 0 para PDF
+              ou link.</small
+            ></label
+          >
+          <label class="ui-form-label"
+            >Nota mínima (%)<input
+              [(ngModel)]="quizDraft.passing_score"
+              type="number"
+              min="1"
+              max="100"
+          /></label>
+          <div class="flex justify-end gap-2">
+            <button class="ui-button-secondary" (click)="quizEditorOpen.set(false)">Cancelar</button
+            ><button class="ui-button-primary" [disabled]="busy()" (click)="saveQuiz()">
+              Salvar
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+    @if (mode === 'gerenciamento' && questionEditorOpen()) {
+      <div class="editor-backdrop">
+        <section
+          class="editor-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Questões da avaliação"
+        >
+          <h3 class="text-lg font-semibold">Questões da avaliação</h3>
+          @for (question of authorQuestions(); track question.id) {
+            <div class="flex justify-between gap-2 border-b border-slate-100 py-2 text-sm">
+              <span>{{ question.position }}. {{ question.prompt }}</span>
+              <div class="flex gap-2">
+                <button class="text-blue-700" (click)="editQuestion(question)">Editar</button
+                ><button class="text-rose-700" (click)="deleteQuestion(question)">Excluir</button>
+              </div>
+            </div>
+          }
+          <label class="ui-form-label"
+            >Pergunta<input [(ngModel)]="questionDraft.prompt" maxlength="500"
+          /></label>
+          <label class="ui-form-label"
+            >Opções (uma por linha)<textarea
+              [(ngModel)]="questionDraft.options"
+              rows="4"
+            ></textarea>
+          </label>
+          <label class="ui-form-label"
+            >Número da resposta correta (começa em 1)<input
+              [ngModel]="questionDraft.correct_index + 1"
+              (ngModelChange)="questionDraft.correct_index = +$event - 1"
+              type="number"
+              min="1"
+              max="6"
+          /></label>
+          <div class="flex justify-between gap-2">
+            <button class="ui-button-secondary" (click)="questionEditorOpen.set(false)">
+              Fechar</button
+            ><button class="ui-button-primary" [disabled]="busy()" (click)="saveQuestion()">
+              Salvar questão
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+  </div>
+}

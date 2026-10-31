@@ -28,6 +28,7 @@ const ALL_MODULES = [
   'incidents',
   'helpdesk',
   'action_plans',
+  'education',
   'users',
 ];
 
@@ -170,6 +171,13 @@ export class UsersComponent {
       tone: 'teal',
     },
     {
+      key: 'education',
+      label: 'Educação Continuada',
+      description: 'Acesso automático para todos os perfis quando habilitado no estabelecimento.',
+      icon: 'BookOpen',
+      tone: 'blue',
+    },
+    {
       key: 'users',
       label: 'Usuários',
       description: 'Cadastro de pessoas, cargos e acessos.',
@@ -221,6 +229,12 @@ export class UsersComponent {
     },
     helpdesk: { icon: 'Headphones', description: 'Permite abrir e gerenciar chamados.' },
     'planos-acao': { icon: 'ClipboardList', description: 'Permite criar e editar planos de ação.' },
+    'educacao/painel': { icon: 'ChartLine', description: 'Permite consultar os indicadores.' },
+    'educacao/treinamentos': { icon: 'BookOpen', description: 'Permite realizar treinamentos.' },
+    'educacao/gerenciamento': {
+      icon: 'BookOpen',
+      description: 'Permite montar treinamentos e trilhas.',
+    },
     usuarios: { icon: 'Users', description: 'Permite gerenciar usuários, cargos e acessos.' },
   };
 
@@ -361,7 +375,9 @@ export class UsersComponent {
       new_role_name: '',
       category_id: user.category_id ?? '',
       process_ids: user.process_ids ?? [],
-      module_access: user.module_access ?? this.defaultModules(user.role),
+      module_access: [
+        ...new Set([...(user.module_access ?? this.defaultModules(user.role)), 'education']),
+      ],
       edit_access: user.edit_access ?? this.defaultEdits(user.role),
       is_active: user.is_active ?? true,
       receive_email_alerts: user.receive_email_alerts ?? true,
@@ -380,10 +396,12 @@ export class UsersComponent {
       ? this.customRoles().find((role) => role.id === selected.slice(7))
       : null;
     if (selected === 'other') {
-      this.form.controls.module_access.setValue([]);
+      this.form.controls.module_access.setValue(['education']);
       this.form.controls.edit_access.setValue([]);
     } else if (custom) {
-      this.form.controls.module_access.setValue([...custom.module_access]);
+      this.form.controls.module_access.setValue([
+        ...new Set([...custom.module_access, 'education']),
+      ]);
       this.form.controls.edit_access.setValue([...custom.edit_access]);
     } else {
       this.form.controls.module_access.setValue(this.defaultModules(selected as UserRole));
@@ -412,6 +430,7 @@ export class UsersComponent {
   }
 
   toggleModule(key: string): void {
+    if (key === 'education') return;
     const control = this.form.controls.module_access;
     const selected = new Set(control.value);
     if (selected.has(key)) selected.delete(key);
@@ -618,7 +637,12 @@ export class UsersComponent {
 
   openCreateRole(): void {
     this.roleEditing.set(null);
-    this.roleForm.reset({ name: '', description: '', module_access: [], edit_access: [] });
+    this.roleForm.reset({
+      name: '',
+      description: '',
+      module_access: ['education'],
+      edit_access: [],
+    });
     this.expandedRoleModules.set([]);
     this.roleError.set(null);
     this.roleOpen.set(true);
@@ -626,13 +650,17 @@ export class UsersComponent {
 
   openEditRole(role: CustomRole): void {
     this.roleEditing.set(role);
-    this.roleForm.reset({ ...role });
+    this.roleForm.reset({
+      ...role,
+      module_access: [...new Set([...role.module_access, 'education'])],
+    });
     this.expandedRoleModules.set([...role.module_access]);
     this.roleError.set(null);
     this.roleOpen.set(true);
   }
 
   toggleRoleModule(module: string): void {
+    if (module === 'education') return;
     const selected = new Set(this.roleForm.controls.module_access.value);
     if (selected.has(module)) selected.delete(module);
     else selected.add(module);
@@ -706,7 +734,7 @@ export class UsersComponent {
   }
 
   private defaultModules(role: UserRole): string[] {
-    if (role === 'visualizador') return ['dashboard'];
+    if (role === 'visualizador') return ['dashboard', 'education'];
     return role === 'admin' ? [...ALL_MODULES] : ALL_MODULES.filter((module) => module !== 'users');
   }
 

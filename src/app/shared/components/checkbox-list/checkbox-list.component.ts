@@ -1,7 +1,10 @@
 import { Component, forwardRef, Input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
-type CheckboxOption = { id: string; name: string };
+interface CheckboxOption {
+  id: string;
+  name: string;
+}
 
 @Component({
   selector: 'app-checkbox-list',
@@ -95,8 +98,8 @@ export class CheckboxListComponent implements ControlValueAccessor {
 
   selected: string[] = [];
   disabled = false;
-  onTouched: () => void = () => {};
-  private onChange: (value: string[]) => void = () => {};
+  onTouched: () => void = () => undefined;
+  private onChange: (value: string[]) => void = () => undefined;
 
   writeValue(value: string[] | null): void {
     this.selected = Array.isArray(value) ? [...value] : [];

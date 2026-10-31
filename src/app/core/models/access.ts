@@ -28,6 +28,9 @@ export const ACCESS_PAGES: AccessPage[] = [
   { key: 'helpdesk', label: 'Helpdesk', module: 'helpdesk' },
   { key: 'planos-acao', label: 'Planos de Ação', module: 'action_plans' },
   { key: 'usuarios', label: 'Usuários e Acessos', module: 'users' },
+  { key: 'educacao/painel', label: 'Painel de Educação', module: 'education' },
+  { key: 'educacao/treinamentos', label: 'Treinamentos e Trilhas', module: 'education' },
+  { key: 'educacao/gerenciamento', label: 'Montagem de Treinamentos', module: 'education' },
 ];
 
 export const ACCESS_MODULES = [...new Set(ACCESS_PAGES.map((page) => page.module))];

@@ -17,6 +17,7 @@ function moduleForRoute(route: string): string {
   if (route.startsWith('incidentes/')) return 'incidents';
   if (route === 'helpdesk') return 'helpdesk';
   if (route === 'planos-acao') return 'action_plans';
+  if (route.startsWith('educacao/')) return 'education';
   if (route === 'usuarios') return 'users';
   return 'dashboard';
 }
@@ -217,6 +218,32 @@ export const NAV_GROUPS: NavGroup[] = [
     color: 'bg-emerald-500',
     items: [
       {
+        id: 'educacao',
+        label: 'Educação Continuada',
+        icon: 'BookOpen',
+        leaves: [
+          {
+            id: 'educacao/painel',
+            label: 'Painel de Educação',
+            icon: 'ChartLine',
+            route: 'educacao/painel',
+          },
+          {
+            id: 'educacao/treinamentos',
+            label: 'Treinamentos e Trilhas',
+            icon: 'BookOpen',
+            route: 'educacao/treinamentos',
+          },
+          {
+            id: 'educacao/gerenciamento',
+            label: 'Montagem de Treinamentos',
+            icon: 'Workflow',
+            route: 'educacao/gerenciamento',
+            adminOnly: true,
+          },
+        ],
+      },
+      {
         id: 'planos-acao',
         label: 'Planos de Ação',
         icon: 'ClipboardList',
@@ -283,6 +310,9 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'indicadores/alimentacao': 'Lançamento de resultados, análises críticas e sugestões da IA',
   'indicadores/cadastro': 'Cadastro e configuração de indicadores',
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
+  'educacao/painel': 'Participação, tempo de acesso, aprovação e conclusão',
+  'educacao/treinamentos': 'Cursos, trilhas e materiais de aprendizagem',
+  'educacao/gerenciamento': 'Estruture etapas, materiais e avaliações',
 };
 
 export function visibleNavigation(

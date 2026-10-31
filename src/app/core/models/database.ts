@@ -1,5 +1,17 @@
 import type { Database as GeneratedDatabase } from './database.generated';
 import type { DocumentContent } from './document-content';
+import type {
+  LearningItem,
+  LearningTrackCourse,
+  LearningStage,
+  LearningQuiz,
+  LearningQuestion,
+  LearningStageProgress,
+  LearningQuizAttempt,
+  LearningAttendance,
+  PublicLearningQuestion,
+  QuizResult,
+} from '@features/education/education.models';
 export type { Database } from './database.generated';
 
 // Application contracts for the QMS. Database is the generated schema; AppDatabase is the
@@ -43,6 +55,14 @@ export interface AppDatabase {
       action_plan_history: TableDefinition<ActionPlanHistory>;
       action_plans: TableDefinition<ActionPlan>;
       action_plan_statuses: TableDefinition<ActionPlanStatusOption>;
+      learning_items: TableDefinition<LearningItem>;
+      learning_track_courses: TableDefinition<LearningTrackCourse>;
+      learning_stages: TableDefinition<LearningStage>;
+      learning_quizzes: TableDefinition<LearningQuiz>;
+      learning_questions: TableDefinition<LearningQuestion>;
+      learning_stage_progress: TableDefinition<LearningStageProgress>;
+      learning_quiz_attempts: TableDefinition<LearningQuizAttempt>;
+      learning_attendance: TableDefinition<LearningAttendance>;
       indicators: TableDefinition<Indicator>;
       indicator_statuses: TableDefinition<IndicatorStatusOption>;
       indicator_history: TableDefinition<IndicatorHistoryEntry>;
@@ -83,6 +103,17 @@ export interface AppDatabase {
     };
     Views: Record<string, never>;
     Functions: {
+      learning_public_questions: { Args: { p_quiz: string }; Returns: PublicLearningQuestion[] };
+      learning_record_access: {
+        Args: { p_stage: string; p_seconds: number };
+        Returns: LearningStageProgress;
+      };
+      learning_submit_quiz: { Args: { p_quiz: string; p_answers: number[] }; Returns: QuizResult };
+      learning_complete_stage: { Args: { p_stage: string }; Returns: LearningStageProgress };
+      learning_sign_attendance: {
+        Args: { p_item: string; p_name: string };
+        Returns: LearningAttendance;
+      };
       save_operation_plan: {
         Args: {
           p_id: string | null;

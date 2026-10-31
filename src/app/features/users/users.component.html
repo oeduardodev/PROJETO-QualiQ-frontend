@@ -553,6 +553,7 @@
                     type="checkbox"
                     [attr.aria-label]="'Selecionar módulo ' + module.label"
                     [checked]="form.controls.module_access.value.includes(module.key)"
+                    [disabled]="module.key === 'education'"
                     (change)="toggleModule(module.key)"
                     class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -572,11 +573,14 @@
                     role="switch"
                     [attr.aria-label]="'Acesso ao módulo ' + module.label"
                     [checked]="form.controls.module_access.value.includes(module.key)"
+                    [disabled]="module.key === 'education'"
                     (change)="toggleModule(module.key)"
                     class="peer sr-only"
                   />
                   <span aria-hidden="true" class="permission-switch"></span>
-                  <span class="hidden sm:inline">Acesso ao módulo</span>
+                  <span class="hidden sm:inline">{{
+                    module.key === 'education' ? 'Acesso automático' : 'Acesso ao módulo'
+                  }}</span>
                 </label>
                 <button
                   type="button"
@@ -746,6 +750,7 @@
                 type="checkbox"
                 [attr.aria-label]="'Selecionar módulo ' + module.label"
                 [checked]="roleForm.controls.module_access.value.includes(module.key)"
+                [disabled]="module.key === 'education'"
                 (change)="toggleRoleModule(module.key)"
                 class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
@@ -765,11 +770,14 @@
                 role="switch"
                 [attr.aria-label]="'Acesso ao módulo ' + module.label"
                 [checked]="roleForm.controls.module_access.value.includes(module.key)"
+                [disabled]="module.key === 'education'"
                 (change)="toggleRoleModule(module.key)"
                 class="peer sr-only"
               />
               <span aria-hidden="true" class="permission-switch"></span>
-              <span class="hidden sm:inline">Acesso ao módulo</span>
+              <span class="hidden sm:inline">{{
+                module.key === 'education' ? 'Acesso automático' : 'Acesso ao módulo'
+              }}</span>
             </label>
             <button
               type="button"

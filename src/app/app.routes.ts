@@ -187,6 +187,27 @@ export const routes: Routes = [
       import('@features/actions/action-plans.component').then((m) => m.ActionPlansComponent),
   },
   {
+    path: 'educacao/painel',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'education' },
+    loadComponent: () =>
+      import('@features/education/education.component').then((m) => m.EducationComponent),
+  },
+  {
+    path: 'educacao/treinamentos',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'education' },
+    loadComponent: () =>
+      import('@features/education/education.component').then((m) => m.EducationComponent),
+  },
+  {
+    path: 'educacao/gerenciamento',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'education', adminOrGestor: true },
+    loadComponent: () =>
+      import('@features/education/education.component').then((m) => m.EducationComponent),
+  },
+  {
     path: 'usuarios',
     canActivate: [moduleAccessGuard],
     data: { module: 'users', adminOnly: true },

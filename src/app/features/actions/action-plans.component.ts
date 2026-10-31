@@ -3,6 +3,8 @@ import { DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActionPlanService } from './data-access/action-plan.service';
+import { EducationService } from '@features/education/data-access/education.service';
+import type { LearningItem } from '@features/education/education.models';
 import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { ProfileService } from '@core/services/profile.service';
@@ -32,6 +34,7 @@ import type {
 })
 export class ActionPlansComponent {
   private readonly service = inject(ActionPlanService);
+  private readonly education = inject(EducationService);
   private readonly ticketService = inject(IncidentTicketService);
   private readonly profileService = inject(ProfileService);
   private readonly processService = inject(ProcessService);
@@ -39,6 +42,7 @@ export class ActionPlansComponent {
   private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   readonly plans = signal<ActionPlan[]>([]);
+  readonly linkedLearning = signal<LearningItem[]>([]);
   readonly tickets = signal<Ticket[]>([]);
   readonly profiles = signal<Profile[]>([]);
   readonly processes = signal<Process[]>([]);
@@ -186,6 +190,7 @@ export class ActionPlansComponent {
     this.comments.set([]);
     this.evidence.set([]);
     this.history.set([]);
+    this.linkedLearning.set([]);
     this.form.reset({
       title: plan?.title ?? '',
       ticket_id: plan?.ticket_id ?? ticketId,
@@ -204,6 +209,13 @@ export class ActionPlansComponent {
     });
     this.formOpen.set(true);
     if (plan) void this.loadActivity(plan.id);
+    if (plan && this.auth.hasModuleAccess('education'))
+      void this.education
+        .findByPlan(plan.id)
+        .then((items) => {
+          if (this.editing()?.id === plan.id) this.linkedLearning.set(items);
+        })
+        .catch(() => undefined);
   }
 
   async loadActivity(id: string): Promise<void> {

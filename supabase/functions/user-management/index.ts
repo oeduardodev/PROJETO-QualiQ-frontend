@@ -28,9 +28,12 @@ const modules = new Set([
   'incidents',
   'helpdesk',
   'action_plans',
+  'education',
   'users',
 ]);
-const baseModules = new Set([...modules].filter((module) => module !== 'helpdesk'));
+const baseModules = new Set(
+  [...modules].filter((module) => !['helpdesk', 'education'].includes(module)),
+);
 const inactiveBan = '876000h';
 const pageModules: Record<string, string> = {
   dashboard: 'dashboard',
@@ -54,6 +57,9 @@ const pageModules: Record<string, string> = {
   'incidentes/parametrizacao': 'incidents',
   helpdesk: 'helpdesk',
   'planos-acao': 'action_plans',
+  'educacao/painel': 'education',
+  'educacao/treinamentos': 'education',
+  'educacao/gerenciamento': 'education',
   usuarios: 'users',
 };
 const pages = new Set(Object.keys(pageModules));
@@ -105,6 +111,7 @@ function stringArray(value: unknown, allowed?: Set<string>): string[] {
 
 function accessSelection(body: Record<string, unknown>) {
   const module_access = stringArray(body.module_access, modules);
+  if (!module_access.includes('education')) module_access.push('education');
   const edit_access = stringArray(body.edit_access, pages);
   if (edit_access.some((page) => !module_access.includes(pageModules[page]))) {
     throw new Error('Habilite o módulo antes de permitir edição em uma página.');
@@ -345,7 +352,11 @@ async function main(request: Request) {
         .eq('establishment_id', actor.establishment_id)
         .eq('enabled', true);
       const allowed = new Set((enabled ?? []).map((item) => item.module_id));
-      if (module_access.some((module) => !baseModules.has(module) && !allowed.has(module)))
+      if (
+        module_access.some(
+          (module) => !baseModules.has(module) && module !== 'education' && !allowed.has(module),
+        )
+      )
         throw new Error('Módulo adicional não habilitado para este estabelecimento.');
     }
 
@@ -391,7 +402,8 @@ async function main(request: Request) {
       const requestOrigin = origin?.replace(/\/$/, '') ?? '';
       const inviteOrigin = appOrigins.includes(requestOrigin)
         ? requestOrigin
-        : Deno.env.get('PUBLIC_APP_ORIGIN')?.replace(/\/$/, '') && appOrigins.includes(Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, ''))
+        : Deno.env.get('PUBLIC_APP_ORIGIN')?.replace(/\/$/, '') &&
+            appOrigins.includes(Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, ''))
           ? Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, '')
           : appOrigins[0];
       const redirectTo = inviteOrigin ? `${inviteOrigin}/definir-senha` : undefined;
@@ -409,15 +421,13 @@ async function main(request: Request) {
         });
         if (profileError) throw profileError;
         if (process_ids.length) {
-          const { error: processError } = await admin
-            .from('profile_processes')
-            .insert(
-              process_ids.map((process_id) => ({
-                profile_id: invited.user.id,
-                process_id,
-                establishment_id: actor.establishment_id,
-              })),
-            );
+          const { error: processError } = await admin.from('profile_processes').insert(
+            process_ids.map((process_id) => ({
+              profile_id: invited.user.id,
+              process_id,
+              establishment_id: actor.establishment_id,
+            })),
+          );
           if (processError) throw processError;
         }
         if (!is_active) {
@@ -471,15 +481,13 @@ async function main(request: Request) {
       .eq('establishment_id', actor.establishment_id);
     if (clearError) throw clearError;
     if (process_ids.length) {
-      const { error } = await admin
-        .from('profile_processes')
-        .insert(
-          process_ids.map((process_id) => ({
-            profile_id: body.id,
-            process_id,
-            establishment_id: actor.establishment_id,
-          })),
-        );
+      const { error } = await admin.from('profile_processes').insert(
+        process_ids.map((process_id) => ({
+          profile_id: body.id,
+          process_id,
+          establishment_id: actor.establishment_id,
+        })),
+      );
       if (error) throw error;
     }
     return json({ ok: true, id: body.id }, 200, origin);

@@ -248,6 +248,19 @@
       </div>
     }
   </form>
+  @if (linkedLearning().length) {
+    <section class="mt-5 border-t border-slate-200 pt-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-700">Educação continuada vinculada</h3>
+      @for (item of linkedLearning(); track item.id) {
+        <a
+          class="mb-2 block rounded-lg border border-slate-200 p-3 text-sm text-blue-700 hover:bg-blue-50"
+          [href]="'/educacao/treinamentos?item=' + item.id"
+        >
+          {{ item.title }} · {{ item.kind === 'track' ? 'Trilha' : 'Treinamento' }}
+        </a>
+      }
+    </section>
+  }
   @if (editing(); as plan) {
     @if (plan.how_mode === 'tasks') {
       <section class="mt-6 space-y-3 border-t pt-4">

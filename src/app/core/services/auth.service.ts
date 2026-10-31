@@ -22,6 +22,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'helpdesk',
     'action_plans',
     'users',
+    'education',
   ],
   gestor: [
     'dashboard',
@@ -34,6 +35,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'incidents',
     'helpdesk',
     'action_plans',
+    'education',
   ],
   operador: [
     'dashboard',
@@ -46,6 +48,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'incidents',
     'helpdesk',
     'action_plans',
+    'education',
   ],
   analista: [
     'dashboard',
@@ -58,6 +61,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'incidents',
     'helpdesk',
     'action_plans',
+    'education',
   ],
   auditor: [
     'dashboard',
@@ -70,8 +74,9 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'incidents',
     'helpdesk',
     'action_plans',
+    'education',
   ],
-  visualizador: ['dashboard'],
+  visualizador: ['dashboard', 'education'],
 };
 
 const RESOURCE_MODULE: Record<string, string> = {
@@ -223,6 +228,7 @@ export class AuthService {
       !this.enabledAdditionalModules().includes(module)
     )
       return false;
+    if (module === 'education') return true;
     const explicitModules = this.profile()?.module_access;
     return explicitModules
       ? explicitModules.includes(module)
