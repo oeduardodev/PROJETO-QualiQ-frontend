@@ -365,11 +365,19 @@
             </div>
             @if (canAnalyze(row.indicator)) {
               <button
-                class="ui-button-primary"
+                class="ui-button-primary disabled:cursor-not-allowed disabled:opacity-60"
                 [disabled]="analyzing()"
+                [attr.aria-busy]="analyzing()"
                 (click)="generateAnalysis()"
               >
                 {{ analyzing() ? 'Analisando...' : 'Gerar e registrar análise' }}
+                @if (analyzing()) {
+                  <span
+                    appIcon="LoaderCircle"
+                    class="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  ></span>
+                }
               </button>
             }
           </div>

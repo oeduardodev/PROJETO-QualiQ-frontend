@@ -23,6 +23,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'action_plans',
     'users',
     'education',
+    'surveys',
   ],
   gestor: [
     'dashboard',
@@ -36,6 +37,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'helpdesk',
     'action_plans',
     'education',
+    'surveys',
   ],
   operador: [
     'dashboard',
@@ -95,6 +97,8 @@ const RESOURCE_MODULE: Record<string, string> = {
   slas: 'slas',
   risks: 'risks',
   helpdesk_tickets: 'helpdesk',
+  surveys: 'surveys',
+  survey_responses: 'surveys',
 };
 
 @Injectable({ providedIn: 'root' })

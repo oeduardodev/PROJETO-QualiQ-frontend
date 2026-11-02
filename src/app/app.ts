@@ -7,6 +7,7 @@ import { IconDirective } from '@shared/components/icon/icon.directive';
 import { ToastOutletComponent } from '@shared/components/toast-outlet/toast-outlet.component';
 import { AlertDialogOutletComponent } from '@shared/components/alert-dialog-outlet/alert-dialog-outlet.component';
 import { PublicIncidentComponent } from '@features/incidents/public-incident.component';
+import { PublicSurveyComponent } from '@features/surveys/public-survey.component';
 
 @Component({
   imports: [
@@ -17,6 +18,7 @@ import { PublicIncidentComponent } from '@features/incidents/public-incident.com
     ToastOutletComponent,
     AlertDialogOutletComponent,
     PublicIncidentComponent,
+    PublicSurveyComponent,
   ],
   selector: 'app-root',
   styleUrl: './app.scss',
@@ -27,6 +29,7 @@ export class App {
   readonly publicIncident = /^\/(?:incidente-publico|notificacao-publica)\/[0-9a-f-]{36}\/?$/.test(
     window.location.pathname,
   );
+  readonly publicSurvey = /^\/pesquisa-publica\/[0-9a-f-]{36}\/?$/.test(window.location.pathname);
   readonly auth = inject(AuthService);
 
   constructor() {

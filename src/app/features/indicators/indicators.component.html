@@ -367,11 +367,19 @@
                       Registrar análise
                     </button>
                     <button
-                      class="ui-button-primary"
+                      class="ui-button-primary disabled:cursor-not-allowed disabled:opacity-60"
                       [disabled]="feedAiLoading()"
+                      [attr.aria-busy]="feedAiLoading()"
                       (click)="generateFeedAnalysis(indicator, entry)"
                     >
                       {{ feedAiLoading() ? 'Analisando...' : 'Análise inteligente' }}
+                      @if (feedAiLoading()) {
+                        <span
+                          appIcon="LoaderCircle"
+                          class="h-4 w-4 animate-spin"
+                          aria-hidden="true"
+                        ></span>
+                      }
                     </button>
                   </div>
                 }

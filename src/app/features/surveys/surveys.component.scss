@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+.metric-card {
+  display: flex;
+  min-height: 100px;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: white;
+  padding: 1rem;
+}
+.metric-card span {
+  color: #475569;
+  font-size: 0.78rem;
+}
+.metric-card strong {
+  color: #0f172a;
+  font-size: 1.7rem;
+}

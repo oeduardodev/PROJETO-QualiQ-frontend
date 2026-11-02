@@ -1,4 +1,6 @@
-@if (publicIncident) {
+@if (publicSurvey) {
+  <app-public-survey />
+} @else if (publicIncident) {
   <app-public-incident />
 } @else if (passwordSetup) {
   <app-set-password />

@@ -28,6 +28,7 @@ const ALL_MODULES = [
   'incidents',
   'helpdesk',
   'action_plans',
+  'surveys',
   'education',
   'users',
 ];
@@ -171,6 +172,13 @@ export class UsersComponent {
       tone: 'teal',
     },
     {
+      key: 'surveys',
+      label: 'Pesquisa de Satisfação',
+      description: 'Criação de questionários, resultados e análise crítica.',
+      icon: 'MessageSquare',
+      tone: 'blue',
+    },
+    {
       key: 'education',
       label: 'Educação Continuada',
       description: 'Acesso automático para todos os perfis quando habilitado no estabelecimento.',
@@ -229,6 +237,14 @@ export class UsersComponent {
     },
     helpdesk: { icon: 'Headphones', description: 'Permite abrir e gerenciar chamados.' },
     'planos-acao': { icon: 'ClipboardList', description: 'Permite criar e editar planos de ação.' },
+    'pesquisas/painel': {
+      icon: 'ChartLine',
+      description: 'Permite analisar respostas e registrar ações.',
+    },
+    'pesquisas/parametrizacao': {
+      icon: 'SlidersHorizontal',
+      description: 'Permite criar questionários, critérios e links.',
+    },
     'educacao/painel': { icon: 'ChartLine', description: 'Permite consultar os indicadores.' },
     'educacao/treinamentos': { icon: 'BookOpen', description: 'Permite realizar treinamentos.' },
     'educacao/gerenciamento': {
@@ -735,7 +751,10 @@ export class UsersComponent {
 
   private defaultModules(role: UserRole): string[] {
     if (role === 'visualizador') return ['dashboard', 'education'];
-    return role === 'admin' ? [...ALL_MODULES] : ALL_MODULES.filter((module) => module !== 'users');
+    if (role === 'admin') return [...ALL_MODULES];
+    return ALL_MODULES.filter(
+      (module) => module !== 'users' && (role === 'gestor' || module !== 'surveys'),
+    );
   }
 
   private defaultEdits(role: UserRole): string[] {
@@ -750,6 +769,7 @@ export class UsersComponent {
               'documentos/gerenciamento',
               'documentos/copias',
               'incidentes/parametrizacao',
+              'pesquisas/parametrizacao',
               'usuarios',
             ].includes(page.key),
         )

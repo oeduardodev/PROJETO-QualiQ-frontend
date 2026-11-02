@@ -114,9 +114,11 @@ export class OperationInboxService {
   }
 
   queryParams(item: OperationInbox): Record<string, string> {
-    return item.route === '/documentos/painel'
-      ? { document: item.record_id }
-      : { id: item.record_id };
+    return item.route === '/pesquisas/painel'
+      ? { resposta: item.record_id }
+      : item.route === '/documentos/painel'
+        ? { document: item.record_id }
+        : { id: item.record_id };
   }
 
   async read(item: OperationInbox): Promise<void> {

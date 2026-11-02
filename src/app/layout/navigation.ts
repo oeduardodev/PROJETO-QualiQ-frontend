@@ -17,6 +17,7 @@ function moduleForRoute(route: string): string {
   if (route.startsWith('incidentes/')) return 'incidents';
   if (route === 'helpdesk') return 'helpdesk';
   if (route === 'planos-acao') return 'action_plans';
+  if (route.startsWith('pesquisas/')) return 'surveys';
   if (route.startsWith('educacao/')) return 'education';
   if (route === 'usuarios') return 'users';
   return 'dashboard';
@@ -256,6 +257,26 @@ export const NAV_GROUPS: NavGroup[] = [
           },
         ],
       },
+      {
+        id: 'pesquisas',
+        label: 'Pesquisa de Satisfação',
+        icon: 'MessageSquare',
+        leaves: [
+          {
+            id: 'pesquisas/painel',
+            label: 'Painel de Pesquisas',
+            icon: 'ChartLine',
+            route: 'pesquisas/painel',
+          },
+          {
+            id: 'pesquisas/parametrizacao',
+            label: 'Questionários e Links',
+            icon: 'SlidersHorizontal',
+            route: 'pesquisas/parametrizacao',
+            adminOnly: true,
+          },
+        ],
+      },
     ],
   },
   {
@@ -310,6 +331,8 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'indicadores/alimentacao': 'Lançamento de resultados, análises críticas e sugestões da IA',
   'indicadores/cadastro': 'Cadastro e configuração de indicadores',
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
+  'pesquisas/painel': 'Resultados Likert e NPS, respostas e análise crítica',
+  'pesquisas/parametrizacao': 'Questionários, critérios setoriais e links públicos',
   'educacao/painel': 'Participação, tempo de acesso, aprovação e conclusão',
   'educacao/treinamentos': 'Cursos, trilhas e materiais de aprendizagem',
   'educacao/gerenciamento': 'Estruture etapas, materiais e avaliações',

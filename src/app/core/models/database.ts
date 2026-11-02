@@ -1,6 +1,13 @@
 import type { Database as GeneratedDatabase } from './database.generated';
 import type { DocumentContent } from './document-content';
 import type {
+  Survey,
+  SurveyCriterion,
+  SurveyLink,
+  SurveyResponse,
+  PublicSurvey,
+} from '@features/surveys/survey.models';
+import type {
   LearningItem,
   LearningTrackCourse,
   LearningStage,
@@ -101,9 +108,22 @@ export interface AppDatabase {
       notification_severities: TableDefinition<IncidentSeverityOption>;
       analysis_tools: TableDefinition<AnalysisToolOption>;
       form_field_types: TableDefinition<FormFieldTypeOption>;
+      survey_criteria: TableDefinition<SurveyCriterion>;
+      surveys: TableDefinition<Survey>;
+      survey_links: TableDefinition<SurveyLink>;
+      survey_responses: TableDefinition<SurveyResponse>;
     };
     Views: Record<string, never>;
     Functions: {
+      read_public_survey: { Args: { p_token: string }; Returns: PublicSurvey };
+      submit_public_survey: {
+        Args: { p_token: string; p_answers: Record<string, string | number> };
+        Returns: string;
+      };
+      review_survey_response: {
+        Args: { p_id: string; p_analysis: string; p_action: string };
+        Returns: SurveyResponse;
+      };
       learning_public_questions: { Args: { p_quiz: string }; Returns: PublicLearningQuestion[] };
       learning_record_access: {
         Args: { p_stage: string; p_seconds: number };

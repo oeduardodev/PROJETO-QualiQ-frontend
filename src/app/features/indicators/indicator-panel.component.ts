@@ -15,6 +15,7 @@ import { ActionPlanService } from '@features/actions/data-access/action-plan.ser
 import { ProcessService } from '@features/processes/data-access/process.service';
 import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { ToastService } from '@shared/services/toast.service';
+import { IconDirective } from '@shared/components/icon/icon.directive';
 import { MethodologyComponent } from '@shared/components/methodology/methodology.component';
 import { METHODOLOGIES } from '@shared/data/methodologies';
 import { errorMessage } from '@shared/utils/error.utils';
@@ -46,7 +47,7 @@ interface ChartPoint {
 @Component({
   selector: 'app-indicator-panel',
   standalone: true,
-  imports: [MethodologyComponent],
+  imports: [MethodologyComponent, IconDirective],
   templateUrl: './indicator-panel.component.html',
   styleUrl: './indicator-panel.component.scss',
   host: { class: 'ui-standard-fields' },

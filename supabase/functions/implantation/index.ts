@@ -276,7 +276,7 @@ Deno.serve(async (request: Request) => {
         .eq('enabled', true);
       const addOns = (enabled ?? [])
         .map((item) => item.module_id)
-        .filter((id) => id === 'helpdesk');
+        .filter((id) => id === 'helpdesk' || id === 'surveys');
       const requestOrigin = origin?.replace(/\/$/, '') ?? '';
       const inviteOrigin = origins.has(requestOrigin)
         ? requestOrigin
@@ -303,7 +303,13 @@ Deno.serve(async (request: Request) => {
             role: 'admin',
             is_active: true,
             module_access: [...baseModules, ...addOns],
-            edit_access: [...adminPages, ...(addOns.includes('helpdesk') ? ['helpdesk'] : [])],
+            edit_access: [
+              ...adminPages,
+              ...(addOns.includes('helpdesk') ? ['helpdesk'] : []),
+              ...(addOns.includes('surveys')
+                ? ['pesquisas/painel', 'pesquisas/parametrizacao']
+                : []),
+            ],
           });
         if (error) throw error;
         await audit(actorId, establishmentId, 'create_initial_admin', null, {
