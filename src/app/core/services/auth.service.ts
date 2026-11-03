@@ -24,6 +24,7 @@ const DEFAULT_MODULES: Record<AppRole, string[]> = {
     'users',
     'education',
     'surveys',
+    'form_builder',
   ],
   gestor: [
     'dashboard',
@@ -98,6 +99,8 @@ const RESOURCE_MODULE: Record<string, string> = {
   risks: 'risks',
   helpdesk_tickets: 'helpdesk',
   surveys: 'surveys',
+  built_forms: 'form_builder',
+  built_form_responses: 'form_builder',
   survey_responses: 'surveys',
 };
 
@@ -205,6 +208,7 @@ export class AuthService {
       slas: 'processos/slas/gerenciamento',
       risks: 'riscos/gerenciamento',
       helpdesk_tickets: 'helpdesk',
+      built_forms: 'formularios/construcao',
       dimensions: 'dimensoes',
       dimension_links: 'dimensoes',
       value_chain_categories: 'valor',
@@ -226,9 +230,14 @@ export class AuthService {
     if (this.establishmentStatus() !== 'active') return false;
     if (module === 'profile') return true;
     if (
-      ['helpdesk', 'strategy_tools', 'surveys', 'education', 'custom_dashboards'].includes(
-        module,
-      ) &&
+      [
+        'helpdesk',
+        'strategy_tools',
+        'surveys',
+        'form_builder',
+        'education',
+        'custom_dashboards',
+      ].includes(module) &&
       !this.enabledAdditionalModules().includes(module)
     )
       return false;

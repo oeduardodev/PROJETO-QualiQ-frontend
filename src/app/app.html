@@ -1,4 +1,6 @@
-@if (publicSurvey) {
+@if (publicBuiltForm) {
+  <app-public-built-form />
+} @else if (publicSurvey) {
   <app-public-survey />
 } @else if (publicIncident) {
   <app-public-incident />

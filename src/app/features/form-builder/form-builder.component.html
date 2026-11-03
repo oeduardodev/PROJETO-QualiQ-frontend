@@ -1,0 +1,360 @@
+<div class="space-y-6 pb-10">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Construção de Formulários</h1>
+      <p class="mt-1 text-sm text-slate-600">
+        Pesquisas internas personalizadas com link aberto para respostas.
+      </p>
+    </div>
+    <nav class="flex gap-2" aria-label="Construção de Formulários">
+      <a routerLink="/formularios/painel" class="ui-button-secondary">Painel de resultados</a>
+      @if (auth.isAdmin() && auth.canEditPage('formularios/construcao')) {
+        <a routerLink="/formularios/construcao" class="ui-button-secondary"
+          >Construir formulários</a
+        >
+      }
+    </nav>
+  </div>
+
+  @if (error()) {
+    <p role="alert" class="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status" class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
+      {{ notice() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="text-slate-600">Carregando formulários...</p>
+  } @else {
+    <div class="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside class="rounded-xl border border-slate-200 bg-white p-4">
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <h2 class="font-semibold">Formulários</h2>
+          @if (setup) {
+            <button type="button" class="text-sm font-medium text-blue-700" (click)="select('')">
+              + Novo
+            </button>
+          }
+        </div>
+        @for (form of forms(); track form.id) {
+          <button
+            type="button"
+            class="mb-2 w-full rounded-lg border p-3 text-left text-sm hover:bg-slate-50"
+            [class.border-blue-500]="selectedId() === form.id"
+            (click)="select(form.id)"
+          >
+            <span class="block font-medium">{{ form.title }}</span>
+            <span class="text-xs text-slate-500">{{
+              form.status === 'draft'
+                ? 'Rascunho'
+                : form.status === 'published'
+                  ? 'Publicado'
+                  : 'Encerrado'
+            }}</span>
+          </button>
+        } @empty {
+          <p class="text-sm text-slate-500">Nenhum formulário cadastrado.</p>
+        }
+      </aside>
+
+      <div class="min-w-0 space-y-5">
+        @if (setup) {
+          <section class="rounded-xl border border-slate-200 bg-white p-5">
+            <h2 class="text-lg font-semibold">
+              {{ editor.id ? 'Editar formulário' : 'Novo formulário' }}
+            </h2>
+            <p class="mb-5 text-sm text-slate-500">
+              Após publicar, as perguntas ficam fixas para preservar as respostas.
+            </p>
+            <fieldset [disabled]="editor.status !== 'draft' || busy()" class="space-y-4">
+              <div class="grid gap-4 md:grid-cols-2">
+                <label class="ui-form-label"
+                  >Título *<input
+                    [(ngModel)]="editor.title"
+                    maxlength="200"
+                    placeholder="Ex.: Pesquisa de clima da equipe"
+                /></label>
+                <label class="ui-form-label"
+                  >Processo associado
+                  <select
+                    [ngModel]="editor.process_id || ''"
+                    (ngModelChange)="editor.process_id = $event || null"
+                  >
+                    <option value="">Nenhum</option>
+                    @for (process of processes(); track process.id) {
+                      <option [value]="process.id">{{ process.title }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="ui-form-label"
+                  >Setor
+                  <input
+                    [(ngModel)]="editor.sector"
+                    maxlength="120"
+                    placeholder="Ex.: Recursos Humanos"
+                /></label>
+              </div>
+              <label class="ui-form-label"
+                >Descrição e instruções
+                <textarea [(ngModel)]="editor.description" rows="3" maxlength="2000"></textarea>
+              </label>
+              <label class="ui-form-label"
+                >Mensagem após o envio
+                <textarea
+                  [(ngModel)]="editor.thank_you_message"
+                  rows="2"
+                  maxlength="500"
+                ></textarea>
+              </label>
+              <div class="border-t border-slate-200 pt-4">
+                <h3 class="font-semibold">Perguntas</h3>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="ui-button-secondary" (click)="addQuestion('short')">
+                    + Texto curto
+                  </button>
+                  <button type="button" class="ui-button-secondary" (click)="addQuestion('long')">
+                    + Texto longo
+                  </button>
+                  <button type="button" class="ui-button-secondary" (click)="addQuestion('single')">
+                    + Escolha única
+                  </button>
+                  <button
+                    type="button"
+                    class="ui-button-secondary"
+                    (click)="addQuestion('multiple')"
+                  >
+                    + Múltipla escolha
+                  </button>
+                  <button type="button" class="ui-button-secondary" (click)="addQuestion('rating')">
+                    + Nota de 1 a 5
+                  </button>
+                  <button type="button" class="ui-button-secondary" (click)="addQuestion('date')">
+                    + Data
+                  </button>
+                </div>
+                <div class="mt-4 space-y-4">
+                  @for (question of editor.questions; track question.id; let i = $index) {
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-sm font-semibold"
+                          >{{ i + 1 }}. {{ typeLabel(question.type) }}</span
+                        >
+                        <div class="flex gap-3 text-sm">
+                          <button
+                            type="button"
+                            (click)="moveQuestion(i, -1)"
+                            [disabled]="i === 0"
+                            aria-label="Mover pergunta para cima"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            (click)="moveQuestion(i, 1)"
+                            [disabled]="i === editor.questions.length - 1"
+                            aria-label="Mover pergunta para baixo"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            class="text-rose-700"
+                            (click)="removeQuestion(question.id)"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                      <label class="ui-form-label"
+                        >Pergunta *<input [(ngModel)]="question.title" maxlength="500"
+                      /></label>
+                      <label class="ui-form-label mt-3"
+                        >Descrição opcional
+                        <input [(ngModel)]="question.description" maxlength="500"
+                      /></label>
+                      @if (question.type === 'single' || question.type === 'multiple') {
+                        <label class="ui-form-label mt-3"
+                          >Opções, uma por linha
+                          <textarea
+                            #optionInput
+                            [value]="optionsText(question)"
+                            (change)="setOptions(question, optionInput.value)"
+                            rows="4"
+                            maxlength="2000"
+                          ></textarea>
+                        </label>
+                      }
+                      <label class="mt-3 flex items-center gap-2 text-sm"
+                        ><input type="checkbox" [(ngModel)]="question.required" />Obrigatória</label
+                      >
+                    </div>
+                  } @empty {
+                    <p class="text-sm text-slate-500">Adicione perguntas para começar.</p>
+                  }
+                </div>
+              </div>
+            </fieldset>
+            @if (editor.status === 'draft') {
+              <div class="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="ui-button-secondary"
+                  [disabled]="busy()"
+                  (click)="save()"
+                >
+                  Salvar rascunho
+                </button>
+                <button
+                  type="button"
+                  class="ui-button-primary"
+                  [disabled]="busy()"
+                  (click)="save(true)"
+                >
+                  Publicar e gerar link
+                </button>
+              </div>
+            }
+          </section>
+          @if (selected(); as form) {
+            @if (form.status !== 'draft') {
+              <section class="rounded-xl border border-slate-200 bg-white p-5">
+                <h2 class="font-semibold">Link aberto para respostas</h2>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <input
+                    class="min-w-0 flex-1"
+                    readonly
+                    [value]="publicUrl(form)"
+                    aria-label="Link público do formulário"
+                  />
+                  <button type="button" class="ui-button-secondary" (click)="copyLink(form)">
+                    Copiar link
+                  </button>
+                </div>
+                <p class="mt-2 text-sm text-slate-500">
+                  {{
+                    form.status === 'closed'
+                      ? 'Link encerrado.'
+                      : 'Qualquer pessoa com o link pode responder sem entrar no sistema.'
+                  }}
+                </p>
+                @if (form.status === 'published') {
+                  <button
+                    type="button"
+                    class="mt-4 text-sm text-rose-700"
+                    [disabled]="busy()"
+                    (click)="close()"
+                  >
+                    Encerrar respostas
+                  </button>
+                }
+              </section>
+            }
+          }
+        } @else {
+          @if (selected(); as form) {
+            <section class="rounded-xl border border-slate-200 bg-white p-5">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 class="text-lg font-semibold">{{ form.title }}</h2>
+                  <p class="text-sm text-slate-500">
+                    {{ processName(form.process_id) }} · {{ form.sector || 'Sem setor' }}
+                  </p>
+                </div>
+                <span class="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800"
+                  >{{ formResponses().length }} respostas</span
+                >
+              </div>
+              @if (form.status === 'draft') {
+                <p class="mt-4 text-sm text-slate-500">
+                  Publique o formulário para começar a receber respostas.
+                </p>
+              }
+              <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                @for (result of questionResults(); track result.question.id) {
+                  <div class="rounded-lg border border-slate-200 p-4">
+                    <h3 class="font-medium">{{ result.question.title }}</h3>
+                    <p class="mt-1 text-sm text-slate-500">{{ result.answered }} respostas</p>
+                    @if (result.average !== null) {
+                      <p class="mt-2 text-xl font-semibold">
+                        {{ result.average | number: '1.1-1' }}
+                        <span class="text-sm font-normal text-slate-500">/ 5</span>
+                      </p>
+                    }
+                    @if (
+                      result.question.type === 'single' ||
+                      result.question.type === 'multiple' ||
+                      result.question.type === 'rating'
+                    ) {
+                      <div class="mt-3 space-y-2">
+                        @for (count of result.counts; track count[0]) {
+                          <div class="flex justify-between gap-2 text-sm">
+                            <span>{{ count[0] }}</span
+                            ><strong
+                              >{{ count[1] }} ({{ percentage(count[1], result.answered) }}%)</strong
+                            >
+                          </div>
+                          <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              class="h-full rounded-full bg-blue-500"
+                              [style.width.%]="percentage(count[1], result.answered)"
+                            ></div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </section>
+            <section class="rounded-xl border border-slate-200 bg-white p-5">
+              <h2 class="font-semibold">Respostas recebidas</h2>
+              <div class="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                <div class="space-y-2">
+                  @for (response of formResponses(); track response.id; let i = $index) {
+                    <button
+                      type="button"
+                      class="w-full rounded-lg border p-3 text-left text-sm hover:bg-slate-50"
+                      [class.border-blue-500]="selectedResponseId() === response.id"
+                      (click)="selectedResponseId.set(response.id)"
+                    >
+                      Resposta {{ formResponses().length - i
+                      }}<span class="block text-xs text-slate-500">{{
+                        response.submitted_at | date: 'dd/MM/yyyy HH:mm'
+                      }}</span>
+                    </button>
+                  } @empty {
+                    <p class="text-sm text-slate-500">Ainda não há respostas.</p>
+                  }
+                </div>
+                <div>
+                  @if (selectedResponse(); as response) {
+                    <div class="space-y-4">
+                      @for (question of form.questions; track question.id) {
+                        <div class="border-b border-slate-100 pb-3">
+                          <h3 class="text-sm font-medium">{{ question.title }}</h3>
+                          <p class="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                            {{ answer(question, response) }}
+                          </p>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="text-sm text-slate-500">
+                      Selecione uma resposta para ver os detalhes.
+                    </p>
+                  }
+                </div>
+              </div>
+            </section>
+          } @else {
+            <p class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
+              Selecione um formulário para ver os resultados.
+            </p>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

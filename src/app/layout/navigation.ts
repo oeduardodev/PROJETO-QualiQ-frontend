@@ -18,6 +18,7 @@ function moduleForRoute(route: string): string {
   if (route === 'helpdesk') return 'helpdesk';
   if (route === 'planos-acao') return 'action_plans';
   if (route.startsWith('pesquisas/')) return 'surveys';
+  if (route.startsWith('formularios/')) return 'form_builder';
   if (route.startsWith('educacao/')) return 'education';
   if (route === 'usuarios') return 'users';
   return 'dashboard';
@@ -258,6 +259,26 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       {
+        id: 'formularios',
+        label: 'Construção de Formulários',
+        icon: 'ClipboardList',
+        leaves: [
+          {
+            id: 'formularios/painel',
+            label: 'Painel de Resultados',
+            icon: 'ChartLine',
+            route: 'formularios/painel',
+          },
+          {
+            id: 'formularios/construcao',
+            label: 'Construir Formulários',
+            icon: 'SlidersHorizontal',
+            route: 'formularios/construcao',
+            adminOnly: true,
+          },
+        ],
+      },
+      {
         id: 'pesquisas',
         label: 'Pesquisa de Satisfação',
         icon: 'MessageSquare',
@@ -333,6 +354,8 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
   'pesquisas/painel': 'Resultados Likert e NPS, respostas e análise crítica',
   'pesquisas/parametrizacao': 'Questionários, critérios setoriais e links públicos',
+  'formularios/painel': 'Resultados e respostas de formulários personalizados',
+  'formularios/construcao': 'Criação de perguntas, vínculos e links públicos',
   'educacao/painel': 'Participação, tempo de acesso, aprovação e conclusão',
   'educacao/treinamentos': 'Cursos, trilhas e materiais de aprendizagem',
   'educacao/gerenciamento': 'Estruture etapas, materiais e avaliações',
@@ -341,6 +364,7 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
 export function visibleNavigation(
   hasModuleAccess: (module: string) => boolean,
   canEditPage: (page: string) => boolean,
+  isAdmin = false,
 ): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
@@ -352,6 +376,7 @@ export function visibleNavigation(
             (!leaf.adminOnly ||
               (leaf.route === 'usuarios' ? hasModuleAccess('users') : canEditPage(leaf.route))) &&
             hasModuleAccess(moduleForRoute(leaf.route)) &&
+            (leaf.route !== 'formularios/construcao' || isAdmin) &&
             (leaf.route !== 'processos/slas/gerenciamento' || canEditPage(leaf.route)),
         ),
       }))

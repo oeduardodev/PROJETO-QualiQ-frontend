@@ -29,6 +29,7 @@ const ALL_MODULES = [
   'helpdesk',
   'action_plans',
   'surveys',
+  'form_builder',
   'education',
   'users',
 ];
@@ -176,6 +177,13 @@ export class UsersComponent {
       label: 'Pesquisa de Satisfação',
       description: 'Criação de questionários, resultados e análise crítica.',
       icon: 'MessageSquare',
+      tone: 'blue',
+    },
+    {
+      key: 'form_builder',
+      label: 'Construção de Formulários',
+      description: 'Criação de formulários e painel de respostas.',
+      icon: 'ClipboardList',
       tone: 'blue',
     },
     {
@@ -753,7 +761,8 @@ export class UsersComponent {
     if (role === 'visualizador') return ['dashboard', 'education'];
     if (role === 'admin') return [...ALL_MODULES];
     return ALL_MODULES.filter(
-      (module) => module !== 'users' && (role === 'gestor' || module !== 'surveys'),
+      (module) =>
+        module !== 'users' && (role === 'gestor' || !['surveys', 'form_builder'].includes(module)),
     );
   }
 
@@ -770,6 +779,7 @@ export class UsersComponent {
               'documentos/copias',
               'incidentes/parametrizacao',
               'pesquisas/parametrizacao',
+              'formularios/construcao',
               'usuarios',
             ].includes(page.key),
         )

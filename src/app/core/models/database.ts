@@ -1,6 +1,12 @@
 import type { Database as GeneratedDatabase } from './database.generated';
 import type { DocumentContent } from './document-content';
 import type {
+  BuiltForm,
+  BuiltFormResponse,
+  FormAnswer,
+  PublicBuiltForm,
+} from '@features/form-builder/form-builder.models';
+import type {
   Survey,
   SurveyCriterion,
   SurveyLink,
@@ -112,9 +118,16 @@ export interface AppDatabase {
       surveys: TableDefinition<Survey>;
       survey_links: TableDefinition<SurveyLink>;
       survey_responses: TableDefinition<SurveyResponse>;
+      built_forms: TableDefinition<BuiltForm>;
+      built_form_responses: TableDefinition<BuiltFormResponse>;
     };
     Views: Record<string, never>;
     Functions: {
+      read_public_built_form: { Args: { p_token: string }; Returns: PublicBuiltForm };
+      submit_public_built_form: {
+        Args: { p_token: string; p_answers: Record<string, FormAnswer> };
+        Returns: string;
+      };
       read_public_survey: { Args: { p_token: string }; Returns: PublicSurvey };
       submit_public_survey: {
         Args: { p_token: string; p_answers: Record<string, string | number> };

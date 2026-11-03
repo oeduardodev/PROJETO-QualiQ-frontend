@@ -201,6 +201,20 @@ export const routes: Routes = [
       import('@features/surveys/surveys.component').then((m) => m.SurveysComponent),
   },
   {
+    path: 'formularios/painel',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'form_builder' },
+    loadComponent: () =>
+      import('@features/form-builder/form-builder.component').then((m) => m.FormBuilderComponent),
+  },
+  {
+    path: 'formularios/construcao',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'form_builder', adminOnly: true, nativeAdminOnly: true },
+    loadComponent: () =>
+      import('@features/form-builder/form-builder.component').then((m) => m.FormBuilderComponent),
+  },
+  {
     path: 'educacao/painel',
     canActivate: [moduleAccessGuard],
     data: { module: 'education' },

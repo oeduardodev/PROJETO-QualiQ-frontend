@@ -8,6 +8,7 @@ import { ToastOutletComponent } from '@shared/components/toast-outlet/toast-outl
 import { AlertDialogOutletComponent } from '@shared/components/alert-dialog-outlet/alert-dialog-outlet.component';
 import { PublicIncidentComponent } from '@features/incidents/public-incident.component';
 import { PublicSurveyComponent } from '@features/surveys/public-survey.component';
+import { PublicBuiltFormComponent } from '@features/form-builder/public-built-form.component';
 
 @Component({
   imports: [
@@ -19,6 +20,7 @@ import { PublicSurveyComponent } from '@features/surveys/public-survey.component
     AlertDialogOutletComponent,
     PublicIncidentComponent,
     PublicSurveyComponent,
+    PublicBuiltFormComponent,
   ],
   selector: 'app-root',
   styleUrl: './app.scss',
@@ -30,6 +32,9 @@ export class App {
     window.location.pathname,
   );
   readonly publicSurvey = /^\/pesquisa-publica\/[0-9a-f-]{36}\/?$/.test(window.location.pathname);
+  readonly publicBuiltForm = /^\/formulario-publico\/[0-9a-f-]{36}\/?$/.test(
+    window.location.pathname,
+  );
   readonly auth = inject(AuthService);
 
   constructor() {

@@ -56,6 +56,7 @@ export class AppShellComponent implements OnDestroy {
       : visibleNavigation(
           (module) => this.auth.hasModuleAccess(module),
           (page) => this.auth.canEditPage(page),
+          this.auth.isAdmin(),
         ),
   );
   readonly leaves = computed(() =>
