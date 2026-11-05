@@ -282,7 +282,6 @@
                     </div>
                   </td>
                 </tr>
-
               } @empty {
                 <tr>
                   <td colspan="8" class="ui-table-empty">Nenhum risco encontrado.</td>
@@ -475,6 +474,15 @@
           <p class="mt-2 text-xs text-slate-500">
             Barreiras e controles: {{ selectedRisk()!.barriers }}
           </p>
+        }
+        @if (auth.hasModuleAccess('audits')) {
+          <a
+            class="mt-3 inline-block text-sm font-medium text-blue-700"
+            routerLink="/auditorias/painel"
+            [queryParams]="{ risk: selectedRisk()!.id }"
+          >
+            Ver auditorias deste risco →
+          </a>
         }
       </div>
       @for (section of detailSections(); track section.key) {
@@ -698,14 +706,31 @@
     <ol class="space-y-3">
       @for (entry of history(); track entry.id) {
         <li class="text-sm text-slate-600">
-          <strong>{{ historyActionLabel(entry) }}</strong> · {{ formatHistoryDate(entry.changed_at) }} · {{ entry.changed_by_name || 'Sistema' }}
-          @if (entry.justification) { <p class="text-slate-500">Justificativa: {{ entry.justification }}</p> }
-          @if (historyDescription(entry)) { <p class="text-slate-500">{{ historyDescription(entry) }}</p> }
+          <strong>{{ historyActionLabel(entry) }}</strong> ·
+          {{ formatHistoryDate(entry.changed_at) }} · {{ entry.changed_by_name || 'Sistema' }}
+          @if (entry.justification) {
+            <p class="text-slate-500">Justificativa: {{ entry.justification }}</p>
+          }
+          @if (entry.audit_id && auth.hasModuleAccess('audits')) {
+            <a
+              routerLink="/auditorias/painel"
+              [queryParams]="{ id: entry.audit_id }"
+              class="text-blue-700"
+              >Ver auditoria vinculada →</a
+            >
+          }
+          @if (historyDescription(entry)) {
+            <p class="text-slate-500">{{ historyDescription(entry) }}</p>
+          }
           @for (change of historyChanges(entry); track change.label) {
-            <p class="text-slate-500">{{ change.label }}: {{ change.before }} → {{ change.after }}</p>
+            <p class="text-slate-500">
+              {{ change.label }}: {{ change.before }} → {{ change.after }}
+            </p>
           }
         </li>
-      } @empty { <li class="text-sm text-slate-500">Sem registros de alteração.</li> }
+      } @empty {
+        <li class="text-sm text-slate-500">Sem registros de alteração.</li>
+      }
     </ol>
   }
 </app-side-drawer>

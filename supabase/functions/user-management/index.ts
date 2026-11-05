@@ -28,12 +28,16 @@ const modules = new Set([
   'incidents',
   'helpdesk',
   'action_plans',
+  'audits',
   'surveys',
+  'form_builder',
   'education',
   'users',
 ]);
 const baseModules = new Set(
-  [...modules].filter((module) => !['helpdesk', 'surveys', 'education'].includes(module)),
+  [...modules].filter(
+    (module) => !['helpdesk', 'surveys', 'form_builder', 'education'].includes(module),
+  ),
 );
 const inactiveBan = '876000h';
 const pageModules: Record<string, string> = {
@@ -58,8 +62,12 @@ const pageModules: Record<string, string> = {
   'incidentes/parametrizacao': 'incidents',
   helpdesk: 'helpdesk',
   'planos-acao': 'action_plans',
+  'auditorias/painel': 'audits',
+  'auditorias/gerenciamento': 'audits',
   'pesquisas/painel': 'surveys',
   'pesquisas/parametrizacao': 'surveys',
+  'formularios/painel': 'form_builder',
+  'formularios/construcao': 'form_builder',
   'educacao/painel': 'education',
   'educacao/treinamentos': 'education',
   'educacao/gerenciamento': 'education',

@@ -187,6 +187,18 @@ export const routes: Routes = [
       import('@features/actions/action-plans.component').then((m) => m.ActionPlansComponent),
   },
   {
+    path: 'auditorias/painel',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'audits' },
+    loadComponent: () => import('@features/audits/audits.component').then((m) => m.AuditsComponent),
+  },
+  {
+    path: 'auditorias/gerenciamento',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'audits', adminOnly: true },
+    loadComponent: () => import('@features/audits/audits.component').then((m) => m.AuditsComponent),
+  },
+  {
     path: 'pesquisas/painel',
     canActivate: [moduleAccessGuard],
     data: { module: 'surveys' },

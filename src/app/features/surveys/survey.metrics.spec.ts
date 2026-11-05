@@ -12,7 +12,7 @@ const responses = [
   { answers: { l: 5, n: 10 } },
   { answers: { l: 3, n: 8 } },
   { answers: { l: 4, n: 2 } },
-] as SurveyResponse[];
+] as unknown as SurveyResponse[];
 
 describe('métricas de satisfação', () => {
   it('calcula Likert e NPS pelas respectivas escalas', () => {

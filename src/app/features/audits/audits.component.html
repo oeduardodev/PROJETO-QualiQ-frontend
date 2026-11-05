@@ -1,0 +1,380 @@
+<div class="space-y-6 pb-10">
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Auditorias</h1>
+      <p class="mt-1 text-sm text-slate-600">
+        Avaliações avulsas e vinculadas a riscos, indicadores e documentos.
+      </p>
+    </div>
+    <nav class="flex gap-2" aria-label="Auditorias">
+      <a routerLink="/auditorias/painel" class="ui-button-secondary">Painel de resultados</a>
+      @if (auth.canEditPage('auditorias/gerenciamento')) {
+        <a routerLink="/auditorias/gerenciamento" class="ui-button-secondary"
+          >Gerenciar auditorias</a
+        >
+      }
+    </nav>
+  </header>
+
+  @if (error()) {
+    <p role="alert" class="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status" class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
+      {{ notice() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="text-sm text-slate-600">Carregando auditorias...</p>
+  } @else {
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Resumo das auditorias">
+      <div class="rounded-xl border bg-white p-4">
+        <p class="text-xs text-slate-500">Concluídas</p>
+        <p class="text-2xl font-semibold">{{ totals().completed }}</p>
+      </div>
+      <div class="rounded-xl border bg-white p-4">
+        <p class="text-xs text-slate-500">Em andamento</p>
+        <p class="text-2xl font-semibold">{{ totals().open }}</p>
+      </div>
+      <div class="rounded-xl border bg-white p-4">
+        <p class="text-xs text-slate-500">Conformes</p>
+        <p class="text-2xl font-semibold text-emerald-700">{{ totals().conform }}</p>
+      </div>
+      <div class="rounded-xl border bg-white p-4">
+        <p class="text-xs text-slate-500">Parciais</p>
+        <p class="text-2xl font-semibold text-amber-700">{{ totals().partial }}</p>
+      </div>
+      <div class="rounded-xl border bg-white p-4">
+        <p class="text-xs text-slate-500">Não conformes</p>
+        <p class="text-2xl font-semibold text-rose-700">{{ totals().nonconform }}</p>
+      </div>
+    </section>
+
+    @if (management) {
+      <div class="grid gap-5 xl:grid-cols-2">
+        <section class="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 class="mb-1 text-lg font-semibold">Criar auditoria</h2>
+          <p class="mb-4 text-sm text-slate-500">
+            Os itens dos módulos são copiados no momento da criação.
+          </p>
+          <div class="space-y-3">
+            <label class="ui-form-label"
+              >Tipo
+              <select [(ngModel)]="draft.kind" (ngModelChange)="useDraftTemplate()">
+                @for (kind of kinds; track kind[0]) {
+                  <option [value]="kind[0]">{{ kind[1] }}</option>
+                }
+              </select>
+            </label>
+            <label class="ui-form-label"
+              >Título *<input [(ngModel)]="draft.title" maxlength="200"
+            /></label>
+            <label class="ui-form-label"
+              >{{
+                draft.kind === 'custom' ? 'Processo relacionado (opcional)' : 'Processo ou setor *'
+              }}
+              <select [(ngModel)]="draft.processId">
+                <option value="">Selecione um processo</option>
+                @for (process of processes(); track process.id) {
+                  <option [value]="process.id">{{ process.title }}</option>
+                }
+              </select>
+            </label>
+            <label class="ui-form-label"
+              >{{
+                draft.kind === 'risk'
+                  ? 'Verificações adicionais (uma por linha)'
+                  : 'Critérios de avaliação (um por linha) *'
+              }}
+              <textarea
+                [(ngModel)]="draft.checks"
+                rows="4"
+                placeholder="Um critério por linha"
+              ></textarea>
+            </label>
+            @if (draft.kind === 'risk') {
+              <label class="flex items-start gap-2 text-sm text-slate-700">
+                <input type="checkbox" [(ngModel)]="draft.autoApply" class="mt-1" />
+                <span
+                  >Reduzir a probabilidade em 1 ponto quando todas as barreiras do risco forem
+                  conformes. O mínimo é 1; alterações nas barreiras desde a abertura impedem o
+                  ajuste.</span
+                >
+              </label>
+            }
+            <button type="button" class="ui-button-primary" [disabled]="busy()" (click)="create()">
+              Criar auditoria
+            </button>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 class="mb-1 text-lg font-semibold">Estruturas padrão</h2>
+          <p class="mb-4 text-sm text-slate-500">
+            Altere os critérios usados nas próximas auditorias. Auditorias já abertas preservam sua
+            estrutura.
+          </p>
+          <div class="space-y-3">
+            <label class="ui-form-label"
+              >Tipo
+              <select [(ngModel)]="templateKind" (ngModelChange)="useTemplate()">
+                @for (kind of kinds; track kind[0]) {
+                  <option [value]="kind[0]">{{ kind[1] }}</option>
+                }
+              </select>
+            </label>
+            <label class="ui-form-label"
+              >Título padrão<input [(ngModel)]="templateTitle" maxlength="160"
+            /></label>
+            <label class="ui-form-label"
+              >Critérios padrão
+              <textarea
+                [(ngModel)]="templateChecks"
+                rows="4"
+                placeholder="Um critério por linha"
+              ></textarea>
+            </label>
+            @if (templateKind === 'risk') {
+              <label class="flex items-center gap-2 text-sm text-slate-700"
+                ><input type="checkbox" [(ngModel)]="templateAuto" /> Ajuste automático da
+                probabilidade</label
+              >
+              <p class="text-xs text-slate-500">
+                As barreiras cadastradas em cada risco entram sempre na auditoria.
+              </p>
+            }
+            <button
+              type="button"
+              class="ui-button-secondary"
+              [disabled]="busy()"
+              (click)="saveTemplate()"
+            >
+              Salvar estrutura
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+
+    <div class="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside class="rounded-xl border border-slate-200 bg-white p-4">
+        <h2 class="mb-3 font-semibold">
+          {{ focusedRiskId ? 'Auditorias deste risco' : 'Auditorias' }}
+        </h2>
+        @for (audit of visibleAudits(); track audit.id) {
+          <button
+            type="button"
+            class="mb-2 w-full rounded-lg border p-3 text-left text-sm hover:bg-slate-50"
+            [class.border-blue-500]="selectedId() === audit.id"
+            (click)="select(audit.id)"
+          >
+            <span class="block font-medium">{{ audit.title }}</span>
+            <span class="text-xs text-slate-500"
+              >{{ kindLabel(audit.kind) }} ·
+              {{ audit.status === 'open' ? 'Em andamento' : 'Concluída' }} ·
+              {{ audit.created_at | date: 'dd/MM/yyyy' }}</span
+            >
+          </button>
+        } @empty {
+          <p class="text-sm text-slate-500">Nenhuma auditoria encontrada.</p>
+        }
+      </aside>
+
+      @if (selected(); as audit) {
+        <article class="min-w-0 space-y-5">
+          <section class="rounded-xl border border-slate-200 bg-white p-5">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-semibold">{{ audit.title }}</h2>
+                <p class="mt-1 text-sm text-slate-500">
+                  {{ kindLabel(audit.kind) }} · {{ processName(audit.process_id) }} ·
+                  {{ audit.created_at | date: 'dd/MM/yyyy HH:mm' }}
+                </p>
+              </div>
+              <span
+                class="rounded-full px-3 py-1 text-xs font-medium"
+                [class.bg-amber-100]="audit.status === 'open'"
+                [class.text-amber-800]="audit.status === 'open'"
+                [class.bg-emerald-100]="audit.status === 'completed'"
+                [class.text-emerald-800]="audit.status === 'completed'"
+                >{{ audit.status === 'open' ? 'Em andamento' : 'Concluída' }}</span
+              >
+            </div>
+            <div class="mt-4 flex flex-wrap gap-3 text-sm">
+              <span>{{ selectedItems().length }} itens</span>
+              <span class="text-emerald-700">{{ selectedTotals().conform }} conformes</span>
+              <span class="text-amber-700">{{ selectedTotals().partial }} parciais</span>
+              <span class="text-rose-700">{{ selectedTotals().nonconform }} não conformes</span>
+              <span class="text-slate-500">{{ pending() }} pendentes</span>
+            </div>
+            @if (audit.summary) {
+              <p class="mt-3 whitespace-pre-wrap text-sm text-slate-700">
+                <strong>Conclusão:</strong> {{ audit.summary }}
+              </p>
+            }
+            @if (audit.completed_at) {
+              <p class="mt-2 text-xs text-slate-500">
+                Concluída em {{ audit.completed_at | date: 'dd/MM/yyyy HH:mm' }}
+              </p>
+            }
+          </section>
+
+          @if (selectedImpacts().length) {
+            <section class="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+              <h3 class="font-semibold text-emerald-900">Impacto nos riscos</h3>
+              @for (impact of selectedImpacts(); track impact.risk_id) {
+                <p class="mt-2 text-sm text-emerald-800">
+                  {{ subjectName(impact.risk_id) }}: probabilidade {{ impact.old_probability }} →
+                  {{ impact.new_probability }}
+                </p>
+              }
+            </section>
+          }
+
+          <section class="space-y-3" aria-label="Itens avaliados">
+            @for (item of selectedItems(); track item.id) {
+              <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 class="font-semibold">{{ item.subject_label }}</h3>
+                    <p class="mt-1 text-sm text-slate-600">{{ item.criterion }}</p>
+                  </div>
+                  @if (subjectRoute(item); as link) {
+                    <a [routerLink]="link" class="text-xs font-medium text-blue-700"
+                      >Abrir módulo →</a
+                    >
+                  }
+                </div>
+                @if (audit.status === 'open' && management) {
+                  <div class="mt-4 space-y-3">
+                    <label class="ui-form-label"
+                      >Resultado
+                      <select [(ngModel)]="item.result" (ngModelChange)="markDirty(item.id)">
+                        <option value="pending">Pendente</option>
+                        <option value="conform">Conforme</option>
+                        <option value="partial">Parcialmente conforme</option>
+                        <option value="nonconform">Não conforme</option>
+                      </select>
+                    </label>
+                    <label class="ui-form-label"
+                      >Evidência ou observação<textarea
+                        [(ngModel)]="item.evidence"
+                        (ngModelChange)="markDirty(item.id)"
+                        rows="2"
+                        maxlength="5000"
+                      ></textarea>
+                    </label>
+                    <label class="ui-form-label"
+                      >Melhoria proposta<textarea
+                        [(ngModel)]="item.improvement"
+                        (ngModelChange)="markDirty(item.id)"
+                        rows="2"
+                        maxlength="3000"
+                      ></textarea>
+                    </label>
+                    <label class="ui-form-label"
+                      >Proposta de plano de ação<textarea
+                        [(ngModel)]="item.action_proposal"
+                        (ngModelChange)="markDirty(item.id)"
+                        rows="2"
+                        maxlength="3000"
+                      ></textarea>
+                    </label>
+                    <label class="ui-form-label"
+                      >Notificação proposta<textarea
+                        [(ngModel)]="item.notification_proposal"
+                        (ngModelChange)="markDirty(item.id)"
+                        rows="2"
+                        maxlength="3000"
+                      ></textarea>
+                    </label>
+                    <button
+                      type="button"
+                      class="ui-button-secondary"
+                      [disabled]="busy() || !dirtyIds().includes(item.id)"
+                      (click)="saveItem(item)"
+                    >
+                      Salvar avaliação
+                    </button>
+                  </div>
+                } @else {
+                  <p
+                    class="mt-3 text-sm font-medium"
+                    [class.text-emerald-700]="item.result === 'conform'"
+                    [class.text-amber-700]="item.result === 'partial'"
+                    [class.text-rose-700]="item.result === 'nonconform'"
+                  >
+                    {{ resultLabel(item.result) }}
+                  </p>
+                  @if (item.evidence) {
+                    <p class="mt-2 whitespace-pre-wrap text-sm">
+                      <strong>Evidência:</strong> {{ item.evidence }}
+                    </p>
+                  }
+                  @if (item.improvement) {
+                    <p class="mt-2 whitespace-pre-wrap text-sm">
+                      <strong>Melhoria:</strong> {{ item.improvement }}
+                    </p>
+                  }
+                  @if (item.action_proposal) {
+                    <p class="mt-2 whitespace-pre-wrap text-sm">
+                      <strong>Plano de ação proposto:</strong> {{ item.action_proposal }}
+                    </p>
+                    @if (auth.hasModuleAccess('action_plans')) {
+                      <a routerLink="/planos-acao" class="text-xs font-medium text-blue-700"
+                        >Abrir planos de ação para formalizar →</a
+                      >
+                    }
+                  }
+                  @if (item.notification_proposal) {
+                    <p class="mt-2 whitespace-pre-wrap text-sm">
+                      <strong>Notificação proposta:</strong> {{ item.notification_proposal }}
+                    </p>
+                    @if (auth.hasModuleAccess('incidents')) {
+                      <a
+                        routerLink="/incidentes/realizacao"
+                        class="text-xs font-medium text-blue-700"
+                        >Registrar incidente →</a
+                      >
+                    }
+                  }
+                }
+              </div>
+            }
+          </section>
+
+          @if (audit.status === 'open' && management) {
+            <section class="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 class="font-semibold">Concluir auditoria</h3>
+              <p class="mb-3 text-sm text-slate-500">
+                Avalie e salve todos os itens. A conclusão registra os resultados e aplica os
+                ajustes automáticos configurados.
+              </p>
+              <label class="ui-form-label"
+                >Resumo e encaminhamento<textarea
+                  [(ngModel)]="summary"
+                  rows="3"
+                  maxlength="5000"
+                ></textarea>
+              </label>
+              <button
+                type="button"
+                class="ui-button-primary mt-3"
+                [disabled]="busy() || pending() > 0 || dirtyIds().length > 0"
+                (click)="complete()"
+              >
+                Concluir auditoria
+              </button>
+              @if (pending() || dirtyIds().length) {
+                <p class="mt-2 text-xs text-slate-500">
+                  {{ pending() }} itens pendentes; {{ dirtyIds().length }} alterações não salvas.
+                </p>
+              }
+            </section>
+          }
+        </article>
+      }
+    </div>
+  }
+</div>

@@ -28,6 +28,7 @@ const ALL_MODULES = [
   'incidents',
   'helpdesk',
   'action_plans',
+  'audits',
   'surveys',
   'form_builder',
   'education',
@@ -173,6 +174,13 @@ export class UsersComponent {
       tone: 'teal',
     },
     {
+      key: 'audits',
+      label: 'Auditorias',
+      description: 'Painel, estruturas e execução de auditorias.',
+      icon: 'ClipboardCheck',
+      tone: 'teal',
+    },
+    {
       key: 'surveys',
       label: 'Pesquisa de Satisfação',
       description: 'Criação de questionários, resultados e análise crítica.',
@@ -245,6 +253,14 @@ export class UsersComponent {
     },
     helpdesk: { icon: 'Headphones', description: 'Permite abrir e gerenciar chamados.' },
     'planos-acao': { icon: 'ClipboardList', description: 'Permite criar e editar planos de ação.' },
+    'auditorias/painel': {
+      icon: 'ChartLine',
+      description: 'Permite consultar os resultados das auditorias.',
+    },
+    'auditorias/gerenciamento': {
+      icon: 'ClipboardCheck',
+      description: 'Permite configurar e concluir auditorias.',
+    },
     'pesquisas/painel': {
       icon: 'ChartLine',
       description: 'Permite analisar respostas e registrar ações.',
@@ -759,19 +775,29 @@ export class UsersComponent {
 
   private defaultModules(role: UserRole): string[] {
     if (role === 'visualizador') return ['dashboard', 'education'];
-    if (role === 'admin') return [...ALL_MODULES];
-    return ALL_MODULES.filter(
+    const available = ALL_MODULES.filter(
+      (module) =>
+        !['helpdesk', 'surveys', 'form_builder'].includes(module) ||
+        this.auth.enabledAdditionalModules().includes(module),
+    );
+    if (role === 'admin') return available;
+    return available.filter(
       (module) =>
         module !== 'users' && (role === 'gestor' || !['surveys', 'form_builder'].includes(module)),
     );
   }
 
   private defaultEdits(role: UserRole): string[] {
-    if (role === 'admin') return this.pages.map((page) => page.key);
+    const enabledModules = this.defaultModules(role);
+    if (role === 'admin')
+      return this.pages
+        .filter((page) => enabledModules.includes(page.module))
+        .map((page) => page.key);
     if (role === 'gestor')
       return this.pages
         .filter(
           (page) =>
+            enabledModules.includes(page.module) &&
             ![
               'indicadores/cadastro',
               'processos/gerenciamento',
@@ -779,6 +805,7 @@ export class UsersComponent {
               'documentos/copias',
               'incidentes/parametrizacao',
               'pesquisas/parametrizacao',
+              'auditorias/gerenciamento',
               'formularios/construcao',
               'usuarios',
             ].includes(page.key),

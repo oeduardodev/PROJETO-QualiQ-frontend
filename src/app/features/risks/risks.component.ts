@@ -7,7 +7,7 @@ import { ProcessService } from '@features/processes/data-access/process.service'
 import { ProfileRepository } from '@core/data-access/profile.repository';
 import { IncidentTicketService } from '@features/incidents/data-access/incident-ticket.service';
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
 import type {
@@ -40,7 +40,13 @@ import { METHODOLOGIES } from '@shared/data/methodologies';
 @Component({
   selector: 'app-risks',
   standalone: true,
-  imports: [ReactiveFormsModule, IconDirective, MethodologyComponent, SideDrawerComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    IconDirective,
+    MethodologyComponent,
+    SideDrawerComponent,
+  ],
   templateUrl: './risks.component.html',
   styleUrl: './risks.component.scss',
 })

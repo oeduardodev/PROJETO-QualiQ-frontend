@@ -1,4 +1,10 @@
 import type { Database as GeneratedDatabase } from './database.generated';
+import type {
+  Audit,
+  AuditItem,
+  AuditRiskImpact,
+  AuditTemplate,
+} from '@features/audits/audit.models';
 import type { DocumentContent } from './document-content';
 import type {
   BuiltForm,
@@ -120,9 +126,35 @@ export interface AppDatabase {
       survey_responses: TableDefinition<SurveyResponse>;
       built_forms: TableDefinition<BuiltForm>;
       built_form_responses: TableDefinition<BuiltFormResponse>;
+      audit_templates: TableDefinition<AuditTemplate>;
+      audits: TableDefinition<Audit>;
+      audit_items: TableDefinition<AuditItem>;
+      audit_risk_impacts: TableDefinition<AuditRiskImpact>;
     };
     Views: Record<string, never>;
     Functions: {
+      create_audit: {
+        Args: {
+          p_kind: string;
+          p_title: string;
+          p_process_id: string | null;
+          p_checks: string[];
+          p_auto_apply_risk: boolean;
+        };
+        Returns: Audit;
+      };
+      save_audit_item: {
+        Args: {
+          p_id: string;
+          p_result: string;
+          p_evidence: string;
+          p_improvement: string;
+          p_action_proposal: string;
+          p_notification_proposal: string;
+        };
+        Returns: AuditItem;
+      };
+      complete_audit: { Args: { p_id: string; p_summary: string }; Returns: Audit };
       read_public_built_form: { Args: { p_token: string }; Returns: PublicBuiltForm };
       submit_public_built_form: {
         Args: { p_token: string; p_answers: Record<string, FormAnswer> };
@@ -1070,6 +1102,7 @@ export type RiskApprovalState = 'draft' | 'pending' | 'approved' | 'rejected';
 
 export interface RiskHistory {
   id: string;
+  audit_id: string | null;
   risk_id: string;
   entity: 'risk' | 'factor' | 'action' | 'plan';
   entity_id: string;

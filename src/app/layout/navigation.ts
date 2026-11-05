@@ -17,6 +17,7 @@ function moduleForRoute(route: string): string {
   if (route.startsWith('incidentes/')) return 'incidents';
   if (route === 'helpdesk') return 'helpdesk';
   if (route === 'planos-acao') return 'action_plans';
+  if (route.startsWith('auditorias/')) return 'audits';
   if (route.startsWith('pesquisas/')) return 'surveys';
   if (route.startsWith('formularios/')) return 'form_builder';
   if (route.startsWith('educacao/')) return 'education';
@@ -220,6 +221,26 @@ export const NAV_GROUPS: NavGroup[] = [
     color: 'bg-emerald-500',
     items: [
       {
+        id: 'auditorias',
+        label: 'Auditorias',
+        icon: 'ClipboardCheck',
+        leaves: [
+          {
+            id: 'auditorias/painel',
+            label: 'Painel de Auditorias',
+            icon: 'ChartLine',
+            route: 'auditorias/painel',
+          },
+          {
+            id: 'auditorias/gerenciamento',
+            label: 'Gerenciamento de Auditorias',
+            icon: 'ClipboardCheck',
+            route: 'auditorias/gerenciamento',
+            adminOnly: true,
+          },
+        ],
+      },
+      {
         id: 'educacao',
         label: 'Educação Continuada',
         icon: 'BookOpen',
@@ -352,6 +373,8 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'indicadores/alimentacao': 'Lançamento de resultados, análises críticas e sugestões da IA',
   'indicadores/cadastro': 'Cadastro e configuração de indicadores',
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
+  'auditorias/painel': 'Resultados e impactos de auditorias vinculadas e avulsas',
+  'auditorias/gerenciamento': 'Estruturas, execução e conclusão das auditorias',
   'pesquisas/painel': 'Resultados Likert e NPS, respostas e análise crítica',
   'pesquisas/parametrizacao': 'Questionários, critérios setoriais e links públicos',
   'formularios/painel': 'Resultados e respostas de formulários personalizados',

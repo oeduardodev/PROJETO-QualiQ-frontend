@@ -26,6 +26,7 @@ const baseModules = [
   'documents',
   'incidents',
   'action_plans',
+  'audits',
   'users',
 ];
 const adminPages = [
@@ -49,6 +50,8 @@ const adminPages = [
   'incidentes/painel',
   'incidentes/parametrizacao',
   'planos-acao',
+  'auditorias/painel',
+  'auditorias/gerenciamento',
   'usuarios',
 ];
 
@@ -95,15 +98,13 @@ async function audit(
   before: unknown,
   after: unknown,
 ): Promise<void> {
-  const { error } = await admin
-    .from('implantation_audit')
-    .insert({
-      actor_id: actor,
-      establishment_id: establishment,
-      action,
-      before_data: before,
-      after_data: after,
-    });
+  const { error } = await admin.from('implantation_audit').insert({
+    actor_id: actor,
+    establishment_id: establishment,
+    action,
+    before_data: before,
+    after_data: after,
+  });
   if (error) throw error;
 }
 
@@ -280,7 +281,8 @@ Deno.serve(async (request: Request) => {
       const requestOrigin = origin?.replace(/\/$/, '') ?? '';
       const inviteOrigin = origins.has(requestOrigin)
         ? requestOrigin
-        : Deno.env.get('PUBLIC_APP_ORIGIN')?.replace(/\/$/, '') && origins.has(Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, ''))
+        : Deno.env.get('PUBLIC_APP_ORIGIN')?.replace(/\/$/, '') &&
+            origins.has(Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, ''))
           ? Deno.env.get('PUBLIC_APP_ORIGIN')!.replace(/\/$/, '')
           : [...origins][0];
       const redirectTo = inviteOrigin ? `${inviteOrigin}/definir-senha` : undefined;
@@ -290,27 +292,23 @@ Deno.serve(async (request: Request) => {
       );
       if (inviteError || !invited.user) throw inviteError ?? new Error('Convite não enviado.');
       try {
-        const { error } = await admin
-          .from('profiles')
-          .insert({
-            id: invited.user.id,
-            establishment_id: establishmentId,
-            name,
-            short_name: shortName,
-            email,
-            registration_code:
-              text(body.registration_code, 'a matrícula', 80) ?? `admin-${invited.user.id}`,
-            role: 'admin',
-            is_active: true,
-            module_access: [...baseModules, ...addOns],
-            edit_access: [
-              ...adminPages,
-              ...(addOns.includes('helpdesk') ? ['helpdesk'] : []),
-              ...(addOns.includes('surveys')
-                ? ['pesquisas/painel', 'pesquisas/parametrizacao']
-                : []),
-            ],
-          });
+        const { error } = await admin.from('profiles').insert({
+          id: invited.user.id,
+          establishment_id: establishmentId,
+          name,
+          short_name: shortName,
+          email,
+          registration_code:
+            text(body.registration_code, 'a matrícula', 80) ?? `admin-${invited.user.id}`,
+          role: 'admin',
+          is_active: true,
+          module_access: [...baseModules, ...addOns],
+          edit_access: [
+            ...adminPages,
+            ...(addOns.includes('helpdesk') ? ['helpdesk'] : []),
+            ...(addOns.includes('surveys') ? ['pesquisas/painel', 'pesquisas/parametrizacao'] : []),
+          ],
+        });
         if (error) throw error;
         await audit(actorId, establishmentId, 'create_initial_admin', null, {
           user_id: invited.user.id,

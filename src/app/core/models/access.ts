@@ -27,6 +27,8 @@ export const ACCESS_PAGES: AccessPage[] = [
   { key: 'incidentes/parametrizacao', label: 'Parametrização e Tipos', module: 'incidents' },
   { key: 'helpdesk', label: 'Helpdesk', module: 'helpdesk' },
   { key: 'planos-acao', label: 'Planos de Ação', module: 'action_plans' },
+  { key: 'auditorias/painel', label: 'Painel de Auditorias', module: 'audits' },
+  { key: 'auditorias/gerenciamento', label: 'Gerenciamento de Auditorias', module: 'audits' },
   { key: 'pesquisas/painel', label: 'Painel de Pesquisas', module: 'surveys' },
   { key: 'pesquisas/parametrizacao', label: 'Parametrização de Pesquisas', module: 'surveys' },
   { key: 'formularios/painel', label: 'Painel de Formulários', module: 'form_builder' },
