@@ -15,7 +15,7 @@ function moduleForRoute(route: string): string {
   if (route.startsWith('riscos/')) return 'risks';
   if (route.startsWith('documentos/')) return 'documents';
   if (route.startsWith('incidentes/')) return 'incidents';
-  if (route === 'helpdesk') return 'helpdesk';
+  if (route === 'helpdesk' || route.startsWith('helpdesk/')) return 'helpdesk';
   if (route === 'planos-acao') return 'action_plans';
   if (route.startsWith('auditorias/')) return 'audits';
   if (route.startsWith('pesquisas/')) return 'surveys';
@@ -211,7 +211,20 @@ export const NAV_GROUPS: NavGroup[] = [
         id: 'helpdesk',
         label: 'Helpdesk',
         icon: 'Headphones',
-        leaves: [{ id: 'helpdesk', label: 'Helpdesk', icon: 'Headphones', route: 'helpdesk' }],
+        leaves: [
+          {
+            id: 'helpdesk',
+            label: 'Central de Helpdesk',
+            icon: 'Headphones',
+            route: 'helpdesk',
+          },
+          {
+            id: 'helpdesk/historico',
+            label: 'Histórico de Helpdesk',
+            icon: 'Clock3',
+            route: 'helpdesk/historico',
+          },
+        ],
       },
     ],
   },
@@ -366,6 +379,7 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'incidentes/parametrizacao':
     'Criação de tipos de incidente, vínculos com SLAs e riscos, e construção de formulários dinâmicos',
   helpdesk: 'Chamados de TI, Manutenção e Almoxarifado',
+  'helpdesk/historico': 'Chamados resolvidos ou fechados há pelo menos uma semana',
   'riscos/painel': 'Gestão de riscos com matriz de probabilidade x impacto (FMEA)',
   'riscos/gerenciamento':
     'Gerenciamento de riscos, fatores, ações preventivas e planos de contingência',

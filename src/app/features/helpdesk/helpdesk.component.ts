@@ -7,7 +7,9 @@ import { ProfileRepository } from '@core/data-access/profile.repository';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { Component, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { interval } from 'rxjs';
 import type {
   HelpdeskCategory,
   HelpdeskCategoryOption,
@@ -26,11 +28,13 @@ import { EditHistoryComponent } from '@shared/components/edit-history/edit-histo
 import { ToastService } from '@shared/services/toast.service';
 import { AlertDialogService } from '@shared/services/alert-dialog.service';
 import { METHODOLOGIES } from '@shared/data/methodologies';
+import { isArchivedHelpdeskTicket } from './helpdesk-archive';
 
 @Component({
   selector: 'app-helpdesk',
   standalone: true,
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     IconDirective,
     SideDrawerComponent,
@@ -49,6 +53,7 @@ export class HelpdeskComponent {
   private readonly toast = inject(ToastService);
   private readonly alertDialog = inject(AlertDialogService);
   readonly auth = inject(AuthService);
+  readonly isHistory = this.route.snapshot.data['mode'] === 'history';
   readonly methodology = METHODOLOGIES['helpdesk'];
   readonly columns = signal<HelpdeskStatusOption[]>([]);
   readonly activeStatuses = computed(() => this.columns().filter((option) => option.is_active));
@@ -88,8 +93,11 @@ export class HelpdeskComponent {
   readonly methodologyOpen = signal(false);
   readonly searchValue = signal('');
   readonly categoryValue = signal('all');
+  readonly statusValue = signal('all');
+  readonly now = signal(Date.now());
   readonly search = new FormControl('', { nonNullable: true });
   readonly categoryFilter = new FormControl('all', { nonNullable: true });
+  readonly statusFilter = new FormControl('all', { nonNullable: true });
   readonly form = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: Validators.required }),
     description: new FormControl('', { nonNullable: true }),
@@ -110,9 +118,24 @@ export class HelpdeskComponent {
     process_id: new FormControl('', { nonNullable: true }),
     justification: new FormControl('', { nonNullable: true }),
   });
+  readonly archivedTickets = computed(() =>
+    this.tickets().filter((ticket) => isArchivedHelpdeskTicket(ticket, this.now())),
+  );
+  readonly centralTickets = computed(() =>
+    this.tickets().filter((ticket) => !isArchivedHelpdeskTicket(ticket, this.now())),
+  );
   readonly filtered = computed(() =>
-    this.tickets().filter(
+    this.centralTickets().filter(
       (ticket) =>
+        (this.categoryValue() === 'all' || ticket.category === this.categoryValue()) &&
+        (!this.searchValue() ||
+          ticket.title.toLowerCase().includes(this.searchValue().toLowerCase())),
+    ),
+  );
+  readonly historyFiltered = computed(() =>
+    this.archivedTickets().filter(
+      (ticket) =>
+        (this.statusValue() === 'all' || ticket.status === this.statusValue()) &&
         (this.categoryValue() === 'all' || ticket.category === this.categoryValue()) &&
         (!this.searchValue() ||
           ticket.title.toLowerCase().includes(this.searchValue().toLowerCase())),
@@ -126,6 +149,12 @@ export class HelpdeskComponent {
     this.categoryFilter.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((value) => this.categoryValue.set(value));
+    this.statusFilter.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((value) => this.statusValue.set(value));
+    interval(60_000)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.now.set(Date.now()));
     void this.loadTickets();
   }
 
@@ -167,7 +196,7 @@ export class HelpdeskComponent {
   }
 
   openCreateTicket(): void {
-    if (!this.auth.canEditPage('helpdesk')) return;
+    if (this.isHistory || !this.auth.canEditPage('helpdesk')) return;
     if (
       !this.activeCategories().length ||
       !this.activePriorities().length ||
@@ -353,6 +382,7 @@ export class HelpdeskComponent {
 
   canManage(ticket: HelpdeskTicket): boolean {
     return (
+      !this.isHistory &&
       this.auth.canEditPage('helpdesk') &&
       (this.auth.role() === 'admin' ||
         this.auth.isGestor() ||
@@ -362,6 +392,10 @@ export class HelpdeskComponent {
 
   categoryLabel(value: HelpdeskCategory): string {
     return this.categories().find((option) => option.key === value)?.label ?? value;
+  }
+
+  statusLabel(value: HelpdeskStatus): string {
+    return this.columns().find((option) => option.key === value)?.label ?? value;
   }
 
   priorityLabel(value: HelpdeskPriority): string {

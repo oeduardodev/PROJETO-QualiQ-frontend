@@ -290,6 +290,7 @@
                       <a
                         [routerLink]="'/' + leaf.route"
                         routerLinkActive="bg-slate-800 text-white shadow-sm"
+                        [routerLinkActiveOptions]="{ exact: true }"
                         (click)="mobileOpen.set(false)"
                         class="flex items-center rounded-lg py-2 text-sm text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
                         [class.justify-center]="collapsed() && !mobile"

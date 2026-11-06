@@ -152,6 +152,13 @@ export const routes: Routes = [
       import('@features/helpdesk/helpdesk.component').then((m) => m.HelpdeskComponent),
   },
   {
+    path: 'helpdesk/historico',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'helpdesk', mode: 'history' },
+    loadComponent: () =>
+      import('@features/helpdesk/helpdesk.component').then((m) => m.HelpdeskComponent),
+  },
+  {
     path: 'indicadores/painel',
     canActivate: [moduleAccessGuard],
     data: { module: 'indicators' },

@@ -657,6 +657,7 @@ export interface HelpdeskTicket {
   description: string | null;
   category: HelpdeskCategory;
   status: HelpdeskStatus;
+  status_changed_at: string;
   priority: HelpdeskPriority;
   requester_id: string | null;
   requester_name: string | null;

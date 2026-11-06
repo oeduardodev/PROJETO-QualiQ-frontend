@@ -6,130 +6,225 @@
   <div class="ui-empty-state" role="alert">{{ error() }}</div>
 } @else {
   <div class="space-y-6">
-    <div class="ui-page-header">
-      <div>
-        <h2 class="ui-page-title">Central de Helpdesk</h2>
-        <p class="ui-page-subtitle">{{ tickets().length }} chamados registrados</p>
+    @if (isHistory) {
+      <div class="ui-page-header">
+        <div>
+          <h2 class="ui-page-title">Histórico de Helpdesk</h2>
+          <p class="ui-page-subtitle">
+            {{ archivedTickets().length }} chamados resolvidos ou fechados há pelo menos uma semana
+          </p>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
-          <span appIcon="Info" class="h-4 w-4"></span>Metodologia
-        </button>
-        @if (auth.canEditPage('helpdesk')) {
-          <button
-            class="ui-button-primary"
-            [disabled]="
-              !activeCategories().length || !activePriorities().length || !activeStatuses().length
-            "
-            (click)="openCreateTicket()"
-          >
-            <span appIcon="Plus" class="h-4 w-4"></span>Novo Chamado
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <div class="relative flex-1 sm:max-w-sm">
+          <label class="sr-only" for="helpdesk-history-search">Buscar pelo título do chamado</label>
+          <span appIcon="Search" class="ui-search-icon"></span>
+          <input
+            id="helpdesk-history-search"
+            [formControl]="search"
+            class="ui-search-input"
+            placeholder="Buscar pelo título..."
+          />
+        </div>
+        <label class="sr-only" for="helpdesk-history-status">Filtrar por status</label>
+        <select
+          id="helpdesk-history-status"
+          [formControl]="statusFilter"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="all">Resolvidos e fechados</option>
+          <option value="resolvido">Resolvido</option>
+          <option value="fechado">Fechado</option>
+        </select>
+        <label class="sr-only" for="helpdesk-history-category">Filtrar por categoria</label>
+        <select
+          id="helpdesk-history-category"
+          [formControl]="categoryFilter"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="all">Todas as categorias</option>
+          @for (option of categories(); track option.key) {
+            <option [value]="option.key">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="ui-table-panel">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="ui-table-header">
+                <th class="ui-table-heading">Código</th>
+                <th class="ui-table-heading">Título</th>
+                <th class="ui-table-heading">Categoria</th>
+                <th class="ui-table-heading">Status</th>
+                <th class="ui-table-heading">Data do status</th>
+                <th class="ui-table-heading">Solicitante</th>
+                <th class="ui-table-heading !text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ticket of historyFiltered(); track ticket.id) {
+                <tr class="border-b border-slate-50 transition hover:bg-slate-50/40">
+                  <td class="ui-table-cell font-mono text-xs">{{ ticket.code || '—' }}</td>
+                  <td class="ui-table-cell font-medium text-slate-700">{{ ticket.title }}</td>
+                  <td class="ui-table-cell">{{ categoryLabel(ticket.category) }}</td>
+                  <td class="ui-table-cell">{{ statusLabel(ticket.status) }}</td>
+                  <td class="ui-table-cell">
+                    {{ ticket.status_changed_at | date: 'dd/MM/yyyy HH:mm' }}
+                  </td>
+                  <td class="ui-table-cell">{{ requesterName(ticket) }}</td>
+                  <td class="ui-table-cell !text-right">
+                    <div class="inline-flex gap-2">
+                      <button class="ui-action-edit text-xs" (click)="openTicketDetails(ticket)">
+                        Detalhes
+                      </button>
+                      <button class="ui-action-history text-xs" (click)="historyTicket.set(ticket)">
+                        Alterações
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" class="ui-table-empty">Nenhum chamado encontrado.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <div class="ui-page-header">
+        <div>
+          <h2 class="ui-page-title">Central de Helpdesk</h2>
+          <p class="ui-page-subtitle">{{ centralTickets().length }} chamados na central</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="ui-button-secondary" (click)="methodologyOpen.set(true)">
+            <span appIcon="Info" class="h-4 w-4"></span>Metodologia
           </button>
-        }
+          @if (auth.canEditPage('helpdesk')) {
+            <button
+              class="ui-button-primary"
+              [disabled]="
+                !activeCategories().length || !activePriorities().length || !activeStatuses().length
+              "
+              (click)="openCreateTicket()"
+            >
+              <span appIcon="Plus" class="h-4 w-4"></span>Novo Chamado
+            </button>
+          }
+        </div>
       </div>
-    </div>
-    <div class="flex flex-col gap-3 sm:flex-row">
-      <div class="relative flex-1 sm:max-w-sm">
-        <span appIcon="Search" class="ui-search-icon"></span
-        ><input [formControl]="search" class="ui-search-input" placeholder="Buscar chamado..." />
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <div class="relative flex-1 sm:max-w-sm">
+          <span appIcon="Search" class="ui-search-icon"></span
+          ><input [formControl]="search" class="ui-search-input" placeholder="Buscar chamado..." />
+        </div>
+        <select
+          [formControl]="categoryFilter"
+          class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="all">Todas as categorias</option>
+          @for (option of categories(); track option.key) {
+            <option [value]="option.key">{{ option.label }}</option>
+          }
+        </select>
       </div>
-      <select
-        [formControl]="categoryFilter"
-        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-      >
-        <option value="all">Todas as categorias</option>
-        @for (option of categories(); track option.key) {
-          <option [value]="option.key">{{ option.label }}</option>
-        }
-      </select>
-    </div>
-    <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
-      @for (column of columns(); track column.key) {
-        <section>
-          <header
-            class="ui-kanban-column-header"
-            [style.background-color]="column.header_background"
-            [style.border-color]="column.header_border"
-          >
-            <strong class="text-sm" [style.color]="column.header_foreground">{{
-              column.label
-            }}</strong
-            ><span class="ml-auto text-xs text-slate-400">{{
-              ticketsByStatus(column.key).length
-            }}</span>
-          </header>
-          <div
-            class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
-            [style.border-color]="column.header_border"
-            (dragover)="$event.preventDefault()"
-            (drop)="onTicketDrop($event, column.key)"
-          >
-            @for (ticket of ticketsByStatus(column.key); track ticket.id) {
-              <article
-                class="ui-kanban-card"
-                [draggable]="canManage(ticket)"
-                (dragstart)="startTicketDrag($event, ticket)"
-              >
-                <button class="block w-full text-left" (click)="openTicketDetails(ticket)">
-                  @if (ticket.code) {
-                    <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
-                      ticket.code
-                    }}</span>
-                  }
-                  <div class="flex items-start justify-between gap-2">
-                    <strong class="text-sm text-slate-700">{{ ticket.title }}</strong
-                    ><span
-                      class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-                      [style.background-color]="priorityBackground(ticket.priority)"
-                      [style.color]="priorityForeground(ticket.priority)"
-                      >{{ priorityLabel(ticket.priority) }}</span
-                    >
-                  </div>
-                  <p class="mt-1 line-clamp-2 text-xs text-slate-400">
-                    {{ ticket.description || 'Sem descrição' }}
-                  </p>
-                  <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>{{ categoryLabel(ticket.category) }}</span
-                    ><span>{{ requesterName(ticket) }}</span>
-                  </div>
-                  @if (ticket.assigned_to) {
-                    <p class="mt-1 text-[10px] text-slate-500">
-                      Atribuído a {{ assigneeName(ticket.assigned_to) }}
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
+        @for (column of columns(); track column.key) {
+          <section>
+            <header
+              class="ui-kanban-column-header"
+              [style.background-color]="column.header_background"
+              [style.border-color]="column.header_border"
+            >
+              <strong class="text-sm" [style.color]="column.header_foreground">{{
+                column.label
+              }}</strong
+              ><span class="ml-auto text-xs text-slate-400">{{
+                ticketsByStatus(column.key).length
+              }}</span>
+            </header>
+            <div
+              class="min-h-72 space-y-2 rounded-b-xl border border-t-0 bg-slate-50/50 p-2"
+              [style.border-color]="column.header_border"
+              (dragover)="$event.preventDefault()"
+              (drop)="onTicketDrop($event, column.key)"
+            >
+              @for (ticket of ticketsByStatus(column.key); track ticket.id) {
+                <article
+                  class="ui-kanban-card"
+                  [draggable]="canManage(ticket)"
+                  (dragstart)="startTicketDrag($event, ticket)"
+                >
+                  <button class="block w-full text-left" (click)="openTicketDetails(ticket)">
+                    @if (ticket.code) {
+                      <span class="mb-1 block font-mono text-[10px] text-slate-400">{{
+                        ticket.code
+                      }}</span>
+                    }
+                    <div class="flex items-start justify-between gap-2">
+                      <strong class="text-sm text-slate-700">{{ ticket.title }}</strong
+                      ><span
+                        class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+                        [style.background-color]="priorityBackground(ticket.priority)"
+                        [style.color]="priorityForeground(ticket.priority)"
+                        >{{ priorityLabel(ticket.priority) }}</span
+                      >
+                    </div>
+                    <p class="mt-1 line-clamp-2 text-xs text-slate-400">
+                      {{ ticket.description || 'Sem descrição' }}
                     </p>
-                  }
-                </button>
-                <div class="ui-kanban-card-footer">
-                  <button class="ui-action-history text-[11px]" (click)="historyTicket.set(ticket)">
-                    Histórico
+                    <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+                      <span>{{ categoryLabel(ticket.category) }}</span
+                      ><span>{{ requesterName(ticket) }}</span>
+                    </div>
+                    @if (ticket.assigned_to) {
+                      <p class="mt-1 text-[10px] text-slate-500">
+                        Atribuído a {{ assigneeName(ticket.assigned_to) }}
+                      </p>
+                    }
                   </button>
-                  @if (canManage(ticket) && canAdvance(ticket.status)) {
+                  <div class="ui-kanban-card-footer">
                     <button
-                      class="text-[11px] font-medium text-blue-600"
-                      (click)="advanceTicket(ticket)"
+                      class="ui-action-history text-[11px]"
+                      (click)="historyTicket.set(ticket)"
                     >
-                      Avançar
+                      Histórico
                     </button>
-                  }
-                  @if (canManage(ticket)) {
-                    <button
-                      class="text-[11px] font-medium text-slate-600"
-                      (click)="closeTicket(ticket)"
-                    >
-                      Fechar
-                    </button>
-                    <button class="ui-action-history text-[11px]" (click)="openEditTicket(ticket)">
-                      Editar
-                    </button>
-                  }
-                </div>
-              </article>
-            } @empty {
-              <p class="ui-empty-state">Vazio</p>
-            }
-          </div>
-        </section>
-      }
-    </div>
+                    @if (canManage(ticket) && canAdvance(ticket.status)) {
+                      <button
+                        class="text-[11px] font-medium text-blue-600"
+                        (click)="advanceTicket(ticket)"
+                      >
+                        Avançar
+                      </button>
+                    }
+                    @if (canManage(ticket)) {
+                      <button
+                        class="text-[11px] font-medium text-slate-600"
+                        (click)="closeTicket(ticket)"
+                      >
+                        Fechar
+                      </button>
+                      <button
+                        class="ui-action-history text-[11px]"
+                        (click)="openEditTicket(ticket)"
+                      >
+                        Editar
+                      </button>
+                    }
+                  </div>
+                </article>
+              } @empty {
+                <p class="ui-empty-state">Vazio</p>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    }
   </div>
 }
 <app-side-drawer

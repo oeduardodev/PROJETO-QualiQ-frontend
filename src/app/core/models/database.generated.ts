@@ -781,6 +781,7 @@ export type Database = {
           requester_id: string | null;
           requester_name: string | null;
           status: string;
+          status_changed_at: string;
           title: string;
           updated_at: string | null;
         };
@@ -798,6 +799,7 @@ export type Database = {
           requester_id?: string | null;
           requester_name?: string | null;
           status: string;
+          status_changed_at?: string;
           title: string;
           updated_at?: string | null;
         };
@@ -815,6 +817,7 @@ export type Database = {
           requester_id?: string | null;
           requester_name?: string | null;
           status?: string;
+          status_changed_at?: string;
           title?: string;
           updated_at?: string | null;
         };

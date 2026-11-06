@@ -190,6 +190,8 @@ As opções de unidade e frequência dos indicadores são carregadas pelo aplica
 
 No helpdesk, as categorias e prioridades vêm das tabelas `public.helpdesk_categories` e `public.helpdesk_priorities`. Para incluir uma opção, adicione uma linha no Supabase com `key`, `label` e `order_index`; em prioridades, também é possível definir `badge_background` e `badge_foreground` como cores hexadecimais. Apenas linhas com `is_active = true` aparecem em novos chamados. `is_default` escolhe a opção inicial do formulário, e somente uma linha por tabela pode ser padrão. Após recarregar a página, a nova opção aparece sem alteração no frontend. O fluxo de status continua definido na aplicação.
 
+O Helpdesk tem as rotas `/helpdesk` (Central) e `/helpdesk/historico` (Histórico). Chamados que permanecem por sete dias em `resolvido` ou `fechado` deixam a Central e aparecem no Histórico, onde podem ser filtrados por título, status e categoria. A coluna `helpdesk_tickets.status_changed_at` registra a última mudança de status; a migração `20261105140000_helpdesk_history.sql` recupera a data conhecida para os chamados existentes a partir do histórico de alterações.
+
 As severidades de incidentes vêm de `public.notification_severities` e são compartilhadas por chamados, tipos e classificações. A tabela usa os mesmos campos de ordenação, ativação, padrão e cores das prioridades do helpdesk. Os status dos incidentes continuam vinculados à sequência do fluxo na aplicação.
 
 ## Organização das features
