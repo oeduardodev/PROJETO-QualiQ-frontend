@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import { OperationInboxService } from '@core/services/operation-inbox.service';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { NAV_GROUPS, ROUTE_SUBTITLES, visibleNavigation } from './navigation';
@@ -20,6 +21,7 @@ export class AppShellComponent implements OnDestroy {
   readonly inbox = inject(OperationInboxService);
   readonly inboxOpen = signal(false);
   readonly auth = inject(AuthService);
+  readonly theme = inject(ThemeService);
   private readonly userManagement = inject(UserManagementService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);

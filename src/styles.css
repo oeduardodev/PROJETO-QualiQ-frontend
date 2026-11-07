@@ -218,3 +218,253 @@
 .scrollbar-thin {
   scrollbar-width: thin;
 }
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body,
+html.dark .bg-slate-100 {
+  background-color: #0d1725;
+  color: #e7eef5;
+}
+
+html.dark .bg-white,
+html.dark [class~='bg-white/80'],
+html.dark .bg-slate-50,
+html.dark [class~='bg-slate-50/40'],
+html.dark [class~='bg-slate-50/50'],
+html.dark [class~='bg-slate-50/70'] {
+  background-color: #142335;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #263a4e;
+}
+
+html.dark :is(.border-slate-50, .border-slate-100, .border-slate-200, .border-slate-300) {
+  border-color: #34485b;
+}
+
+html.dark :is(.text-slate-900, .text-slate-800, .text-slate-700) {
+  color: #e7eef5;
+}
+
+html.dark .text-slate-600 {
+  color: #c8d6e2;
+}
+
+html.dark .text-slate-500 {
+  color: #afc1d0;
+}
+
+html.dark .text-slate-400 {
+  color: #93a9bb;
+}
+
+html.dark .text-slate-300 {
+  color: #849bad;
+}
+
+html.dark :is(.bg-blue-50, .bg-emerald-50, .bg-violet-50, .bg-cyan-50) {
+  background-color: #16344b;
+}
+
+html.dark :is(.bg-rose-50, .bg-red-50) {
+  background-color: #382836;
+}
+
+html.dark :is(.bg-amber-50, .bg-orange-50) {
+  background-color: #302c22;
+}
+
+html.dark .bg-amber-100 {
+  background-color: #473822;
+}
+
+html.dark .bg-emerald-100 {
+  background-color: #1c4034;
+}
+
+html.dark :is(.border-amber-100, .border-amber-200, .border-orange-200) {
+  border-color: #745d37;
+}
+
+html.dark .border-emerald-200 {
+  border-color: #356d54;
+}
+
+html.dark :is(.text-blue-600, .text-blue-700, .text-blue-800) {
+  color: #79c8ff;
+}
+
+html.dark
+  :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-green-700) {
+  color: #80e6ad;
+}
+
+html.dark :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-red-600) {
+  color: #ff9aaa;
+}
+
+html.dark
+  :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-orange-700) {
+  color: #f6d28c;
+}
+
+html.dark .bg-amber-50 textarea {
+  background-color: #242d31;
+  border-color: #665a41;
+}
+
+html.dark :is(.text-violet-600, .text-violet-700, .text-violet-800) {
+  color: #c9b5ff;
+}
+
+html.dark
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea) {
+  background-color: #1b2d40;
+  color: #e7eef5;
+}
+
+html.dark :is(input, textarea)::placeholder {
+  color: #93a9bb;
+}
+
+html.dark [class~='hover:bg-slate-50']:hover,
+html.dark [class~='hover:bg-slate-50/40']:hover,
+html.dark [class~='hover:bg-slate-50/50']:hover,
+html.dark [class~='hover:bg-slate-50/70']:hover,
+html.dark [class~='hover:bg-slate-100']:hover,
+html.dark [class~='hover:bg-blue-50']:hover {
+  background-color: #263a4e;
+}
+
+html.dark :is(.metric-card, .editor-panel, .sla-card, .sla-history) {
+  background-color: #142335;
+  border-color: #34485b;
+}
+
+html.dark :is(.metric-card span, .metric-label, .editor-panel small, .sla-empty) {
+  color: #afc1d0;
+}
+
+html.dark :is(.metric-card strong, .metric-value, .editor-panel .ui-form-label) {
+  color: #e7eef5;
+}
+
+html.dark :is(.course-row, .pdf-frame, .matrix-process-card, .matrix-summary-section) {
+  border-color: #34485b;
+  color: #e7eef5;
+}
+
+html.dark :is(.course-row:hover, .course-row:disabled, .progress-track, .matrix-icon-button:hover) {
+  background-color: #263a4e;
+}
+
+html.dark :is(.matrix-summary-section h3, .matrix-summary-item strong, .matrix-icon-button:hover) {
+  color: #e7eef5;
+}
+
+html.dark :is(.matrix-summary-item small, .matrix-summary-empty, .matrix-icon-button) {
+  color: #afc1d0;
+}
+
+html.dark :is(.matrix-summary-item, .sla-card-header, .sla-card-footer) {
+  border-color: #34485b;
+}
+
+html.dark .matrix-form-input {
+  background-color: #1b2d40;
+  border-color: #34485b;
+  color: #e7eef5;
+}
+
+html.dark :is(.sla-card-heading h3, .sla-process strong, .sla-input strong) {
+  color: #e7eef5;
+}
+
+html.dark :is(.sla-process-arrow, .sla-input, .sla-card-footer, .sla-lead-time) {
+  background-color: #1b2d40;
+  border-color: #34485b;
+}
+
+html.dark :is(.sla-criteria p, .sla-card-criticality, .sla-process span, .sla-card-footer small) {
+  color: #afc1d0;
+}
+
+html.dark .native-document-editor,
+html.dark .native-document-editor :is(.document-toolbar, .toolbar-group) {
+  border-color: #34485b;
+}
+
+html.dark .native-document-editor .document-toolbar {
+  background-color: #142335;
+}
+
+html.dark .native-document-editor .document-toolbar :is(button, select) {
+  color: #e7eef5;
+}
+
+html.dark .native-document-editor .document-canvas {
+  background-color: #263a4e;
+}
+
+html.dark .native-document-editor .document-editor-notice {
+  background-color: #382836;
+  color: #f6cb84;
+}
+
+html.dark [class*='permission-icon-'] {
+  background-color: #263a4e;
+}
+
+html.dark :is(.ui-card, .ui-table-panel, .ui-kanban-card, .ui-button-secondary, .ui-search-input) {
+  background-color: #142335;
+  border-color: #34485b;
+  color: #e7eef5;
+}
+
+html.dark .ui-table-header {
+  background-color: #1b2d40;
+  border-color: #34485b;
+}
+
+.configured-kanban-header {
+  background-color: var(--kanban-header-bg);
+  border-color: var(--kanban-header-border);
+  color: var(--kanban-header-fg);
+}
+
+html.dark .configured-kanban-header {
+  background-color: color-mix(in srgb, var(--kanban-header-fg) 18%, #142335);
+  border-color: color-mix(in srgb, var(--kanban-header-fg) 35%, #34485b);
+  color: color-mix(in srgb, var(--kanban-header-fg) 35%, white);
+}
+
+html.dark :is(.ui-page-title, .ui-action-history) {
+  color: #e7eef5;
+}
+
+html.dark
+  :is(
+    .ui-page-subtitle,
+    .ui-table-heading,
+    .ui-table-heading-wider,
+    .ui-table-cell,
+    .ui-form-label,
+    .ui-form-label-inline
+  ) {
+  color: #afc1d0;
+}
+
+html.dark .ui-standard-fields .ui-form-label :is(input:not([type='checkbox']), select, textarea),
+html.dark .ui-form-control {
+  background-color: #1b2d40;
+  border-color: #34485b;
+  color: #e7eef5;
+}
+
+html.dark :is(.ui-kanban-card-footer, .ui-table-panel .ui-table-cell) {
+  border-color: #34485b;
+}

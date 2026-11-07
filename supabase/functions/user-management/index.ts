@@ -153,8 +153,17 @@ async function main(request: Request) {
   if (!actor?.is_active) return json({ error: 'Usuário inativo.' }, 403, origin);
   if (actor.role === 'implantacao') {
     const body = await request.json();
-    if (body.action !== 'get_self')
+    if (body.action !== 'get_self' && body.action !== 'update_theme')
       return json({ error: 'Acesso restrito ao módulo Implantação.' }, 403, origin);
+    if (body.action === 'update_theme') {
+      if (body.theme_preference !== 'light' && body.theme_preference !== 'dark')
+        return json({ error: 'Tema inválido.' }, 400, origin);
+      const { error } = await admin
+        .from('profiles')
+        .update({ theme_preference: body.theme_preference })
+        .eq('id', userData.user.id);
+      return error ? json({ error: error.message }, 400, origin) : json({ ok: true }, 200, origin);
+    }
     const { data: profile, error } = await admin
       .from('profiles')
       .select('*')
@@ -173,6 +182,16 @@ async function main(request: Request) {
 
   try {
     const body = await request.json();
+    if (body.action === 'update_theme') {
+      if (body.theme_preference !== 'light' && body.theme_preference !== 'dark')
+        throw new Error('Tema inválido.');
+      const { error } = await admin
+        .from('profiles')
+        .update({ theme_preference: body.theme_preference })
+        .eq('id', userData.user.id);
+      if (error) throw error;
+      return json({ ok: true }, 200, origin);
+    }
     if (body.action === 'update_self') {
       const name = requiredText(body.name, 'o nome completo', 200);
       const short_name = requiredText(body.short_name, 'o nome abreviado', 80);

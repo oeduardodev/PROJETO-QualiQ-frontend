@@ -3,7 +3,8 @@ import { SupabaseService } from '@core/supabase/supabase.service';
 import type { CustomRole, Profile } from '@core/models/database';
 
 export interface UserManagementPayload {
-  action: 'create' | 'update' | 'update_self' | 'create_role' | 'update_role';
+  action: 'create' | 'update' | 'update_self' | 'update_theme' | 'create_role' | 'update_role';
+  theme_preference?: 'light' | 'dark';
   id?: string;
   name?: string;
   short_name?: string;

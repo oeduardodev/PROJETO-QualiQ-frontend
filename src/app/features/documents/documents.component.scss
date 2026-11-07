@@ -24,6 +24,26 @@
   width: 100%;
   border-top: 3px solid #64748b;
 }
+
+:host-context(.dark) {
+  .stat {
+    border-color: #34485b;
+    background-color: #142335;
+  }
+
+  .stat span {
+    color: #afc1d0;
+  }
+
+  .stat strong {
+    color: #e7eef5;
+  }
+
+  .ui-button-secondary:hover {
+    background-color: #263a4e;
+  }
+}
+
 @media (max-width: 639px) {
   .hierarchy-tier {
     max-width: 100% !important;

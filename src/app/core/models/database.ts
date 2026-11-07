@@ -807,6 +807,7 @@ export interface Profile {
   category_id: string | null;
   is_active?: boolean;
   receive_email_alerts?: boolean;
+  theme_preference?: 'light' | 'dark';
   is_department_head?: boolean;
   module_access?: string[];
   edit_access?: string[];

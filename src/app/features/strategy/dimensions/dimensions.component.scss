@@ -56,3 +56,20 @@
     @apply block text-xs text-slate-400;
   }
 }
+
+:host-context(.dark) {
+  .dimension-main:hover,
+  .link-picker-item:hover {
+    background-color: #263a4e;
+  }
+
+  .ui-form-label input,
+  .ui-form-label select,
+  .ui-form-label textarea,
+  .version-select,
+  .link-picker-search {
+    border-color: #34485b;
+    background-color: #1b2d40;
+    color: #e7eef5;
+  }
+}

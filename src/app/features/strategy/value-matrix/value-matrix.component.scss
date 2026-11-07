@@ -96,3 +96,31 @@
     border-color: #39b2ea;
   }
 }
+
+:host-context(.dark) {
+  .matrix-process-card,
+  .matrix-summary-section {
+    border-color: #34485b;
+  }
+
+  .matrix-summary-section h3,
+  .matrix-summary-item strong {
+    color: #e7eef5;
+  }
+
+  .matrix-summary-section h3 span,
+  .matrix-summary-item small,
+  .matrix-summary-empty {
+    color: #afc1d0;
+  }
+
+  .matrix-summary-item {
+    border-color: #34485b;
+  }
+
+  .matrix-form-input {
+    border-color: #34485b;
+    background-color: #1b2d40;
+    color: #e7eef5;
+  }
+}

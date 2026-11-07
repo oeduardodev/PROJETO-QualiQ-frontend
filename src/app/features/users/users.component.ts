@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import type {
   CustomRole,
   Process,
@@ -46,6 +47,7 @@ export class UsersComponent {
   private readonly processService = inject(ProcessService);
   private readonly userManagement = inject(UserManagementService);
   readonly auth = inject(AuthService);
+  readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
   readonly profileOnly = inject(ActivatedRoute).snapshot.routeConfig?.path === 'perfil';
 

@@ -267,6 +267,66 @@
   text-align: center;
 }
 
+:host-context(.dark) {
+  .sla-card,
+  .sla-history {
+    border-color: #34485b;
+    background-color: #142335;
+  }
+
+  .sla-card-header,
+  .sla-card-footer {
+    border-color: #34485b;
+  }
+
+  .sla-card-heading h3,
+  .sla-process strong,
+  .sla-input strong {
+    color: #e7eef5;
+  }
+
+  .sla-card-criticality,
+  .sla-process span,
+  .sla-criteria span,
+  .sla-card-footer small,
+  .sla-empty {
+    color: #a9bdce;
+  }
+
+  .sla-criteria p {
+    color: #c2d1de;
+  }
+
+  .sla-process-arrow,
+  .sla-card-footer,
+  .sla-lead-time {
+    border-color: #34485b;
+    background-color: #1b2d40;
+  }
+
+  .sla-process-arrow {
+    color: #a9bdce;
+  }
+
+  .sla-input {
+    border-color: #36606a;
+    background-color: #19333b;
+  }
+
+  .sla-input span {
+    color: #7ed9e4;
+  }
+
+  .sla-card-footer,
+  .sla-lead-time {
+    color: #5fdda8;
+  }
+
+  .sla-card-footer-alert {
+    color: #ff8298;
+  }
+}
+
 @media (max-width: 800px) {
   .sla-overview {
     grid-template-columns: repeat(3, minmax(0, 1fr));

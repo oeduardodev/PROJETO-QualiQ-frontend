@@ -10,7 +10,7 @@
       <p class="mt-1 max-w-2xl text-sm text-slate-500">
         {{
           profileOnly
-            ? 'Confira seus dados e preferências de comunicação.'
+            ? 'Confira seus dados e preferências de comunicação e aparência.'
             : 'Gerencie perfis, responsabilidades e módulos disponíveis para cada pessoa.'
         }}
       </p>
@@ -298,6 +298,34 @@
             ></span
           ></label
         >
+        <fieldset class="space-y-2 border-t border-slate-100 pt-4">
+          <legend class="text-sm font-semibold text-slate-800">Aparência</legend>
+          <p class="text-xs text-slate-500">Sua escolha fica salva na sua conta.</p>
+          <div class="flex gap-2 pt-1">
+            <button
+              type="button"
+              class="ui-button-secondary gap-2"
+              [class.ring-2]="theme.theme() === 'light'"
+              [class.ring-blue-500]="theme.theme() === 'light'"
+              [attr.aria-pressed]="theme.theme() === 'light'"
+              [disabled]="theme.saving()"
+              (click)="theme.setTheme('light')"
+            >
+              <span appIcon="Sun" class="h-4 w-4"></span>Claro
+            </button>
+            <button
+              type="button"
+              class="ui-button-secondary gap-2"
+              [class.ring-2]="theme.theme() === 'dark'"
+              [class.ring-blue-500]="theme.theme() === 'dark'"
+              [attr.aria-pressed]="theme.theme() === 'dark'"
+              [disabled]="theme.saving()"
+              (click)="theme.setTheme('dark')"
+            >
+              <span appIcon="Moon" class="h-4 w-4"></span>Escuro
+            </button>
+          </div>
+        </fieldset>
         <div class="flex justify-end">
           <button type="submit" class="ui-button-primary" [disabled]="saving()">
             {{ saving() ? 'Salvando...' : 'Salvar perfil' }}

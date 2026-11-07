@@ -11,6 +11,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import { ProfileRepository } from '@core/data-access/profile.repository';
 import type {
   Profile,
@@ -46,6 +47,7 @@ export class SlasComponent {
   private readonly riskService = inject(RiskService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
+  private readonly theme = inject(ThemeService);
   private readonly profilesRepository = inject(ProfileRepository);
   private readonly toast = inject(ToastService);
   readonly management = this.route.snapshot.data['mode'] === 'management';
@@ -471,7 +473,13 @@ export class SlasComponent {
   }
 
   statusForeground(status: SlaStatus): string {
-    return this.statuses().find((option) => option.key === status)?.badge_foreground ?? '#475569';
+    const color =
+      this.statuses().find((option) => option.key === status)?.badge_foreground ?? '#475569';
+    if (this.theme.theme() !== 'dark' || !/^#[0-9a-f]{6}$/i.test(color)) return color;
+    const channels = [1, 3, 5].map((index) =>
+      Math.round(parseInt(color.slice(index, index + 2), 16) * 0.45 + 255 * 0.55),
+    );
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
   }
 
   inputLabel(id: string | null): string {

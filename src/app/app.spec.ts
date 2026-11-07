@@ -2,11 +2,12 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import { App } from './app';
 
 describe('App', () => {
   const auth = {
-    initialize: vi.fn(async () => undefined),
+    initialize: vi.fn(() => Promise.resolve()),
     loading: signal(false),
     session: signal(null),
     profile: signal(null),
@@ -16,7 +17,10 @@ describe('App', () => {
     auth.initialize.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [{ provide: AuthService, useValue: auth }],
+      providers: [
+        { provide: AuthService, useValue: auth },
+        { provide: ThemeService, useValue: { theme: signal('light') } },
+      ],
     }).compileComponents();
   });
 

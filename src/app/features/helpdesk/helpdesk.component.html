@@ -135,13 +135,12 @@
         @for (column of columns(); track column.key) {
           <section>
             <header
-              class="ui-kanban-column-header"
-              [style.background-color]="column.header_background"
-              [style.border-color]="column.header_border"
+              class="ui-kanban-column-header configured-kanban-header"
+              [style.--kanban-header-bg]="column.header_background"
+              [style.--kanban-header-fg]="column.header_foreground"
+              [style.--kanban-header-border]="column.header_border"
             >
-              <strong class="text-sm" [style.color]="column.header_foreground">{{
-                column.label
-              }}</strong
+              <strong class="text-sm">{{ column.label }}</strong
               ><span class="ml-auto text-xs text-slate-400">{{
                 ticketsByStatus(column.key).length
               }}</span>

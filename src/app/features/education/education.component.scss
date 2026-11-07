@@ -122,3 +122,52 @@ td {
   font-weight: 400;
   color: #64748b;
 }
+
+:host-context(.dark) {
+  .course-row {
+    border-color: #34485b;
+    background-color: #17283a;
+    color: #e7eef5;
+  }
+
+  .course-row:not(:disabled):hover {
+    border-color: #5c95bf;
+    background-color: #263a4e;
+  }
+
+  .course-row:disabled {
+    opacity: 1;
+    background-color: #1b2d40;
+    color: #a9bdce;
+  }
+
+  .course-row:disabled small {
+    color: #93a9bb;
+  }
+
+  .metric-label,
+  .editor-panel small {
+    color: #afc1d0;
+  }
+
+  .metric-value,
+  .editor-panel .ui-form-label {
+    color: #e7eef5;
+  }
+
+  .progress-track {
+    background-color: #34485b;
+  }
+
+  .editor-panel {
+    background-color: #142335;
+  }
+
+  .editor-panel input,
+  .editor-panel textarea,
+  .editor-panel select {
+    border-color: #34485b;
+    background-color: #1b2d40;
+    color: #e7eef5;
+  }
+}

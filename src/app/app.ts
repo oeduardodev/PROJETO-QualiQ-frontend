@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { AuthService } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import { LoginComponent } from '@features/auth/login.component';
 import { SetPasswordComponent } from '@features/auth/set-password.component';
 import { AppShellComponent } from './layout/app-shell.component';
@@ -36,6 +37,7 @@ export class App {
     window.location.pathname,
   );
   readonly auth = inject(AuthService);
+  readonly theme = inject(ThemeService);
 
   constructor() {
     void this.auth.initialize();

@@ -262,6 +262,12 @@ export class AuthService {
     await this.loadEstablishment(profile);
   }
 
+  setThemePreference(preference: 'light' | 'dark'): void {
+    this.profile.update((profile) =>
+      profile ? { ...profile, theme_preference: preference } : profile,
+    );
+  }
+
   private async loadEstablishment(
     profile: Profile | null,
     requestId = this.sessionRequestId,
