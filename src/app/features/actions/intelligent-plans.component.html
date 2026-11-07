@@ -1,0 +1,109 @@
+<div class="space-y-6">
+  <header class="ui-page-header">
+    <div>
+      <h2 class="ui-page-title">Planos Inteligentes</h2>
+      <p class="ui-page-subtitle">
+        Sugestões 5W2H com base em indicadores, riscos, incidentes e achados de auditoria.
+      </p>
+    </div>
+    <a class="ui-button-secondary" routerLink="/planos-acao">Abrir central</a>
+  </header>
+
+  <section class="ui-card space-y-4">
+    <div>
+      <h3 class="text-base font-semibold text-slate-800">Analisar dados do sistema</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        A IA considera apenas os registros que você pode acessar. Revise cada sugestão antes de
+        importar; responsável e controlador serão definidos como você, e o prazo poderá ser ajustado
+        na central.
+      </p>
+    </div>
+    @if (canGenerate()) {
+      <button
+        class="ui-button-primary"
+        [disabled]="generating() || importing() !== null"
+        (click)="generate()"
+      >
+        @if (generating()) {
+          Analisando dados...
+        } @else if (generated()) {
+          Gerar novas sugestões
+        } @else {
+          Gerar sugestões
+        }
+      </button>
+    } @else {
+      <p class="text-sm text-slate-600">
+        A geração e a importação estão disponíveis para gestores com acesso de edição à central.
+      </p>
+    }
+  </section>
+
+  @if (error()) {
+    <div class="ui-page-error" role="alert">
+      <p>{{ error() }}</p>
+      <button (click)="generate()">Tentar novamente</button>
+    </div>
+  }
+
+  @if (generated() && !generating()) {
+    <p class="text-sm text-slate-600">
+      {{ sourcesAnalyzed() }} registros considerados · {{ suggestions().length }} sugestões
+    </p>
+    @if (!suggestions().length) {
+      <div class="ui-card text-sm text-slate-600">
+        Não há dados suficientes para sugerir um plano agora. Registre resultados, riscos,
+        incidentes ou achados de auditoria e tente novamente.
+      </div>
+    }
+    <div class="grid gap-4 lg:grid-cols-2">
+      @for (suggestion of suggestions(); track $index; let index = $index) {
+        <article class="ui-card flex flex-col gap-4">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-blue-700">
+              {{ sourceTypeLabel(suggestion.source_type) }} · {{ suggestion.source_label }}
+            </span>
+            <h3 class="mt-2 text-lg font-semibold text-slate-900">{{ suggestion.title }}</h3>
+          </div>
+          <dl class="space-y-3 text-sm">
+            <div>
+              <dt class="font-semibold text-slate-700">O que</dt>
+              <dd class="whitespace-pre-line text-slate-600">{{ suggestion.what }}</dd>
+            </div>
+            <div>
+              <dt class="font-semibold text-slate-700">Por que</dt>
+              <dd class="whitespace-pre-line text-slate-600">{{ suggestion.why }}</dd>
+            </div>
+            <div>
+              <dt class="font-semibold text-slate-700">Onde</dt>
+              <dd class="whitespace-pre-line text-slate-600">{{ suggestion.where }}</dd>
+            </div>
+            <div>
+              <dt class="font-semibold text-slate-700">Como</dt>
+              <dd class="whitespace-pre-line text-slate-600">{{ suggestion.how }}</dd>
+            </div>
+            <div>
+              <dt class="font-semibold text-slate-700">Recursos / custo</dt>
+              <dd class="whitespace-pre-line text-slate-600">{{ suggestion.how_much }}</dd>
+            </div>
+          </dl>
+          <div class="mt-auto border-t border-slate-100 pt-4">
+            @if (imported()[index]; as id) {
+              <a class="ui-button-secondary" routerLink="/planos-acao" [queryParams]="{ id: id }"
+                >Abrir plano importado</a
+              >
+            } @else {
+              <button
+                class="ui-button-primary"
+                [disabled]="importing() !== null || generating()"
+                (click)="importPlan(suggestion, index)"
+              >
+                {{ importing() === index ? 'Importando...' : 'Importar para a central' }}
+              </button>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>

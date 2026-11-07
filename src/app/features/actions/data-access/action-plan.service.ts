@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { ActionPlanRepository } from './action-plan.repository';
 import type { ActionPlanSuggestion } from '@features/indicators/data-access/indicator-analysis.model';
 import type { ActionPlan, ActionPlanStatusOption, ActionPlanEvidence } from '@core/models/database';
+import type { IntelligentPlanSuggestion } from './intelligent-plan.model';
 
 @Injectable({ providedIn: 'root' })
 export class ActionPlanService {
@@ -56,5 +57,16 @@ export class ActionPlanService {
 
   fetchActionPlansByProcess(processId: string): Promise<ActionPlan[]> {
     return this.repository.fetchActionPlansByProcess(processId);
+  }
+
+  generateIntelligentPlans() {
+    return this.repository.generateIntelligentPlans();
+  }
+
+  importIntelligentPlan(
+    suggestion: IntelligentPlanSuggestion,
+    userId: string,
+  ): Promise<ActionPlan> {
+    return this.repository.importIntelligentPlan(suggestion, userId);
   }
 }

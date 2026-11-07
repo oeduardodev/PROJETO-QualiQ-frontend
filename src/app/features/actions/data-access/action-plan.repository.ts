@@ -3,6 +3,7 @@ import { SupabaseService } from '@core/supabase/supabase.service';
 import { fetchAllPages } from '@core/data-access/fetch-all-pages';
 import type { ActionPlan, ActionPlanStatusOption, ActionPlanEvidence } from '@core/models/database';
 import type { ActionPlanSuggestion } from '@features/indicators/data-access/indicator-analysis.model';
+import type { IntelligentPlanResponse, IntelligentPlanSuggestion } from './intelligent-plan.model';
 
 @Injectable({ providedIn: 'root' })
 export class ActionPlanRepository {
@@ -170,5 +171,49 @@ export class ActionPlanRepository {
     });
     if (error) throw error;
     return data ?? [];
+  }
+
+  async generateIntelligentPlans(): Promise<IntelligentPlanResponse> {
+    const { data, error } = await this.client.functions.invoke<IntelligentPlanResponse>(
+      'intelligent-action-plans',
+      { body: {} },
+    );
+    if (error) {
+      const context = (error as { context?: unknown }).context;
+      if (context instanceof Response) {
+        const body = (await context.json().catch(() => null)) as { error?: string } | null;
+        if (body?.error) throw new Error(body.error);
+      }
+      throw error;
+    }
+    if (!data || !Array.isArray(data.suggestions)) throw new Error('Resposta da IA inválida.');
+    return data;
+  }
+
+  async importIntelligentPlan(
+    suggestion: IntelligentPlanSuggestion,
+    userId: string,
+  ): Promise<ActionPlan> {
+    const { data, error } = await this.client
+      .rpc('import_intelligent_action_plan', {
+        p_payload: {
+          title: suggestion.title,
+          process_id: suggestion.process_id,
+          owner_id: userId,
+          controller_id: userId,
+          participant_ids: [userId],
+          what: suggestion.what,
+          why: `${suggestion.why}\n\nFonte da sugestão: ${suggestion.source_label}.`,
+          where: suggestion.where,
+          when: '',
+          how: suggestion.how,
+          how_much: suggestion.how_much,
+          how_mode: 'text',
+          tasks: [],
+        },
+      })
+      .single();
+    if (error) throw error;
+    return data;
   }
 }

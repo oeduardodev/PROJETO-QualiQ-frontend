@@ -16,7 +16,7 @@ function moduleForRoute(route: string): string {
   if (route.startsWith('documentos/')) return 'documents';
   if (route.startsWith('incidentes/')) return 'incidents';
   if (route === 'helpdesk' || route.startsWith('helpdesk/')) return 'helpdesk';
-  if (route === 'planos-acao') return 'action_plans';
+  if (route === 'planos-acao' || route.startsWith('planos-acao/')) return 'action_plans';
   if (route.startsWith('auditorias/')) return 'audits';
   if (route.startsWith('pesquisas/')) return 'surveys';
   if (route.startsWith('formularios/')) return 'form_builder';
@@ -286,9 +286,15 @@ export const NAV_GROUPS: NavGroup[] = [
         leaves: [
           {
             id: 'planos-acao',
-            label: 'Planos de Ação',
+            label: 'Central de Planos de Ação',
             icon: 'ClipboardList',
             route: 'planos-acao',
+          },
+          {
+            id: 'planos-acao/inteligentes',
+            label: 'Planos Inteligentes',
+            icon: 'Sparkles',
+            route: 'planos-acao/inteligentes',
           },
         ],
       },
@@ -387,6 +393,8 @@ export const ROUTE_SUBTITLES: Record<string, string> = {
   'indicadores/alimentacao': 'Lançamento de resultados, análises críticas e sugestões da IA',
   'indicadores/cadastro': 'Cadastro e configuração de indicadores',
   'planos-acao': 'Planos de ação estruturados pelo método 5W2H em quadro Kanban',
+  'planos-acao/inteligentes':
+    'Sugestões de planos de ação geradas por IA a partir dos dados do sistema',
   'auditorias/painel': 'Resultados e impactos de auditorias vinculadas e avulsas',
   'auditorias/gerenciamento': 'Estruturas, execução e conclusão das auditorias',
   'pesquisas/painel': 'Resultados Likert e NPS, respostas e análise crítica',

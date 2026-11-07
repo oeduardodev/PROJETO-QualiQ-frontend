@@ -189,6 +189,10 @@ export interface AppDatabase {
         };
         Returns: ActionPlan;
       };
+      import_intelligent_action_plan: {
+        Args: { p_payload: Record<string, unknown> };
+        Returns: ActionPlan;
+      };
       update_operation_task: {
         Args: {
           p_id: string;
@@ -728,7 +732,7 @@ export interface ActionPlanHistory {
 }
 export interface ActionPlan {
   process_id: string | null;
-  origin: 'manual' | 'notification' | 'critical_analysis' | 'system';
+  origin: 'manual' | 'notification' | 'critical_analysis' | 'system' | 'ai';
   owner_id: string | null;
   controller_id: string | null;
   participant_ids: string[];

@@ -12,7 +12,7 @@
   <div class="space-y-6">
     <header class="ui-page-header">
       <div>
-        <h2 class="ui-page-title">Planos de Ação</h2>
+        <h2 class="ui-page-title">Central de Planos de Ação</h2>
         <p class="ui-page-subtitle">Planos de todas as origens · 5W2H, tarefas e aprovação</p>
       </div>
       @if (auth.canEditPage('planos-acao')) {
@@ -45,7 +45,8 @@
         <option value="manual">Criado no módulo</option>
         <option value="notification">Incidente</option>
         <option value="critical_analysis">Análise crítica</option>
-        <option value="system">Outro módulo</option></select
+        <option value="system">Outro módulo</option>
+        <option value="ai">Plano Inteligente</option></select
       ><label class="flex gap-2 text-sm"
         ><input #mine type="checkbox" (change)="onlyMine.set(mine.checked)" />Meus planos</label
       ><label class="flex gap-2 text-sm"

@@ -194,6 +194,15 @@ export const routes: Routes = [
       import('@features/actions/action-plans.component').then((m) => m.ActionPlansComponent),
   },
   {
+    path: 'planos-acao/inteligentes',
+    canActivate: [moduleAccessGuard],
+    data: { module: 'action_plans' },
+    loadComponent: () =>
+      import('@features/actions/intelligent-plans.component').then(
+        (m) => m.IntelligentPlansComponent,
+      ),
+  },
+  {
     path: 'auditorias/painel',
     canActivate: [moduleAccessGuard],
     data: { module: 'audits' },

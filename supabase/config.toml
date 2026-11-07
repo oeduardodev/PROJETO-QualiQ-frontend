@@ -1,6 +1,9 @@
 [functions.ai-analysis]
 verify_jwt = true
 
+[functions.intelligent-action-plans]
+verify_jwt = true
+
 [functions.survey-sentiment]
 verify_jwt = true
 

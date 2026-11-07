@@ -162,6 +162,7 @@ export class ActionPlansComponent {
           notification: 'Incidente',
           critical_analysis: 'Análise crítica',
           system: 'Outro módulo',
+          ai: 'Plano Inteligente',
         } as Record<string, string>
       )[origin] ?? origin
     );
