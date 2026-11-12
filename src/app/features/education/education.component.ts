@@ -363,9 +363,31 @@ export class EducationComponent implements OnDestroy {
   }
 
   safePdf(url: string): SafeResourceUrl {
-    if (!this.pdfCache.has(url))
-      this.pdfCache.set(url, this.sanitizer.bypassSecurityTrustResourceUrl(url));
-    return this.pdfCache.get(url)!;
+    const resolved = this.materialUrl(url);
+    if (!this.pdfCache.has(resolved))
+      this.pdfCache.set(resolved, this.sanitizer.bypassSecurityTrustResourceUrl(resolved));
+    return this.pdfCache.get(resolved)!;
+  }
+
+  materialUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      if (parsed.origin !== 'https://qualiq-homo.vercel.app') return url;
+      return new URL(`${parsed.pathname}${parsed.search}${parsed.hash}`, window.location.origin)
+        .href;
+    } catch {
+      return url;
+    }
+  }
+
+  hasStructureHistory(item: LearningItem): boolean {
+    if (item.kind === 'track') return this.attendance().some((a) => a.item_id === item.id);
+    const stageIds = new Set(this.stagesFor(item.id).map((stage) => stage.id));
+    return this.progress().some((entry) => stageIds.has(entry.stage_id));
+  }
+
+  canEditStructure(item: LearningItem): boolean {
+    return !item.published && !this.hasStructureHistory(item);
   }
 
   itemProgress(item: LearningItem): number {
@@ -715,6 +737,27 @@ export class EducationComponent implements OnDestroy {
       );
     } catch (error) {
       this.notice.set(errorMessage(error, 'Não foi possível alterar a publicação.'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async duplicateItem(item: LearningItem): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      const copy = await this.service.duplicateItem(
+        item,
+        this.stages(),
+        this.quizzes(),
+        this.courses(),
+      );
+      await this.load();
+      this.selectedId.set(copy.id);
+      this.selectedStageId.set(null);
+      this.notice.set('Cópia criada como rascunho. Agora você pode editar a estrutura.');
+    } catch (error) {
+      this.notice.set(errorMessage(error, 'Não foi possível duplicar o treinamento.'));
     } finally {
       this.busy.set(false);
     }

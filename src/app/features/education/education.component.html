@@ -171,6 +171,32 @@
       </section>
 
       @if (mode === 'gerenciamento') {
+        @if (item.published || hasStructureHistory(item)) {
+          <div
+            class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            role="note"
+          >
+            @if (hasStructureHistory(item)) {
+              {{
+                item.kind === 'track'
+                  ? 'Esta trilha já possui presenças'
+                  : 'Este treinamento já possui participantes'
+              }}. Para alterar a estrutura sem afetar o histórico, crie uma cópia em rascunho.
+            } @else {
+              As ações da estrutura ficam disponíveis após retirar a publicação.
+              @if (item.kind === 'training') {
+                Se este treinamento estiver em uma trilha publicada, retire-o da trilha primeiro.
+              }
+            }
+            <button
+              class="ml-2 font-semibold text-blue-700 underline"
+              [disabled]="busy()"
+              (click)="duplicateItem(item)"
+            >
+              Criar cópia para editar
+            </button>
+          </div>
+        }
         @if (item.kind === 'track') {
           <section class="ui-card space-y-4">
             <h4 class="font-semibold text-slate-800">Treinamentos da trilha</h4>
@@ -179,14 +205,14 @@
                 <span>{{ course.position }}. {{ courseName(course.training_id) }}</span
                 ><button
                   class="text-sm text-rose-700"
-                  [disabled]="item.published"
+                  [disabled]="!canEditStructure(item)"
                   (click)="removeCourse(course)"
                 >
                   Remover
                 </button>
               </div>
             }
-            @if (!item.published) {
+            @if (canEditStructure(item)) {
               <div class="flex flex-wrap gap-2">
                 <select [(ngModel)]="courseToAdd" aria-label="Treinamento a incluir">
                   <option value="">Selecione um treinamento</option>
@@ -209,7 +235,12 @@
           <section class="ui-card space-y-4">
             <div class="flex items-center justify-between">
               <h4 class="font-semibold text-slate-800">Etapas e materiais</h4>
-              <button class="ui-button-primary" [disabled]="item.published" (click)="newStage()">
+              <button
+                class="ui-button-primary"
+                [disabled]="!canEditStructure(item)"
+                [class.opacity-50]="!canEditStructure(item)"
+                (click)="newStage()"
+              >
                 Adicionar etapa
               </button>
             </div>
@@ -226,7 +257,7 @@
                     </p>
                     <a
                       class="text-xs text-blue-700 underline"
-                      [href]="stage.resource_url"
+                      [href]="materialUrl(stage.resource_url)"
                       target="_blank"
                       rel="noopener noreferrer"
                       >Abrir material</a
@@ -235,13 +266,13 @@
                   <div class="flex gap-3 text-sm">
                     <button
                       class="text-blue-700"
-                      [disabled]="item.published"
+                      [disabled]="!canEditStructure(item)"
                       (click)="editStage(stage)"
                     >
                       Editar</button
                     ><button
                       class="text-rose-700"
-                      [disabled]="item.published"
+                      [disabled]="!canEditStructure(item)"
                       (click)="deleteStage(stage)"
                     >
                       Excluir
@@ -253,7 +284,7 @@
                     <span class="text-sm font-medium">Avaliações</span
                     ><button
                       class="text-sm text-blue-700"
-                      [disabled]="item.published"
+                      [disabled]="!canEditStructure(item)"
                       (click)="newQuiz(stage)"
                     >
                       Adicionar avaliação
@@ -270,19 +301,19 @@
                       <div class="flex gap-3">
                         <button
                           class="text-blue-700"
-                          [disabled]="item.published"
+                          [disabled]="!canEditStructure(item)"
                           (click)="manageQuestions(quiz)"
                         >
                           Questões</button
                         ><button
                           class="text-blue-700"
-                          [disabled]="item.published"
+                          [disabled]="!canEditStructure(item)"
                           (click)="editQuiz(quiz)"
                         >
                           Editar</button
                         ><button
                           class="text-rose-700"
-                          [disabled]="item.published"
+                          [disabled]="!canEditStructure(item)"
                           (click)="deleteQuiz(quiz)"
                         >
                           Excluir
@@ -336,7 +367,7 @@
               #audioPlayer
               class="w-full"
               controls
-              [src]="stage.resource_url"
+              [src]="materialUrl(stage.resource_url)"
               (play)="onAudioPlay()"
               (pause)="onAudioPause()"
               (timeupdate)="onMediaTime()"
@@ -352,7 +383,7 @@
           } @else {
             <a
               class="ui-button-secondary inline-flex"
-              [href]="stage.resource_url"
+              [href]="materialUrl(stage.resource_url)"
               target="_blank"
               rel="noopener noreferrer"
               >Abrir material em outra guia ↗</a
@@ -361,7 +392,7 @@
           @if (stage.resource_kind === 'pdf') {
             <a
               class="text-sm text-blue-700 underline"
-              [href]="stage.resource_url"
+              [href]="materialUrl(stage.resource_url)"
               target="_blank"
               rel="noopener noreferrer"
               >Abrir PDF em outra guia</a

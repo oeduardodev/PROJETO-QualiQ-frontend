@@ -122,6 +122,62 @@ export class EducationService {
     if (error) throw error;
   }
 
+  async duplicateItem(
+    item: LearningItem,
+    stages: LearningStage[],
+    quizzes: LearningQuiz[],
+    courses: LearningTrackCourse[],
+  ): Promise<LearningItem> {
+    const copy = await this.saveItem(null, {
+      kind: item.kind,
+      title: `${item.title.slice(0, 172)} (cópia)`,
+      description: item.description,
+      action_plan_id: item.action_plan_id,
+      owner_id: item.owner_id,
+      published: false,
+    });
+    try {
+      if (item.kind === 'track') {
+        for (const course of courses.filter((c) => c.track_id === item.id)) {
+          await this.addCourse(copy.id, course.training_id, course.position);
+        }
+      } else {
+        for (const stage of stages.filter((s) => s.training_id === item.id)) {
+          const stageCopy = await this.saveStage(null, {
+            training_id: copy.id,
+            position: stage.position,
+            title: stage.title,
+            resource_kind: stage.resource_kind,
+            resource_url: stage.resource_url,
+            duration_seconds: stage.duration_seconds,
+          });
+          for (const quiz of quizzes.filter((q) => q.stage_id === stage.id)) {
+            const quizCopy = await this.saveQuiz(null, {
+              stage_id: stageCopy.id,
+              title: quiz.title,
+              cue_seconds: quiz.cue_seconds,
+              passing_score: quiz.passing_score,
+              position: quiz.position,
+            });
+            for (const question of await this.authorQuestions(quiz.id)) {
+              await this.saveQuestion(null, {
+                quiz_id: quizCopy.id,
+                position: question.position,
+                prompt: question.prompt,
+                options: question.options,
+                correct_index: question.correct_index,
+              });
+            }
+          }
+        }
+      }
+      return copy;
+    } catch (error) {
+      await this.deleteItem(copy.id).catch(() => undefined);
+      throw error;
+    }
+  }
+
   async saveStage(
     id: string | null,
     payload: Partial<Omit<LearningStage, 'id' | 'created_at'>>,
