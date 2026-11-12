@@ -13,6 +13,8 @@
       aria-label="Fechar"
     ></button>
     <section
+      #panel
+      tabindex="-1"
       class="drawer-panel relative flex h-full w-full flex-col bg-white shadow-2xl"
       [class]="width()"
       [class.drawer-panel-closing]="closing()"

@@ -1,3 +1,4 @@
+<a class="skip-link" href="#conteudo-principal">Pular para o conteúdo principal</a>
 @if (publicBuiltForm) {
   <app-public-built-form />
 } @else if (publicSurvey) {
@@ -7,13 +8,21 @@
 } @else if (passwordSetup) {
   <app-set-password />
 } @else if (auth.loading()) {
-  <div class="ui-loading-screen flex min-h-screen items-center justify-center bg-slate-100">
-    <span appIcon="LoaderCircle" class="ui-loading-spinner"></span>
+  <div
+    class="ui-loading-screen flex min-h-screen items-center justify-center bg-slate-100"
+    role="status"
+    aria-label="Carregando"
+  >
+    <span appIcon="LoaderCircle" class="ui-loading-spinner" aria-hidden="true"></span>
   </div>
 } @else if (!auth.session() || !auth.profile()) {
   <app-login />
 } @else if (!auth.isImplantation() && auth.establishmentStatus() !== 'active') {
-  <div class="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+  <main
+    id="conteudo-principal"
+    tabindex="-1"
+    class="flex min-h-screen items-center justify-center bg-slate-100 p-6"
+  >
     <div
       class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm"
     >
@@ -24,9 +33,10 @@
       </p>
       <button type="button" class="ui-button-secondary mt-6" (click)="auth.signOut()">Sair</button>
     </div>
-  </div>
+  </main>
 } @else {
   <app-shell />
 }
 <app-toast-outlet />
 <app-alert-dialog-outlet />
+<app-accessibility-tools />

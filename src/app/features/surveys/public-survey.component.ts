@@ -6,7 +6,11 @@ import { errorMessage } from '@shared/utils/error.utils';
 @Component({
   selector: 'app-public-survey',
   template: `
-    <main class="min-h-screen bg-slate-50 px-4 py-10 text-slate-800">
+    <main
+      id="conteudo-principal"
+      tabindex="-1"
+      class="min-h-screen bg-slate-50 px-4 py-10 text-slate-800"
+    >
       <section
         class="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9"
       >

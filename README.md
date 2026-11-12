@@ -26,7 +26,10 @@ Em seguida, informe as credenciais públicas do projeto Supabase:
 ```dotenv
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
+VITE_HANDTALK_TOKEN=
 ```
+
+`VITE_HANDTALK_TOKEN` é opcional. Com o token de licença emitido pela Hand Talk para o domínio, o aplicativo carrega o plugin oficial, que oferece tradução para Libras e Recursos Assistivos. Sem o token, carrega o widget gratuito VLibras para Libras e exibe controles próprios de tamanho do texto, contraste, animações e destaque de links. O token é enviado ao navegador em `public/env.js`, conforme a instalação oficial do plugin; não use essa variável para segredos de servidor.
 
 Antes dos comandos `start` e `build`, o script:
 

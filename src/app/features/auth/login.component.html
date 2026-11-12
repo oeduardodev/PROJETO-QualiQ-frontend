@@ -1,4 +1,8 @@
-<div class="login-page brand-login flex min-h-screen items-center justify-center p-4 lg:p-0">
+<main
+  id="conteudo-principal"
+  tabindex="-1"
+  class="login-page brand-login flex min-h-screen items-center justify-center p-4 lg:p-0"
+>
   <section class="login-story" aria-labelledby="login-story-title">
     <div class="login-story-brand">
       <img src="/qualiq-symbol.png" alt="QualiQ" width="1079" height="805" />
@@ -64,6 +68,7 @@
             type="email"
             formControlName="email"
             autocomplete="email"
+            [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
             class="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             placeholder="seu@email.com"
           />
@@ -79,6 +84,7 @@
             type="password"
             formControlName="password"
             autocomplete="current-password"
+            [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid"
             class="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             placeholder="••••••••"
           />
@@ -86,6 +92,7 @@
         @if (error()) {
           <p
             class="mb-4 rounded-lg border border-rose-900/70 bg-rose-950/50 p-3 text-sm text-rose-300"
+            role="alert"
           >
             {{ error() }}
           </p>
@@ -124,4 +131,4 @@
       </div>
     </div>
   </section>
-</div>
+</main>

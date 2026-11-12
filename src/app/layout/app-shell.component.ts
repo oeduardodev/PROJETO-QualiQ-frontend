@@ -1,4 +1,14 @@
-import { Component, DestroyRef, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnDestroy,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -9,6 +19,7 @@ import { OperationInboxService } from '@core/services/operation-inbox.service';
 import { IconDirective } from '@shared/components/icon/icon.directive';
 import { NAV_GROUPS, ROUTE_SUBTITLES, visibleNavigation } from './navigation';
 import { UserManagementService } from '@features/users/data-access/user-management.service';
+import { trapTabKey } from '@shared/utils/focus-trap.utils';
 
 @Component({
   selector: 'app-shell',
@@ -16,8 +27,14 @@ import { UserManagementService } from '@features/users/data-access/user-manageme
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, DatePipe, IconDirective],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
+  host: {
+    '(document:keydown.escape)': 'closeMobileMenu()',
+    '(document:keydown.tab)': 'onMobileMenuTab($event)',
+  },
 })
 export class AppShellComponent implements OnDestroy {
+  @ViewChild('mobileMenu') mobileMenu?: ElementRef<HTMLElement>;
+  @ViewChild('mobileMenuTrigger') mobileMenuTrigger?: ElementRef<HTMLButtonElement>;
   readonly inbox = inject(OperationInboxService);
   readonly inboxOpen = signal(false);
   readonly auth = inject(AuthService);
@@ -127,6 +144,8 @@ export class AppShellComponent implements OnDestroy {
       )
       .subscribe((event) => {
         this.route.set(event.urlAfterRedirects.slice(1).split('?')[0] || 'dashboard');
+        document.title = `${this.activeLabel()} | QualiQ`;
+        requestAnimationFrame(() => document.getElementById('conteudo-principal')?.focus());
       });
   }
 
@@ -145,6 +164,22 @@ export class AppShellComponent implements OnDestroy {
   logout(): Promise<void> {
     this.userMenuOpen.set(false);
     return this.auth.signOut();
+  }
+
+  openMobileMenu(): void {
+    this.mobileOpen.set(true);
+    queueMicrotask(() => this.mobileMenu?.nativeElement.focus());
+  }
+
+  closeMobileMenu(restoreFocus = true): void {
+    if (!this.mobileOpen()) return;
+    this.mobileOpen.set(false);
+    if (restoreFocus) queueMicrotask(() => this.mobileMenuTrigger?.nativeElement.focus());
+  }
+
+  onMobileMenuTab(event: Event): void {
+    if (event instanceof KeyboardEvent && this.mobileOpen() && this.mobileMenu)
+      trapTabKey(event, this.mobileMenu.nativeElement);
   }
 
   private toggleSet(current: Set<string>, id: string): Set<string> {

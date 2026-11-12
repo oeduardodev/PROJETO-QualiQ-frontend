@@ -1,0 +1,78 @@
+@if (!accessibility.handTalkActive()) {
+  <div class="accessibility-tools">
+    @if (open()) {
+      <section
+        id="accessibility-options"
+        class="accessibility-panel"
+        aria-label="Recursos assistivos"
+      >
+        <div class="accessibility-panel-heading">
+          <h2>Recursos assistivos</h2>
+          <button type="button" (click)="close()" aria-label="Fechar recursos assistivos">×</button>
+        </div>
+        <p>Personalize a leitura e a navegação.</p>
+        <div class="accessibility-options">
+          <button
+            #firstOption
+            type="button"
+            [attr.aria-pressed]="accessibility.preferences().largeText"
+            (click)="accessibility.toggle('largeText')"
+          >
+            Aumentar texto
+          </button>
+          <button
+            type="button"
+            [attr.aria-pressed]="accessibility.preferences().highContrast"
+            (click)="accessibility.toggle('highContrast')"
+          >
+            Alto contraste
+          </button>
+          <button
+            type="button"
+            [attr.aria-pressed]="accessibility.preferences().reduceMotion"
+            (click)="accessibility.toggle('reduceMotion')"
+          >
+            Reduzir animações
+          </button>
+          <button
+            type="button"
+            [attr.aria-pressed]="accessibility.preferences().underlineLinks"
+            (click)="accessibility.toggle('underlineLinks')"
+          >
+            Sublinhar links
+          </button>
+        </div>
+        <button type="button" class="accessibility-reset" (click)="accessibility.reset()">
+          Restaurar padrões
+        </button>
+      </section>
+    }
+    <button
+      #trigger
+      type="button"
+      class="accessibility-trigger"
+      aria-label="Recursos assistivos"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="open() ? 'accessibility-options' : null"
+      (click)="toggle()"
+    >
+      <span class="accessibility-trigger-caption" aria-hidden="true">
+        <span class="accessibility-trigger-caption-copy">
+          <img src="/accessibility-people.webp" alt="" width="256" height="197" />
+          <span>Recursos<br /><strong>Assistivos</strong></span>
+        </span>
+      </span>
+      <span class="accessibility-trigger-icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="27" height="27" fill="none">
+          <circle cx="16" cy="4" r="2.5" fill="currentColor" />
+          <path
+            d="M4 10.5c7 2.5 17 2.5 24 0M16 12v17M16 17l-7 12m7-12 7 12"
+            stroke="currentColor"
+            stroke-width="2.8"
+            stroke-linecap="round"
+          />
+        </svg>
+      </span>
+    </button>
+  </div>
+}

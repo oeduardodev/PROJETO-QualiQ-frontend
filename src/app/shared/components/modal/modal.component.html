@@ -3,6 +3,7 @@
     class="fixed inset-0 z-[70] flex items-center justify-center p-4"
     role="dialog"
     aria-modal="true"
+    [attr.aria-label]="title()"
   >
     <button
       type="button"
@@ -11,6 +12,8 @@
       aria-label="Fechar"
     ></button>
     <section
+      #panel
+      tabindex="-1"
       class="relative flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
       [class]="width()"
     >
@@ -18,8 +21,9 @@
         <h2 class="font-semibold text-slate-800">{{ title() }}</h2>
         <button
           type="button"
-          class="h-5 w-5 text-slate-400 hover:text-slate-700"
+          class="flex h-10 w-10 items-center justify-center rounded-md text-slate-500 hover:text-slate-700"
           (click)="closed.emit()"
+          aria-label="Fechar janela"
         >
           <span appIcon="X"></span>
         </button>

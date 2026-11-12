@@ -12,10 +12,15 @@
       <button
         type="button"
         class="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        (click)="mobileOpen.set(false)"
+        (click)="closeMobileMenu()"
         aria-label="Fechar menu"
       ></button>
       <aside
+        #mobileMenu
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu de navegação"
+        tabindex="-1"
         class="brand-sidebar relative flex w-64 animate-slide-in flex-col border-r border-slate-800"
       >
         <ng-container [ngTemplateOutlet]="sidebar" [ngTemplateOutletContext]="{ mobile: true }" />
@@ -29,9 +34,12 @@
     >
       <div class="flex min-w-0 items-center gap-3">
         <button
+          #mobileMenuTrigger
           type="button"
-          (click)="mobileOpen.set(true)"
-          class="h-5 w-5 text-slate-500 lg:hidden"
+          (click)="openMobileMenu()"
+          class="flex h-10 w-10 items-center justify-center rounded-md text-slate-600 lg:hidden"
+          aria-label="Abrir menu de navegação"
+          [attr.aria-expanded]="mobileOpen()"
         >
           <span appIcon="Menu"></span>
         </button>
@@ -117,6 +125,8 @@
             type="button"
             (click)="userMenuOpen.update((v) => !v)"
             class="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-slate-100"
+            [attr.aria-expanded]="userMenuOpen()"
+            aria-label="Menu do usuário"
           >
             <span
               class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-600"
@@ -186,7 +196,11 @@
         </div>
       </div>
     </header>
-    <main class="flex-1 overflow-y-auto bg-slate-100 p-4 lg:p-8">
+    <main
+      id="conteudo-principal"
+      tabindex="-1"
+      class="flex-1 overflow-y-auto bg-slate-100 p-4 lg:p-8"
+    >
       <div class="mx-auto max-w-7xl"><router-outlet /></div>
     </main>
   </div>
@@ -217,19 +231,22 @@
     @if (mobile) {
       <button
         type="button"
-        class="ml-auto h-5 w-5 text-slate-400 hover:text-white"
-        (click)="mobileOpen.set(false)"
+        class="ml-auto flex h-10 w-10 items-center justify-center text-slate-400 hover:text-white"
+        (click)="closeMobileMenu()"
+        aria-label="Fechar menu de navegação"
       >
         <span appIcon="X"></span>
       </button>
     }
   </div>
-  <nav class="scrollbar-thin flex-1 overflow-y-auto px-3 py-3">
+  <nav class="scrollbar-thin flex-1 overflow-y-auto px-3 py-3" aria-label="Navegação principal">
     @if (!auth.isImplantation()) {
       <a
         routerLink="/dashboard"
         routerLinkActive="bg-slate-800 text-white shadow-sm"
-        (click)="mobileOpen.set(false)"
+        ariaCurrentWhenActive="page"
+        aria-label="Dashboard"
+        (click)="closeMobileMenu(false)"
         class="mb-2 flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
         [class.justify-center]="collapsed() && !mobile"
         [class.gap-3]="!collapsed() || mobile"
@@ -248,6 +265,7 @@
               type="button"
               (click)="toggleGroup(group.id)"
               class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition hover:text-slate-300"
+              [attr.aria-expanded]="expandedGroups().has(group.id)"
             >
               <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="group.color"></span
               ><span class="flex-1 text-left">{{ group.label }}</span
@@ -269,7 +287,9 @@
                   <a
                     [routerLink]="'/' + sub.leaves[0].route"
                     routerLinkActive="bg-slate-800 text-white shadow-sm"
-                    (click)="mobileOpen.set(false)"
+                    ariaCurrentWhenActive="page"
+                    [attr.aria-label]="sub.leaves[0].label"
+                    (click)="closeMobileMenu(false)"
                     class="flex items-center rounded-lg py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
                     [class.justify-center]="collapsed() && !mobile"
                     [class.gap-3]="!collapsed() || mobile"
@@ -287,6 +307,7 @@
                       type="button"
                       (click)="toggleSub(sub.id)"
                       class="flex w-full items-center gap-3 rounded-lg py-2 pl-6 pr-3 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
+                      [attr.aria-expanded]="expandedSubs().has(sub.id)"
                     >
                       <span [appIcon]="sub.icon" class="h-4 w-4 shrink-0"></span
                       ><span class="flex-1 truncate text-left">{{ sub.label }}</span
@@ -302,8 +323,9 @@
                       <a
                         [routerLink]="'/' + leaf.route"
                         routerLinkActive="bg-slate-800 text-white shadow-sm"
+                        ariaCurrentWhenActive="page"
                         [routerLinkActiveOptions]="{ exact: true }"
-                        (click)="mobileOpen.set(false)"
+                        (click)="closeMobileMenu(false)"
                         class="flex items-center rounded-lg py-2 text-sm text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
                         [class.justify-center]="collapsed() && !mobile"
                         [class.pl-12]="!collapsed() || mobile"
@@ -328,6 +350,8 @@
         (click)="collapsed.update((v) => !v)"
         class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800/50 hover:text-slate-100"
         [class.justify-center]="collapsed()"
+        [attr.aria-label]="collapsed() ? 'Expandir menu lateral' : 'Recolher menu lateral'"
+        [attr.aria-expanded]="!collapsed()"
       >
         <span
           appIcon="ChevronLeft"

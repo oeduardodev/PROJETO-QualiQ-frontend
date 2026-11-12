@@ -10,6 +10,8 @@ import { AlertDialogOutletComponent } from '@shared/components/alert-dialog-outl
 import { PublicIncidentComponent } from '@features/incidents/public-incident.component';
 import { PublicSurveyComponent } from '@features/surveys/public-survey.component';
 import { PublicBuiltFormComponent } from '@features/form-builder/public-built-form.component';
+import { AccessibilityService } from '@core/services/accessibility.service';
+import { AccessibilityToolsComponent } from '@shared/components/accessibility-tools/accessibility-tools.component';
 
 @Component({
   imports: [
@@ -22,6 +24,7 @@ import { PublicBuiltFormComponent } from '@features/form-builder/public-built-fo
     PublicIncidentComponent,
     PublicSurveyComponent,
     PublicBuiltFormComponent,
+    AccessibilityToolsComponent,
   ],
   selector: 'app-root',
   styleUrl: './app.scss',
@@ -38,8 +41,10 @@ export class App {
   );
   readonly auth = inject(AuthService);
   readonly theme = inject(ThemeService);
+  readonly accessibility = inject(AccessibilityService);
 
   constructor() {
     void this.auth.initialize();
+    this.accessibility.initialize();
   }
 }

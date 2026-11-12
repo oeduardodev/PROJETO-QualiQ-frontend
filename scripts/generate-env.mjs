@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 const source = resolve('.env');
 const target = resolve('public/env.js');
 const values = {};
-const publicKeys = new Set(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']);
+const publicKeys = new Set(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_HANDTALK_TOKEN']);
 
 if (existsSync(source)) {
   for (const rawLine of readFileSync(source, 'utf8').split(/\r?\n/)) {

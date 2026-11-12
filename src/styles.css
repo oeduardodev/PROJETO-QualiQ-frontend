@@ -7,6 +7,120 @@
 @tailwind components;
 @tailwind utilities;
 
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 200;
+  transform: translateY(-200%);
+  border-radius: 0.375rem;
+  background: #073d9b;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+label:has(input.sr-only:focus-visible) {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.brand-sidebar :is(a, button):focus-visible,
+.login-page :is(a, button, input):focus-visible,
+.accessibility-trigger:focus-visible {
+  outline-color: #facc15;
+}
+
+html:not(.dark):not(.a11y-high-contrast) :is(.text-slate-300, .text-slate-400) {
+  color: #52627a;
+}
+html:not(.a11y-high-contrast) .brand-sidebar :is(.text-slate-400, .text-slate-500) {
+  color: #b8c8dc;
+}
+html:not(.a11y-high-contrast) .login-page :is(.text-slate-300, .text-slate-400, .text-slate-500) {
+  color: #aebed1;
+}
+
+html.a11y-large-text {
+  font-size: 112.5%;
+}
+html.a11y-underline-links a:not(.skip-link) {
+  text-decoration: underline !important;
+  text-underline-offset: 0.18em;
+}
+
+html.a11y-high-contrast {
+  color-scheme: light;
+}
+
+html.a11y-high-contrast :is(body, main, .bg-slate-100, .bg-slate-50, .bg-white) {
+  background-color: #fff !important;
+  color: #111 !important;
+}
+
+html.a11y-high-contrast
+  :is(
+    .text-slate-300,
+    .text-slate-400,
+    .text-slate-500,
+    .text-slate-600,
+    .text-slate-700,
+    .text-slate-800,
+    .text-slate-900
+  ) {
+  color: #111 !important;
+}
+
+html.a11y-high-contrast .brand-sidebar,
+html.a11y-high-contrast .login-page,
+html.a11y-high-contrast .login-form {
+  background: #000 !important;
+  color: #fff !important;
+}
+html.a11y-high-contrast
+  .brand-sidebar
+  :is(.text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600),
+html.a11y-high-contrast
+  .login-page
+  :is(.text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600) {
+  color: #fff !important;
+}
+html.a11y-high-contrast :is(input, select, textarea) {
+  border-color: #111 !important;
+}
+html.a11y-high-contrast .login-page :is(input, select, textarea) {
+  border-color: #fff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html.a11y-reduce-motion *,
+html.a11y-reduce-motion *::before,
+html.a11y-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
 @layer base {
   * {
     @apply border-slate-200;
@@ -202,13 +316,6 @@
 @keyframes qualiq-loader-orbit {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-loading-spinner::before,
-  .ui-page-loading::before {
-    animation-duration: 24s;
   }
 }
 

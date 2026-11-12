@@ -44,7 +44,12 @@
         <h3 class="text-sm font-semibold text-slate-700">
           Atividades Recentes — Não-conformidades
         </h3>
-        <button class="h-4 w-4 text-slate-400 hover:text-slate-700" (click)="fullscreen.set(true)">
+        <button
+          type="button"
+          class="flex h-10 w-10 items-center justify-center text-slate-500 hover:text-slate-700"
+          (click)="fullscreen.set(true)"
+          aria-label="Expandir painel"
+        >
           <span appIcon="Maximize2"></span>
         </button>
       </header>

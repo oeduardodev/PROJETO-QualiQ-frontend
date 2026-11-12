@@ -10,7 +10,7 @@ import type { FormFieldSchema } from '@core/models/database';
   imports: [ReactiveFormsModule],
   host: { class: 'ui-standard-fields' },
   template: `
-    <main class="min-h-screen bg-slate-50 p-5 sm:p-10">
+    <main id="conteudo-principal" tabindex="-1" class="min-h-screen bg-slate-50 p-5 sm:p-10">
       <section class="mx-auto max-w-2xl rounded-xl border bg-white p-6 space-y-5">
         <h1 class="text-2xl font-semibold">Registrar incidente</h1>
         @if (error()) {
