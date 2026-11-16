@@ -122,6 +122,7 @@ function stringArray(value: unknown, allowed?: Set<string>): string[] {
 
 function accessSelection(body: Record<string, unknown>) {
   const module_access = stringArray(body.module_access, modules);
+  if (!module_access.includes('dashboard')) module_access.push('dashboard');
   if (!module_access.includes('education')) module_access.push('education');
   const edit_access = stringArray(body.edit_access, pages);
   if (edit_access.some((page) => !module_access.includes(pageModules[page]))) {

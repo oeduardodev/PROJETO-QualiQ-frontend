@@ -1,0 +1,222 @@
+.identity-card {
+  background: linear-gradient(125deg, #f0f9ff, #fff 64%, #f0fdfa);
+}
+.identity-detail {
+  border-radius: 0.8rem;
+  background: rgb(255 255 255 / 0.75);
+  padding: 1rem;
+}
+.identity-detail span {
+  color: #0369a1;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.identity-detail p {
+  margin-top: 0.45rem;
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+.section-title {
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #0369a1;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.section-link:hover {
+  text-decoration: underline;
+}
+.stat-card {
+  position: relative;
+  min-height: 7.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.8rem;
+  background: white;
+  padding: 1.1rem;
+}
+.stat-card p {
+  max-width: calc(100% - 3rem);
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.stat-card strong {
+  display: block;
+  margin-top: 0.8rem;
+  color: #1e293b;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.stat-icon {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  display: inline-flex;
+  height: 2.4rem;
+  width: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  padding: 0.55rem;
+}
+.status-pill {
+  display: inline-block;
+  border-radius: 999px;
+  background: #f1f5f9;
+  padding: 0.25rem 0.6rem;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-on {
+  background: #ecfdf5;
+  color: #047857;
+}
+.status-off {
+  background: #fff1f2;
+  color: #be123c;
+}
+.panel-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.8rem;
+  background: white;
+}
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 1.1rem 1.25rem;
+}
+.calendar-nav {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.4rem;
+  color: #64748b;
+}
+.calendar-nav:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+.calendar-day {
+  display: flex;
+  min-height: 2.7rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  color: #475569;
+  font-size: 0.8rem;
+}
+.calendar-empty {
+  visibility: hidden;
+}
+.calendar-today {
+  background: #e0f2fe;
+  color: #075985;
+  font-weight: 700;
+}
+.calendar-has-events {
+  font-weight: 700;
+}
+.calendar-dot {
+  height: 0.35rem;
+  width: 0.35rem;
+  border-radius: 999px;
+  background: #0ea5e9;
+}
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-top: 1px solid #f1f5f9;
+  padding: 0.65rem 0;
+}
+.event-date {
+  border-radius: 0.45rem;
+  background: #e0f2fe;
+  padding: 0.4rem 0.5rem;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.event-overdue {
+  background: #fff1f2;
+  color: #be123c;
+}
+.birthday-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.6rem;
+  background: #faf9ff;
+  padding: 0.7rem;
+}
+.birthday-avatar {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.post-card {
+  border: 1px solid #f1f5f9;
+  border-radius: 0.65rem;
+  background: #fcfdff;
+  padding: 1rem;
+}
+.form-label {
+  display: block;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.form-label input,
+.form-label select,
+.form-label textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: white;
+  padding: 0.6rem 0.7rem;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+.form-label input:focus,
+.form-label select:focus,
+.form-label textarea:focus {
+  border-color: #0284c7;
+  outline: 2px solid #bae6fd;
+}

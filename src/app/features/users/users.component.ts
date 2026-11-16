@@ -107,8 +107,8 @@ export class UsersComponent {
   readonly moduleOptions = [
     {
       key: 'dashboard',
-      label: 'Dashboard',
-      description: 'Visualização geral e acesso rápido às principais informações.',
+      label: 'Painel',
+      description: 'Página inicial com indicadores, agenda e comunicados da empresa.',
       icon: 'LayoutDashboard',
       tone: 'blue',
     },
@@ -213,7 +213,10 @@ export class UsersComponent {
   ];
 
   readonly pageDetails: Record<string, { icon: string; description: string }> = {
-    dashboard: { icon: 'ChartLine', description: 'Permite personalizar widgets e layouts.' },
+    dashboard: {
+      icon: 'ChartLine',
+      description: 'Permite publicar comunicados e editar a identidade organizacional.',
+    },
     valor: { icon: 'Grid3X3', description: 'Permite criar e modificar a matriz de valor.' },
     dimensoes: { icon: 'ChartLine', description: 'Permite gerenciar dimensões estratégicas.' },
     'indicadores/painel': { icon: 'Gauge', description: 'Permite editar o painel de indicadores.' },
@@ -438,11 +441,11 @@ export class UsersComponent {
       ? this.customRoles().find((role) => role.id === selected.slice(7))
       : null;
     if (selected === 'other') {
-      this.form.controls.module_access.setValue(['education']);
+      this.form.controls.module_access.setValue(['dashboard', 'education']);
       this.form.controls.edit_access.setValue([]);
     } else if (custom) {
       this.form.controls.module_access.setValue([
-        ...new Set([...custom.module_access, 'education']),
+        ...new Set([...custom.module_access, 'dashboard', 'education']),
       ]);
       this.form.controls.edit_access.setValue([...custom.edit_access]);
     } else {
@@ -472,7 +475,7 @@ export class UsersComponent {
   }
 
   toggleModule(key: string): void {
-    if (key === 'education') return;
+    if (key === 'education' || key === 'dashboard') return;
     const control = this.form.controls.module_access;
     const selected = new Set(control.value);
     if (selected.has(key)) selected.delete(key);
@@ -682,7 +685,7 @@ export class UsersComponent {
     this.roleForm.reset({
       name: '',
       description: '',
-      module_access: ['education'],
+      module_access: ['dashboard', 'education'],
       edit_access: [],
     });
     this.expandedRoleModules.set([]);
@@ -694,7 +697,7 @@ export class UsersComponent {
     this.roleEditing.set(role);
     this.roleForm.reset({
       ...role,
-      module_access: [...new Set([...role.module_access, 'education'])],
+      module_access: [...new Set([...role.module_access, 'dashboard', 'education'])],
     });
     this.expandedRoleModules.set([...role.module_access]);
     this.roleError.set(null);
@@ -702,7 +705,7 @@ export class UsersComponent {
   }
 
   toggleRoleModule(module: string): void {
-    if (module === 'education') return;
+    if (module === 'education' || module === 'dashboard') return;
     const selected = new Set(this.roleForm.controls.module_access.value);
     if (selected.has(module)) selected.delete(module);
     else selected.add(module);

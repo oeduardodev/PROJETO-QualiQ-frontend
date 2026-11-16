@@ -6,7 +6,7 @@ export interface AccessPage {
 
 // The route is the permission key. Keep this list aligned with app.routes.ts.
 export const ACCESS_PAGES: AccessPage[] = [
-  { key: 'dashboard', label: 'Dashboard', module: 'dashboard' },
+  { key: 'dashboard', label: 'Painel', module: 'dashboard' },
   { key: 'valor', label: 'Matriz de Valor', module: 'strategy' },
   { key: 'dimensoes', label: 'Dimensões', module: 'strategy' },
   { key: 'indicadores/painel', label: 'Painel de Indicadores', module: 'indicators' },

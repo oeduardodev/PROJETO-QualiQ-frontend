@@ -48,6 +48,8 @@ export interface AppDatabase {
   public: {
     Tables: {
       system_settings: TableDefinition<SystemSettings>;
+      dashboard_posts: TableDefinition<DashboardPost>;
+      strategic_identity: TableDefinition<DashboardIdentity>;
       establishments: TableDefinition<Establishment>;
       establishment_modules: TableDefinition<EstablishmentModule>;
       module_catalog: TableDefinition<ModuleCatalogEntry>;
@@ -188,6 +190,19 @@ export interface AppDatabase {
           p_reason: string;
         };
         Returns: ActionPlan;
+      };
+      save_dashboard_identity: {
+        Args: {
+          p_mission: string;
+          p_vision: string;
+          p_values: string;
+          p_logo_url: string;
+        };
+        Returns: DashboardIdentity;
+      };
+      dashboard_action_schedule: {
+        Args: Record<string, never>;
+        Returns: DashboardScheduledPlan[];
       };
       import_intelligent_action_plan: {
         Args: { p_payload: Record<string, unknown> };
@@ -490,6 +505,40 @@ export interface SystemSettings {
   id: boolean;
   active_maintenance: boolean;
   updated_at: string;
+}
+
+export interface DashboardPost {
+  id: string;
+  establishment_id: string;
+  kind: 'news' | 'announcement';
+  title: string;
+  body: string;
+  published_at: string;
+  expires_at: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardIdentity {
+  id: string;
+  establishment_id: string;
+  period: string | null;
+  mission: string | null;
+  vision: string | null;
+  purpose: string | null;
+  values: string | null;
+  logo_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface DashboardScheduledPlan {
+  id: string;
+  code: string;
+  title: string;
+  due_date: string | null;
+  tasks: ActionPlanTask[];
 }
 
 export interface ValueChainCategory {

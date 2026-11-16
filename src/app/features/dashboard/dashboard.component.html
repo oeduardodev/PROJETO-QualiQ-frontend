@@ -1,115 +1,424 @@
-<div class="space-y-6">
-  <div class="flex items-center justify-between">
+<div class="home-panel space-y-6">
+  <header class="flex flex-wrap items-start justify-between gap-4">
     <div>
-      <h2 class="ui-page-title">Visão Geral</h2>
-      <p class="ui-page-subtitle">Indicadores-chave de desempenho da qualidade</p>
+      <p class="text-xs font-semibold uppercase tracking-widest text-sky-700">Página inicial</p>
+      <h2 class="ui-page-title">Painel</h2>
+      <p class="ui-page-subtitle">
+        O que está acontecendo na sua empresa e na gestão da qualidade.
+      </p>
     </div>
-    <button
-      class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-      (click)="methodologyOpen.set(true)"
-    >
-      <span appIcon="Info" class="h-4 w-4"></span>Metodologia
-    </button>
-  </div>
+    @if (auth.canEditPage('dashboard')) {
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="ui-button-secondary" (click)="openIdentity()">
+          <span appIcon="Settings" class="h-4 w-4"></span> Identidade
+        </button>
+        <button type="button" class="ui-button-primary" (click)="openNewPost()">
+          <span appIcon="Plus" class="h-4 w-4"></span> Publicar
+        </button>
+      </div>
+    }
+  </header>
+
   @if (error()) {
-    <div class="ui-page-error">
-      <p class="text-sm text-slate-500">{{ error() }}</p>
-      <button class="mt-3 text-sm underline" (click)="load()">Tentar novamente</button>
+    <div class="ui-page-error flex flex-wrap items-center justify-between gap-3" role="alert">
+      <p class="text-sm">{{ error() }}</p>
+      <button type="button" class="text-sm font-semibold underline" (click)="load()">
+        Tentar novamente
+      </button>
     </div>
   }
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    @for (stat of stats(); track stat.label) {
-      <article
-        class="rounded-xl border border-slate-200 bg-white p-5 transition hover:border-slate-300"
+
+  <section
+    class="identity-card rounded-2xl border border-sky-100 p-6 sm:p-8"
+    aria-label="Identidade organizacional"
+  >
+    <div class="flex flex-wrap items-start gap-5">
+      <div
+        class="company-logo flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm"
       >
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wider text-slate-400">
-              {{ stat.label }}
-            </p>
-            <p class="mt-1 text-2xl font-bold text-slate-800">
-              {{ loading() || error() ? '—' : stat.value }}
-            </p>
-          </div>
-          <span class="flex h-10 w-10 items-center justify-center rounded-lg" [class]="stat.bg"
-            ><span [appIcon]="stat.icon" class="h-5 w-5" [class]="stat.color"></span
-          ></span>
-        </div>
-      </article>
-    }
-  </div>
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-    <article class="rounded-xl border border-slate-200 bg-white lg:col-span-2">
-      <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h3 class="text-sm font-semibold text-slate-700">
-          Atividades Recentes — Não-conformidades
-        </h3>
-        <button
-          type="button"
-          class="flex h-10 w-10 items-center justify-center text-slate-500 hover:text-slate-700"
-          (click)="fullscreen.set(true)"
-          aria-label="Expandir painel"
-        >
-          <span appIcon="Maximize2"></span>
-        </button>
-      </header>
-      <div class="p-5">
-        @if (loading()) {
-          <div class="flex justify-center py-8">
-            <span appIcon="Activity" class="h-5 w-5 animate-pulse text-slate-300"></span>
-          </div>
-        } @else if (!recentTickets().length) {
-          <p class="py-8 text-center text-sm text-slate-400">Nenhuma atividade recente.</p>
+        @if (identity()?.logo_url) {
+          <img
+            [src]="identity()?.logo_url"
+            [alt]="'Logo de ' + (companyName() || 'empresa')"
+            class="max-h-full max-w-full object-contain p-2"
+          />
         } @else {
-          <div class="space-y-1">
-            @for (ticket of recentTickets(); track ticket.id) {
-              <div
-                class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-slate-50"
-              >
-                <span class="h-1.5 w-1.5 rounded-full bg-slate-300"></span
-                ><span class="flex-1 text-sm text-slate-600">{{ ticket.title }}</span
-                ><span class="text-xs text-slate-400">{{ processCode(ticket.process_id) }}</span>
-              </div>
-            }
+          <span appIcon="Hexagon" class="h-9 w-9 text-sky-700"></span>
+        }
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-semibold uppercase tracking-wider text-sky-700">Nossa organização</p>
+        <h3 class="mt-1 text-2xl font-semibold text-slate-900">
+          {{ companyName() || 'Sua empresa' }}
+        </h3>
+        @if (identity()?.purpose) {
+          <p class="mt-2 max-w-3xl text-sm text-slate-600">{{ identity()?.purpose }}</p>
+        }
+      </div>
+    </div>
+    <div class="mt-6 grid gap-4 md:grid-cols-3">
+      <div class="identity-detail">
+        <span>Missão</span>
+        <p>{{ identity()?.mission || 'A missão ainda não foi cadastrada.' }}</p>
+      </div>
+      <div class="identity-detail">
+        <span>Visão</span>
+        <p>{{ identity()?.vision || 'A visão ainda não foi cadastrada.' }}</p>
+      </div>
+      <div class="identity-detail">
+        <span>Valores</span>
+        <p>{{ identity()?.values || 'Os valores ainda não foram cadastrados.' }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="indicators-heading">
+    <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h3 id="indicators-heading" class="section-title">Indicadores do mês</h3>
+        <p class="text-sm text-slate-500">
+          Resultados de {{ formatMonth(currentMonth) }} comparados a {{ previousMonthLabel }}.
+        </p>
+      </div>
+      @if (auth.hasModuleAccess('indicators')) {
+        <a routerLink="/indicadores/painel" class="section-link"
+          >Ver painel de indicadores <span appIcon="ArrowRight" class="h-4 w-4"></span
+        ></a>
+      }
+    </div>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <article class="stat-card">
+        <span class="stat-icon bg-emerald-50 text-emerald-700" appIcon="CircleCheck"></span>
+        <p>Dentro da meta</p>
+        <strong>{{ loading() ? '—' : indicatorSummary().on }}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-icon bg-rose-50 text-rose-700" appIcon="CircleAlert"></span>
+        <p>Fora da meta</p>
+        <strong>{{ loading() ? '—' : indicatorSummary().off }}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-icon bg-slate-100 text-slate-600" appIcon="Clock3"></span>
+        <p>Sem resultado no mês</p>
+        <strong>{{ loading() ? '—' : indicatorSummary().pending }}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-icon bg-sky-50 text-sky-700" appIcon="TrendingUp"></span>
+        <p>Melhoraram ante o mês anterior</p>
+        <strong>{{ loading() ? '—' : indicatorSummary().improved }}</strong>
+      </article>
+    </div>
+    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      @if (loading()) {
+        <p class="p-6 text-sm text-slate-500">Carregando indicadores…</p>
+      } @else if (!indicatorRows().length) {
+        <p class="p-6 text-sm text-slate-500">Nenhum indicador cadastrado.</p>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[650px] text-left text-sm">
+            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="px-5 py-3">Indicador</th>
+                <th class="px-4 py-3">Mês anterior</th>
+                <th class="px-4 py-3">Mês atual</th>
+                <th class="px-4 py-3">Situação</th>
+                <th class="px-4 py-3">Evolução</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of indicatorRows(); track row.indicator.id) {
+                <tr class="border-t border-slate-100">
+                  <td class="px-5 py-3 font-medium text-slate-800">{{ row.indicator.title }}</td>
+                  <td class="px-4 py-3 text-slate-600">
+                    {{ row.previous ? formatValue(row.previous.value, row.indicator) : '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-slate-700">
+                    {{ row.current ? formatValue(row.current.value, row.indicator) : '—' }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <span
+                      class="status-pill"
+                      [class.status-on]="row.onTarget === true"
+                      [class.status-off]="row.onTarget === false"
+                      >{{
+                        row.onTarget === null
+                          ? 'Sem resultado'
+                          : row.onTarget
+                            ? 'Dentro da meta'
+                            : 'Fora da meta'
+                      }}</span
+                    >
+                  </td>
+                  <td class="px-4 py-3 text-slate-600">
+                    {{
+                      row.movement === 'better'
+                        ? 'Melhorou'
+                        : row.movement === 'worse'
+                          ? 'Piorou'
+                          : row.movement === 'same'
+                            ? 'Estável'
+                            : '—'
+                    }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </section>
+
+  <div class="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)]">
+    <section class="panel-card" aria-labelledby="calendar-heading">
+      <div class="panel-header">
+        <div>
+          <h3 id="calendar-heading" class="section-title">Calendário de ações</h3>
+          <p class="text-sm text-slate-500">Prazos de planos e tarefas em aberto.</p>
+        </div>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            class="calendar-nav"
+            aria-label="Mês anterior"
+            (click)="changeMonth(-1)"
+          >
+            <span appIcon="ChevronLeft"></span></button
+          ><span class="min-w-32 text-center text-sm font-semibold capitalize text-slate-700">{{
+            monthLabel()
+          }}</span
+          ><button
+            type="button"
+            class="calendar-nav"
+            aria-label="Próximo mês"
+            (click)="changeMonth(1)"
+          >
+            <span appIcon="ChevronRight"></span>
+          </button>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="calendar-grid mb-2 text-center text-xs font-semibold text-slate-400">
+          <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span
+          ><span>Sex</span><span>Sáb</span>
+        </div>
+        <div class="calendar-grid">
+          @for (day of calendarDays(); track $index) {
+            <div
+              class="calendar-day"
+              [class.calendar-empty]="!day"
+              [class.calendar-today]="day === today"
+              [class.calendar-has-events]="day && eventsOn(day).length"
+            >
+              @if (day) {
+                <span>{{ +day.slice(8) }}</span>
+                @if (eventsOn(day).length) {
+                  <span
+                    class="calendar-dot"
+                    [class.bg-rose-500]="day < today"
+                    [attr.aria-label]="eventsOn(day).length + ' ações programadas'"
+                  ></span>
+                }
+              }
+            </div>
+          }
+        </div>
+        <p class="mt-4 text-xs text-slate-500">
+          <span class="mr-1 inline-block h-2 w-2 rounded-full bg-sky-500"></span> Ação programada
+          <span class="ml-3 mr-1 inline-block h-2 w-2 rounded-full bg-rose-500"></span> Prazo
+          vencido
+        </p>
+      </div>
+      <div class="border-t border-slate-100 p-5">
+        <h4 class="mb-3 text-sm font-semibold text-slate-800">Alertas e próximos prazos</h4>
+        @if (!alerts().length) {
+          <p class="text-sm text-slate-500">Nenhuma ação pendente nos próximos sete dias.</p>
+        }
+        @for (event of alerts(); track event.id) {
+          <div class="event-row">
+            <span class="event-date" [class.event-overdue]="event.overdue">{{
+              formatDate(event.date)
+            }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-slate-800">{{ event.title }}</p>
+              <p class="text-xs text-slate-500">
+                {{ event.plan }} · {{ event.overdue ? 'Prazo vencido' : 'Programada' }}
+              </p>
+            </div>
+          </div>
+        }
+        @if (auth.hasModuleAccess('action_plans')) {
+          <a routerLink="/planos-acao" class="section-link mt-3"
+            >Ver planos de ação <span appIcon="ArrowRight" class="h-4 w-4"></span
+          ></a>
+        }
+      </div>
+    </section>
+
+    <section class="panel-card" aria-labelledby="birthday-heading">
+      <div class="panel-header">
+        <div>
+          <h3 id="birthday-heading" class="section-title">Aniversariantes do mês</h3>
+          <p class="text-sm text-slate-500 capitalize">{{ formatMonth(currentMonth) }}</p>
+        </div>
+        <span appIcon="Users" class="h-5 w-5 text-violet-500"></span>
+      </div>
+      <div class="space-y-2 p-5">
+        @if (!monthBirthdays().length) {
+          <p class="text-sm text-slate-500">Nenhum aniversário cadastrado para este mês.</p>
+        }
+        @for (person of monthBirthdays(); track person.id) {
+          <div class="birthday-row">
+            <span class="birthday-avatar">{{
+              (person.short_name || person.name).slice(0, 1).toUpperCase()
+            }}</span
+            ><span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">{{
+              person.name
+            }}</span
+            ><span class="text-sm font-semibold text-violet-700"
+              >{{ person.birth_date?.slice(8, 10) }}/{{ person.birth_date?.slice(5, 7) }}</span
+            >
           </div>
         }
       </div>
-    </article>
-    <article class="rounded-xl border border-slate-200 bg-white">
-      <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h3 class="text-sm font-semibold text-slate-700">Indicadores Rápidos</h3>
-        <span appIcon="Activity" class="h-4 w-4 text-slate-400"></span>
-      </header>
-      <div class="space-y-4 p-5">
-        @for (stat of stats(); track stat.label) {
-          <div class="flex items-center justify-between">
-            <span class="flex items-center gap-2 text-sm text-slate-600"
-              ><span [appIcon]="stat.icon" class="h-4 w-4" [class]="stat.color"></span
-              >{{ stat.short }}</span
-            ><strong class="text-sm text-slate-800">{{ loading() ? '—' : stat.value }}</strong>
-          </div>
+    </section>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="panel-card" aria-labelledby="announcements-heading">
+      <div class="panel-header">
+        <h3 id="announcements-heading" class="section-title">Comunicados</h3>
+        <span appIcon="Bell" class="h-5 w-5 text-sky-600"></span>
+      </div>
+      <div class="space-y-3 p-5">
+        @if (!announcements().length) {
+          <p class="text-sm text-slate-500">Nenhum comunicado publicado.</p>
+        }
+        @for (post of announcements(); track post.id) {
+          <article class="post-card">
+            <div class="flex items-start justify-between gap-2">
+              <h4 class="font-semibold text-slate-800">{{ post.title }}</h4>
+              @if (auth.canEditPage('dashboard')) {
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-sky-700 hover:underline"
+                  (click)="openPost(post)"
+                >
+                  Editar
+                </button>
+              }
+            </div>
+            <p class="mt-2 whitespace-pre-line text-sm text-slate-600">{{ post.body }}</p>
+            <p class="mt-3 text-xs text-slate-400">
+              {{ formatTimestamp(post.published_at) }}
+            </p>
+          </article>
         }
       </div>
-    </article>
+    </section>
+    <section class="panel-card" aria-labelledby="news-heading">
+      <div class="panel-header">
+        <h3 id="news-heading" class="section-title">Notícias da empresa</h3>
+        <span appIcon="FileText" class="h-5 w-5 text-emerald-600"></span>
+      </div>
+      <div class="space-y-3 p-5">
+        @if (!news().length) {
+          <p class="text-sm text-slate-500">Nenhuma notícia publicada.</p>
+        }
+        @for (post of news(); track post.id) {
+          <article class="post-card">
+            <div class="flex items-start justify-between gap-2">
+              <h4 class="font-semibold text-slate-800">{{ post.title }}</h4>
+              @if (auth.canEditPage('dashboard')) {
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-sky-700 hover:underline"
+                  (click)="openPost(post)"
+                >
+                  Editar
+                </button>
+              }
+            </div>
+            <p class="mt-2 whitespace-pre-line text-sm text-slate-600">{{ post.body }}</p>
+            <p class="mt-3 text-xs text-slate-400">
+              {{ formatTimestamp(post.published_at) }}
+            </p>
+          </article>
+        }
+      </div>
+    </section>
   </div>
 </div>
+
 <app-modal
-  [open]="fullscreen()"
-  title="Atividades Recentes — Não-conformidades"
-  width="max-w-3xl"
-  (closed)="fullscreen.set(false)"
-  ><div class="space-y-1">
-    @for (ticket of recentTickets(); track ticket.id) {
-      <div class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-slate-50">
-        <span class="h-1.5 w-1.5 rounded-full bg-slate-300"></span
-        ><span class="flex-1 text-sm text-slate-600">{{ ticket.title }}</span
-        ><span class="text-xs text-slate-400">{{ processCode(ticket.process_id) }}</span>
-      </div>
+  [open]="postOpen()"
+  [title]="editingPost() ? 'Editar publicação' : 'Nova publicação'"
+  width="max-w-xl"
+  (closed)="postOpen.set(false)"
+  ><form [formGroup]="postForm" (ngSubmit)="savePost()" class="space-y-4 p-1">
+    <label class="form-label"
+      >Tipo<select formControlName="kind">
+        <option value="announcement">Comunicado</option>
+        <option value="news">Notícia</option>
+      </select></label
+    ><label class="form-label">Título<input formControlName="title" maxlength="160" /></label
+    ><label class="form-label"
+      >Texto<textarea formControlName="body" rows="7" maxlength="5000"></textarea></label
+    ><label class="form-label"
+      >Mostrar até (opcional)<input type="date" formControlName="expires" [min]="today"
+    /></label>
+    @if (formError()) {
+      <p class="text-sm text-rose-700" role="alert">{{ formError() }}</p>
     }
-  </div></app-modal
+    <div class="flex flex-wrap justify-between gap-3 pt-2">
+      @if (editingPost()) {
+        <button
+          type="button"
+          class="text-sm font-medium text-rose-700"
+          [disabled]="saving()"
+          (click)="deletePost()"
+        >
+          Excluir
+        </button>
+      } @else {
+        <span></span>
+      }
+      <div class="flex gap-2">
+        <button type="button" class="ui-button-secondary" (click)="postOpen.set(false)">
+          Cancelar</button
+        ><button type="submit" class="ui-button-primary" [disabled]="saving()">
+          {{ saving() ? 'Salvando…' : 'Publicar' }}
+        </button>
+      </div>
+    </div>
+  </form></app-modal
 >
-<app-methodology
-  [open]="methodologyOpen()"
-  [info]="methodology"
-  (closed)="methodologyOpen.set(false)"
-/>
+
+<app-modal
+  [open]="identityOpen()"
+  title="Identidade organizacional"
+  width="max-w-xl"
+  (closed)="identityOpen.set(false)"
+  ><form [formGroup]="identityForm" (ngSubmit)="saveIdentity()" class="space-y-4 p-1">
+    <label class="form-label"
+      >URL HTTPS do logo<input
+        type="url"
+        formControlName="logo_url"
+        placeholder="https://empresa.com/logo.png" /></label
+    ><label class="form-label">Missão<textarea formControlName="mission" rows="3"></textarea></label
+    ><label class="form-label">Visão<textarea formControlName="vision" rows="3"></textarea></label
+    ><label class="form-label"
+      >Valores<textarea formControlName="values" rows="3"></textarea>
+    </label>
+    @if (formError()) {
+      <p class="text-sm text-rose-700" role="alert">{{ formError() }}</p>
+    }
+    <div class="flex justify-end gap-2 pt-2">
+      <button type="button" class="ui-button-secondary" (click)="identityOpen.set(false)">
+        Cancelar</button
+      ><button type="submit" class="ui-button-primary" [disabled]="saving()">
+        {{ saving() ? 'Salvando…' : 'Salvar identidade' }}
+      </button>
+    </div>
+  </form></app-modal
+>

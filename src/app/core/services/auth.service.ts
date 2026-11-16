@@ -235,6 +235,7 @@ export class AuthService {
     if (role === 'implantacao') return module === 'implantation';
     if (this.establishmentStatus() !== 'active') return false;
     if (module === 'profile') return true;
+    if (module === 'dashboard') return true;
     if (
       [
         'helpdesk',

@@ -245,7 +245,7 @@
         routerLink="/dashboard"
         routerLinkActive="bg-slate-800 text-white shadow-sm"
         ariaCurrentWhenActive="page"
-        aria-label="Dashboard"
+        aria-label="Painel"
         (click)="closeMobileMenu(false)"
         class="mb-2 flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-100"
         [class.justify-center]="collapsed() && !mobile"
@@ -253,7 +253,7 @@
       >
         <span appIcon="LayoutDashboard" class="h-5 w-5 shrink-0"></span>
         @if (!collapsed() || mobile) {
-          <span>Dashboard</span>
+          <span>Painel</span>
         }
       </a>
     }

@@ -83,13 +83,13 @@ export class AppShellComponent implements OnDestroy {
   );
   readonly activeLabel = computed(() =>
     this.route() === 'dashboard'
-      ? 'Dashboard'
+      ? 'Painel'
       : (this.leaves().find((leaf) => leaf.route === this.route())?.label ??
         (this.route() === 'perfil'
           ? 'Meu perfil'
           : this.route() === 'avisos'
             ? 'Notificações'
-            : 'Dashboard')),
+            : 'Painel')),
   );
   readonly subtitle = computed(() => ROUTE_SUBTITLES[this.route()] ?? '');
   readonly roleLabel = computed(() => {
